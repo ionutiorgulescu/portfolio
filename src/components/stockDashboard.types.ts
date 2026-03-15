@@ -1,0 +1,54 @@
+export type ChartInterval = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | '10Y';
+
+export type IntervalOption = {
+  key: ChartInterval;
+  label: string;
+  days?: number;
+};
+
+export type ChartPoint = {
+  t: number;
+  close: number;
+};
+
+export const intervalOptions: IntervalOption[] = [
+  { key: '1W', label: '1 Week', days: 7 },
+  { key: '1M', label: '1 Month', days: 30 },
+  { key: '3M', label: '3 Months', days: 90 },
+  { key: '6M', label: '6 Months', days: 180 },
+  { key: 'YTD', label: 'YTD' },
+  { key: '1Y', label: '1 Year', days: 365 },
+  { key: '5Y', label: '5 Years', days: 365 * 5 },
+  { key: '10Y', label: '10 Years', days: 365 * 10 },
+];
+
+export const formatNumber = (value: number): string =>
+  value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+export const parseIsoDate = (isoDate: string): Date => new Date(`${isoDate}T00:00:00Z`);
+
+export const formatTimestamp = (timestamp: number, options: Intl.DateTimeFormatOptions): string => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleDateString('en-US', options);
+};
+
+export const getNiceTickStep = (value: number): number => {
+  if (value <= 0 || !Number.isFinite(value)) {
+    return 1;
+  }
+
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const normalized = value / magnitude;
+
+  if (normalized <= 1) return 1 * magnitude;
+  if (normalized <= 2) return 2 * magnitude;
+  if (normalized <= 5) return 5 * magnitude;
+  return 10 * magnitude;
+};

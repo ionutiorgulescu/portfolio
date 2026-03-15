@@ -1,0 +1,15 @@
+:root {
+  --color-portfolio-value: #357DE8;
+  --color-portfolio-cost: #82B536;
+  --color-border-2: #d1d5db;
+  --color-border-3: #f0f0f0;
+  --color-text-3: #9ca3af;
+  --color-surface-raised: #ffffff;
+  --color-shadow: rgba(0, 0, 0, 0.08);
+
+  /* Interval selector */
+  --color-interval-active-bg: #357DE8;
+  --color-interval-active-text: #ffffff;
+  --color-interval-default-bg: #f3f4f6;
+  --color-interval-default-text: #4b5563;
+}
