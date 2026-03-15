@@ -24,5 +24,8 @@ dist-ssr
 *.sln
 *.sw?
 
-supabase/*
+supabase/.branches/*
+supabase/.temp/*
+supabase/functions/.env
+supabase/.env
 skills-lock.json

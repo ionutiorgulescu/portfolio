@@ -9,7 +9,6 @@ jobs:
   web-deploy:
     name: 🎉 Deploy
     runs-on: ubuntu-latest
-    # AICI specifici mediul creat de tine în screenshot
     environment: Prod 
 
     steps:
@@ -21,12 +20,19 @@ jobs:
       with:
         node-version: 20.19.0
 
+    - name: 🗄️ Run Supabase Migrations
+      run: |
+        npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        npx supabase db push
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
     - name: 🔨 Build Project
       run: |
         npm install
         npm run build
       env:
-        # GitHub va lua aceste valori din Environment-ul "Prod"
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_APP_URL: ${{ vars.VITE_APP_URL }} 

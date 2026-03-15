@@ -1,13 +1,14 @@
 export const PositionStatus = {
-  Open: 'open',
-  Closed: 'closed',
-  Pending: 'pending',
-  Cancelled: 'cancelled',
+  Buy: 'buy',
+  Sell: 'sell',
+} as const;
+export const TransactionType = {
+  Stock: 'stock',
+  Crypto: 'crypto',
 } as const;
 
 export type PositionStatus = (typeof PositionStatus)[keyof typeof PositionStatus];
-
-export type TransactionType = 'buy' | 'sell';
+export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType];
 
 export interface Position {
   id: string;

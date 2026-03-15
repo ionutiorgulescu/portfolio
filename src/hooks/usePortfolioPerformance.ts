@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
-import { PositionStatus } from '../types/positions';
+import { PositionStatus, TransactionType } from '../types/positions';
 import type {
   PortfolioDataPoint,
   PriceMatrix,
@@ -34,7 +34,8 @@ const fetchPerformanceTransactions = async (): Promise<Transaction[]> => {
     .from('positions')
     .select('*')
     .eq('user_id', user.id)
-    .in('status', [PositionStatus.Open, PositionStatus.Closed])
+    .in('transaction_type', [TransactionType.Stock])
+    .in('status', [PositionStatus.Buy, PositionStatus.Sell])
     .order('buy_date', { ascending: true })
     .order('created_at', { ascending: true });
 

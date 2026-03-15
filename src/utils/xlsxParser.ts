@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { TransactionType } from '../types/positions';
+import type { PositionStatus, TransactionType } from '../types/positions';
 
 export interface ImportRow {
   asset_name: string;
@@ -9,7 +9,7 @@ export interface ImportRow {
   quantity: number;
   price: number;
   currency: 'USD';
-  status: 'open';
+  status: PositionStatus;
 }
 
 export interface RowError {
@@ -26,7 +26,7 @@ interface RawRow {
   Name?: unknown;
   Ticker?: unknown;
   Date?: unknown;
-  Type?: unknown;
+  Status?: unknown;
   Amount?: unknown;
   Price?: unknown;
 }
@@ -97,9 +97,9 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
     return { row: rowNum, message: `Date "${dateStr}" is not a valid calendar date or is in the future` };
   }
 
-  const typeRaw = raw.Type !== undefined && raw.Type !== null ? String(raw.Type).trim().toLowerCase() : '';
-  if (typeRaw !== 'buy' && typeRaw !== 'sell') {
-    return { row: rowNum, message: `Type must be "buy" or "sell", got "${raw.Type}"` };
+  const statusRaw = raw.Status !== undefined && raw.Status !== null ? String(raw.Status).trim().toLowerCase() : '';
+  if (statusRaw !== 'buy' && statusRaw !== 'sell') {
+    return { row: rowNum, message: `Status must be "buy" or "sell", got "${raw.Status}"` };
   }
 
   const quantity = Number(raw.Amount);
@@ -116,11 +116,11 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
     asset_name: assetName,
     ticker_symbol: ticker,
     buy_date: dateStr,
-    transaction_type: typeRaw as TransactionType,
+    transaction_type: 'stock',
     quantity,
     price,
     currency: 'USD',
-    status: 'open',
+    status: statusRaw as PositionStatus,
   };
 };
 

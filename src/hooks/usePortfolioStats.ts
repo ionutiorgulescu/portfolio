@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
+import { PositionStatus } from '../types/positions';
 
 export interface PortfolioStats {
     totalValue: number;
@@ -27,8 +28,8 @@ export function usePortfolioStats() {
             return a.buy_date < b.buy_date ? -1 : 1;
         }
         // Same date: buys before sells
-        if (a.transaction_type === 'buy' && b.transaction_type === 'sell') return -1;
-        if (a.transaction_type === 'sell' && b.transaction_type === 'buy') return 1;
+        if (a.status === PositionStatus.Buy && b.status === PositionStatus.Sell) return -1;
+        if (a.status === PositionStatus.Buy && b.status === PositionStatus.Buy) return 1;
         return 0;
     });
     // Compute net quantity and cost basis per ticker using average cost method
@@ -39,11 +40,11 @@ export function usePortfolioStats() {
     const lotQueues = new Map<string, Array<{ quantity: number; price: number }>>();
 
     for (const p of sortedPositions) {
-        if (p.transaction_type === 'buy') {
+        if (p.status === PositionStatus.Buy) {
             const queue = lotQueues.get(p.ticker_symbol) ?? [];
             queue.push({ quantity: p.quantity, price: p.price });
             lotQueues.set(p.ticker_symbol, queue);
-        } else if (p.transaction_type === 'sell') {
+        } else if (p.status === PositionStatus.Sell) {
             const queue = lotQueues.get(p.ticker_symbol) ?? [];
             let remaining = p.quantity;
             while (remaining > 0 && queue.length > 0) {
@@ -122,8 +123,8 @@ export function usePortfolioStats() {
             allTimeGain,
             allTimeGainPercent,
             totalPositions: positions.length,
-            openPositions: positions.filter(p => p.transaction_type === 'buy').length,
-            closedPositions: positions.filter(p => p.transaction_type === 'sell').length,
+            openPositions: positions.filter(p => p.status === PositionStatus.Buy).length,
+            closedPositions: positions.filter(p => p.status === PositionStatus.Sell).length,
             activeTickers: activeTickers.length,
         };
     })();

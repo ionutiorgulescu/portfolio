@@ -87,7 +87,7 @@ export function DashboardStats() {
       {/* Total Assets */}
       <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
-          Total Assets
+          Total Transactions
         </Typography>
         <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>
           {stats.totalPositions}
@@ -108,7 +108,7 @@ export function DashboardStats() {
       {/* Active Tickers */}
       <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
-          Active Tickers
+          Active Assets
         </Typography>
         <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>
           {stats.activeTickers}

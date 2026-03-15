@@ -1,4 +1,5 @@
 import type { DailyCostBasis, DailyHoldings, FifoEngineResult, Lot, LotQueues, Transaction } from '../types/performance';
+import { PositionStatus } from '../types/positions';
 
 function toUtcDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00Z`);
@@ -75,8 +76,8 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
     if (a.buy_date !== b.buy_date) {
       return a.buy_date < b.buy_date ? -1 : 1;
     }
-    if (a.transaction_type === 'buy' && b.transaction_type === 'sell') return -1;
-    if (a.transaction_type === 'sell' && b.transaction_type === 'buy') return 1;
+    if (a.status === PositionStatus.Buy && b.status === PositionStatus.Sell) return -1;
+    if (a.status === PositionStatus.Sell && b.status === PositionStatus.Buy) return 1;
     return 0;
   });
 
@@ -100,7 +101,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
     const dayTxns = byDate.get(date) ?? [];
 
     for (const tx of dayTxns) {
-      if (tx.transaction_type === 'buy') {
+      if (tx.status === PositionStatus.Buy) {
         const lot: Lot = {
           lotId: tx.id,
           ticker: tx.ticker_symbol,
@@ -111,7 +112,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
         const queue = lotQueues.get(tx.ticker_symbol) ?? [];
         queue.push(lot);
         lotQueues.set(tx.ticker_symbol, queue);
-      } else if (tx.transaction_type === 'sell') {
+      } else if (tx.status === PositionStatus.Sell) {
         const queue = lotQueues.get(tx.ticker_symbol);
         if (!queue || queue.length === 0) {
           console.warn(`[FIFO] Sell without open lots for ${tx.ticker_symbol} on ${date}`);

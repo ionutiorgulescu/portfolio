@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PositionStatus } from '../types/positions';
+import { PositionStatus, TransactionType } from '../types/positions';
 
 const buyDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -64,10 +64,12 @@ export const positionSchema = z.object({
     message: 'Currency must be EUR or USD',
   }),
   status: z.enum([
-    PositionStatus.Open,
-    PositionStatus.Closed,
-    PositionStatus.Pending,
-    PositionStatus.Cancelled,
+    PositionStatus.Buy,
+    PositionStatus.Sell,
+  ]),
+  transaction_type: z.enum([
+    TransactionType.Stock,
+    TransactionType.Crypto,
   ]),
 });
 

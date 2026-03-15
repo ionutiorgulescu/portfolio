@@ -5,12 +5,15 @@ import {
   Button,
   MenuItem,
   Box,
+  Select,
+  InputLabel,
+  FormControl,
   Typography,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { positionSchema } from '../schemas/positionSchema';
 import type { NewPosition } from '../schemas/positionSchema';
-import { PositionStatus } from '../types/positions';
+import { PositionStatus, TransactionType } from '../types/positions';
 
 type NewPositionFormProps = {
   onSubmit: (data: NewPosition) => void;
@@ -31,7 +34,8 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false }: NewPositionFormProp
       price: 1,
       buy_date: '',
       currency: 'USD',
-      status: PositionStatus.Open,
+      status: PositionStatus.Buy,
+      transaction_type: TransactionType.Stock,
     },
   });
 
@@ -147,6 +151,54 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false }: NewPositionFormProp
               </TextField>
             )}
           />
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <FormControl fullWidth margin="normal" error={!!errors.status}>
+            <InputLabel id="status-label">Status</InputLabel>
+            <Controller
+              name="status"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  labelId="status-label"
+                  label="Status"
+                  fullWidth
+                >
+                  {Object.values(PositionStatus).map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            />
+            {errors.status && <Typography color="error" variant="caption">{errors.status.message}</Typography>}
+          </FormControl>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <FormControl fullWidth margin="normal" error={!!errors.status}>
+            <InputLabel id="status-label">Type</InputLabel>
+            <Controller
+              name="transaction_type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  labelId="status-label"
+                  label="Type"
+                  fullWidth
+                >
+                  {Object.values(TransactionType).map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            />
+            {errors.status && <Typography color="error" variant="caption">{errors.status.message}</Typography>}
+          </FormControl>
         </Grid>
         <Grid size={{ xs: 12 }}>
           <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={isSubmitting}>
