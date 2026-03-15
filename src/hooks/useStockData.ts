@@ -111,7 +111,7 @@ const parseResponseError = (payload: EdgeFunctionError | null): string => {
     return payload.message;
   }
 
-  return 'Failed to load stock history.';
+  return 'Failed to load stock history.'; 
 };
 
 export const fetchStockHistory = async (ticker: string): Promise<StockBarWithDate[]> => {
