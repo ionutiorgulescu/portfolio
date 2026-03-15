@@ -21,5 +21,5 @@ export interface Position {
   status: PositionStatus;
   transaction_type: TransactionType;
   created_at: string;
-  updated_at: string;
+  updated_at: string; 
 }
