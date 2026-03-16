@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import { usePortfolioStats } from '../hooks/usePortfolioStats';
+import type { CompositionFilter } from './FilterControl';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -24,12 +25,14 @@ const gridSx = {
   gap: 2,
 };
 
-export function DashboardStats() {
-  const { stats, loading, error } = usePortfolioStats();
+interface DashboardStatsProps {
+  filter: CompositionFilter;
+}
 
-  if (error) {
-    return <Alert severity="error">{error.message}</Alert>;
-  }
+export function DashboardStats({ filter }: DashboardStatsProps) {
+  const { stats, loading, error } = usePortfolioStats(filter);
+
+  if (error) return <Alert severity="error">{error.message}</Alert>;
 
   if (loading || !stats) {
     return (
@@ -84,7 +87,7 @@ export function DashboardStats() {
         </Typography>
       </Box>
 
-      {/* Total Assets */}
+      {/* Total Transactions */}
       <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
           Total Transactions
@@ -105,7 +108,7 @@ export function DashboardStats() {
         </Box>
       </Box>
 
-      {/* Active Tickers */}
+      {/* Active Assets */}
       <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
           Active Assets

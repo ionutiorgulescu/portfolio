@@ -1,9 +1,10 @@
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
 import { usePortfolioComposition } from '../hooks/usePortfolioComposition';
 import type { TickerComposition } from '../hooks/usePortfolioComposition';
+import type { CompositionFilter } from './FilterControl';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -15,7 +16,17 @@ function formatPercent(value: number): string {
 
 function RowSkeleton() {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', alignItems: 'center', py: 1.5, borderBottom: '1px solid', borderColor: 'divider', gap: 2 }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 80px 100px',
+        alignItems: 'center',
+        py: 1.5,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        gap: 2,
+      }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Skeleton variant="circular" width={40} height={40} />
         <Skeleton width={160} height={20} />
@@ -44,9 +55,7 @@ function CompositionRow({ row, maxWeight }: { row: TickerComposition; maxWeight:
         transition: 'background-color 0.15s ease',
       }}
     >
-      {/* Stock name + progress bar */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
-        {/* Ticker avatar */}
         <Box
           sx={{
             width: 40,
@@ -64,10 +73,8 @@ function CompositionRow({ row, maxWeight }: { row: TickerComposition; maxWeight:
           </Typography>
         </Box>
 
-        {/* Name + bar */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: '100%' }}>
-            {/* Progress bar background */}
             <Box
               sx={{
                 position: 'absolute',
@@ -100,12 +107,10 @@ function CompositionRow({ row, maxWeight }: { row: TickerComposition; maxWeight:
         </Box>
       </Box>
 
-      {/* Weight */}
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
         {formatPercent(row.weight)}
       </Typography>
 
-      {/* Gain/Loss */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
         <Typography
           variant="body2"
@@ -119,23 +124,23 @@ function CompositionRow({ row, maxWeight }: { row: TickerComposition; maxWeight:
   );
 }
 
-export function PortfolioComposition() {
-  const { composition, loading, error } = usePortfolioComposition();
+interface PortfolioCompositionProps {
+  filter: CompositionFilter;
+}
 
-  if (error) {
-    return <Alert severity="error">{error.message}</Alert>;
-  }
+export function PortfolioComposition({ filter }: PortfolioCompositionProps) {
+  const { composition, loading, error } = usePortfolioComposition(filter);
+
+  if (error) return <Alert severity="error">{error.message}</Alert>;
 
   const maxWeight = composition[0]?.weight ?? 100;
 
   return (
     <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      {/* Header */}
       <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
         Composition
       </Typography>
 
-      {/* Column headers */}
       <Box
         sx={{
           display: 'grid',
@@ -158,7 +163,6 @@ export function PortfolioComposition() {
         </Typography>
       </Box>
 
-      {/* Rows */}
       {loading ? (
         [...Array(8)].map((_, i) => <RowSkeleton key={i} />)
       ) : composition.length === 0 ? (

@@ -79,8 +79,9 @@ const formatDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 const getDateRange = (): { from: string; to: string } => {
   const toDate = new Date();
+  toDate.setUTCDate(toDate.getUTCDate() - 1);
   const fromDate = new Date(toDate);
-  fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 10);
+  fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 9);
 
   return {
     from: formatDate(fromDate),

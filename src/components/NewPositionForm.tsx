@@ -102,7 +102,7 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false }: NewPositionFormProp
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Buy Price"
+                label="Price"
                 type="number"
                 fullWidth
                 error={!!errors.price}
@@ -201,7 +201,7 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false }: NewPositionFormProp
           </FormControl>
         </Grid>
         <Grid size={{ xs: 12 }}>
-          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={isSubmitting}>
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' },  mt: 2}} disabled={isSubmitting}>
             Add Position
           </Button>
         </Grid>

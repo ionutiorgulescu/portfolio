@@ -82,10 +82,15 @@ const Transactions = () => {
             onClick={handleImportClick}
             disabled={isImporting}
             startIcon={isImporting ? <CircularProgress size={16} /> : undefined}
+            sx={{ borderColor: 'text.primary', color: 'text.primary' }}
           >
             {isImporting ? 'Importing…' : 'Import'}
           </Button>
-          <Button variant="contained" onClick={() => setIsModalOpen(true)}>
+          <Button
+            variant="contained"
+            onClick={() => setIsModalOpen(true)}
+            sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' } }}
+          >
             Add Position
           </Button>
         </Stack>

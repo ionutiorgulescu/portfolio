@@ -1,96 +1,191 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
-} from '@mui/material';
+import { useMemo, useState } from 'react';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef, GridSortModel } from '@mui/x-data-grid';
+import Box from '@mui/material/Box';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import SearchIcon from '@mui/icons-material/Search';
 import type { Position } from '../types/positions';
 
 type PositionsTableProps = {
   positions: Position[];
 };
 
+type StatusFilter = 'all' | 'buy' | 'sell';
+type TypeFilter = 'all' | 'stock' | 'crypto';
+
 const formatDate = (value: string) => {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleDateString();
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-GB');
 };
 
-const formatStatus = (value: string) => {
-  if (!value) return '-';
-  return value.charAt(0).toUpperCase() + value.slice(1);
-};
+const columns: GridColDef[] = [
+  {
+    field: 'ticker_symbol',
+    headerName: 'Ticker',
+    flex: 0.8,
+    sortable: false,
+  },
+  {
+    field: 'asset_name',
+    headerName: 'Asset',
+    flex: 1.5,
+    sortable: false,
+  },
+  {
+    field: 'quantity',
+    headerName: 'Quantity',
+    flex: 0.8,
+    align: 'right',
+    headerAlign: 'right',
+    sortable: false,
+  },
+  {
+    field: 'price',
+    headerName: 'Price',
+    flex: 0.8,
+    align: 'right',
+    headerAlign: 'right',
+    sortable: true,
+    valueFormatter: (value: number) => `$${value.toFixed(2)}`,
+  },
+  {
+    field: 'buy_date',
+    headerName: 'Buy Date',
+    flex: 1,
+    sortable: true,
+    valueFormatter: (value: string) => formatDate(value),
+  },
+  {
+    field: 'currency',
+    headerName: 'Currency',
+    flex: 0.6,
+    sortable: false,
+  },
+  {
+    field: 'status',
+    headerName: 'Status',
+    flex: 0.6,
+    sortable: false,
+    valueFormatter: (value: string) =>
+      value ? value.charAt(0).toUpperCase() + value.slice(1) : '-',
+  },
+];
 
 const PositionsTable = ({ positions }: PositionsTableProps) => {
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [sortModel, setSortModel] = useState<GridSortModel>([
+    { field: 'buy_date', sort: 'desc' },
+  ]);
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
 
-  const visiblePositions = useMemo(() => {
-    const start = page * rowsPerPage;
-    return positions.slice(start, start + rowsPerPage);
-  }, [page, positions, rowsPerPage]);
-
-  useEffect(() => {
-    const maxPage = Math.max(0, Math.ceil(positions.length / rowsPerPage) - 1);
-    if (page > maxPage) {
-      setPage(maxPage);
-    }
-  }, [page, positions.length, rowsPerPage]);
-
-  const handleChangePage = (_event: unknown, nextPage: number) => {
-    setPage(nextPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(Number(event.target.value));
-    setPage(0);
-  };
+  const filtered = useMemo(() => {
+    return positions.filter(p => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (typeFilter !== 'all' && p.transaction_type !== typeFilter) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        if (
+          !p.ticker_symbol.toLowerCase().includes(q) &&
+          !p.asset_name.toLowerCase().includes(q)
+        ) return false;
+      }
+      return true;
+    });
+  }, [positions, statusFilter, typeFilter, search]);
 
   return (
-    <TableContainer component={Paper}>
-      <Table aria-label="positions table">
-        <TableHead>
-          <TableRow>
-            <TableCell>Ticker</TableCell>
-            <TableCell>Asset</TableCell>
-            <TableCell align="right">Quantity</TableCell>
-            <TableCell align="right">Buy Price</TableCell>
-            <TableCell>Buy Date</TableCell>
-            <TableCell>Currency</TableCell>
-            <TableCell>Status</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {visiblePositions.map((position) => (
-            <TableRow key={position.id} hover>
-              <TableCell>{position.ticker_symbol}</TableCell>
-              <TableCell>{position.asset_name}</TableCell>
-              <TableCell align="right">{position.quantity}</TableCell>
-              <TableCell align="right">{position.price.toFixed(2)}</TableCell>
-              <TableCell>{formatDate(position.buy_date)}</TableCell>
-              <TableCell>{position.currency}</TableCell>
-              <TableCell>{formatStatus(position.status)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <TablePagination
-        component="div"
-        count={positions.length}
-        page={page}
-        onPageChange={handleChangePage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[10, 25, 50]}
+    <Box sx={{ bgcolor: 'white', borderRadius: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      {/* Filters bar */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          p: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* Search */}
+        <TextField
+          size="small"
+          placeholder="Search ticker or asset…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          sx={{ minWidth: 220 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        {/* Status filter */}
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={statusFilter}
+          onChange={(_, val) => { if (val !== null) setStatusFilter(val); }}
+        >
+          <ToggleButton value="all">All</ToggleButton>
+          <ToggleButton value="buy">Buy</ToggleButton>
+          <ToggleButton value="sell">Sell</ToggleButton>
+        </ToggleButtonGroup>
+
+        {/* Type filter */}
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={typeFilter}
+          onChange={(_, val) => { if (val !== null) setTypeFilter(val); }}
+        >
+          <ToggleButton value="all">All</ToggleButton>
+          <ToggleButton value="stock">Stocks</ToggleButton>
+          <ToggleButton value="crypto">Crypto</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      {/* DataGrid */}
+      <DataGrid
+        rows={filtered}
+        columns={columns}
+        sortModel={sortModel}
+        onSortModelChange={setSortModel}
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        pageSizeOptions={[10, 25, 50]}
+        disableRowSelectionOnClick
+        disableColumnMenu
+        autoHeight
+        sx={{
+          border: 'none',
+          '& .MuiDataGrid-columnHeaders': {
+            bgcolor: 'grey.50',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          },
+          '& .MuiDataGrid-cell': {
+            borderColor: 'divider',
+          },
+          '& .MuiDataGrid-row:hover': {
+            bgcolor: 'grey.50',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            borderTop: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
       />
-    </TableContainer>
+    </Box>
   );
 };
 

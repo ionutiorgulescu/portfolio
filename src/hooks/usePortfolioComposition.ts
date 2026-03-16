@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
-import { PositionStatus } from '../types/positions';
+import { PositionStatus, TransactionType } from '../types/positions';
+import type { CompositionFilter } from '../components/FilterControl';
 
 export interface TickerComposition {
   ticker: string;
@@ -18,11 +19,23 @@ type QuoteResult = {
   regularMarketPrice?: number;
 };
 
-function buildFifoHoldings(positions: ReturnType<typeof usePositions>['data']) {
+function buildFifoHoldings(
+  positions: ReturnType<typeof usePositions>['data'],
+  filter: CompositionFilter
+) {
   if (!positions) return new Map<string, { quantity: number; costBasis: number; assetName: string }>();
 
+  // Apply asset type filter
+  const filtered = filter === 'all'
+    ? positions
+    : positions.filter(p =>
+        filter === 'stock'
+          ? p.transaction_type === TransactionType.Stock
+          : p.transaction_type === TransactionType.Crypto
+      );
+
   // Sort chronologically, buys before sells on same date
-  const sorted = [...positions].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     if (a.buy_date !== b.buy_date) return a.buy_date < b.buy_date ? -1 : 1;
     if (a.status === PositionStatus.Buy && b.status === PositionStatus.Sell) return -1;
     if (a.status === PositionStatus.Sell && b.status === PositionStatus.Buy) return 1;
@@ -68,10 +81,10 @@ function buildFifoHoldings(positions: ReturnType<typeof usePositions>['data']) {
   return holdings;
 }
 
-export function usePortfolioComposition() {
+export function usePortfolioComposition(filter: CompositionFilter = 'all') {
   const { data: positions, isLoading: positionsLoading, error: positionsError } = usePositions();
 
-  const holdings = buildFifoHoldings(positions);
+  const holdings = buildFifoHoldings(positions, filter);
   const activeTickers = [...holdings.keys()];
 
   const {
@@ -79,7 +92,7 @@ export function usePortfolioComposition() {
     isLoading: quotesLoading,
     error: quotesError,
   } = useQuery<QuoteResult[]>({
-    queryKey: ['compositionQuotes', activeTickers],
+    queryKey: ['compositionQuotes', filter, activeTickers],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-quotas', {
         body: { tickers: activeTickers },
@@ -119,7 +132,7 @@ export function usePortfolioComposition() {
           weight,
         };
       })
-      .sort((a, b) => b.weight - a.weight); // descending by weight
+      .sort((a, b) => b.weight - a.weight);
   })();
 
   return {
