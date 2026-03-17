@@ -6,6 +6,7 @@ import type { CompositionFilter } from '../components/FilterControl';
 
 export interface TickerComposition {
   ticker: string;
+  transactionType: TransactionType;
   assetName: string;
   quantity: number;
   costBasis: number;
@@ -23,7 +24,7 @@ function buildFifoHoldings(
   positions: ReturnType<typeof usePositions>['data'],
   filter: CompositionFilter
 ) {
-  if (!positions) return new Map<string, { quantity: number; costBasis: number; assetName: string }>();
+  if (!positions) return new Map<string, { quantity: number; costBasis: number; assetName: string, transactionType: TransactionType }>();
 
   // Apply asset type filter
   const filtered = filter === 'all'
@@ -43,12 +44,20 @@ function buildFifoHoldings(
   });
 
   // FIFO lot queues per ticker
-  const lotQueues = new Map<string, Array<{ quantity: number; price: number; assetName: string }>>();
+  const lotQueues = new Map<
+    string,
+    Array<{ quantity: number; price: number; assetName: string; transactionType: TransactionType }>
+  >();
 
   for (const p of sorted) {
     if (p.status === PositionStatus.Buy) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
-      queue.push({ quantity: p.quantity, price: p.price, assetName: p.asset_name });
+      queue.push({
+        quantity: p.quantity,
+        price: p.price,
+        assetName: p.asset_name,
+        transactionType: p.transaction_type,
+      });
       lotQueues.set(p.ticker_symbol, queue);
     } else if (p.status === PositionStatus.Sell) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
@@ -68,13 +77,13 @@ function buildFifoHoldings(
   }
 
   // Build holdings from remaining lots
-  const holdings = new Map<string, { quantity: number; costBasis: number; assetName: string }>();
+  const holdings = new Map<string, { quantity: number; costBasis: number; assetName: string, transactionType: TransactionType }>();
   for (const [ticker, queue] of lotQueues.entries()) {
     const quantity = queue.reduce((sum, lot) => sum + lot.quantity, 0);
     const costBasis = queue.reduce((sum, lot) => sum + lot.quantity * lot.price, 0);
     const assetName = queue[0]?.assetName ?? ticker;
     if (quantity > 1e-10) {
-      holdings.set(ticker, { quantity, costBasis, assetName });
+      holdings.set(ticker, { quantity, costBasis, assetName, transactionType: queue[0]?.transactionType ?? TransactionType.Stock });
     }
   }
 
@@ -124,6 +133,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all') {
 
         return {
           ticker,
+          transactionType: holding.transactionType,
           assetName: holding.assetName,
           quantity: holding.quantity,
           costBasis: holding.costBasis,
