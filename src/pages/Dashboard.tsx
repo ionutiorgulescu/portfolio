@@ -11,7 +11,13 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        justifyContent: 'space-between',
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 1, sm: 0 },
+      }}>
         <Typography variant="h4" fontWeight={700}>Dashboard</Typography>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
