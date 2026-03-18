@@ -28,4 +28,5 @@ supabase/.branches/*
 supabase/.temp/*
 supabase/functions/.env
 supabase/.env
+supabase/snippets/*
 skills-lock.json
