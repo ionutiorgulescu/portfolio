@@ -33,13 +33,13 @@ const createPosition = async (positionData: NewPosition) => {
   return data;
 };
 
-export const useCreatePosition = () => {
+export const useCreatePosition = (portfolioId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (positionData: NewPosition) => createPosition(positionData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['positions', portfolioId] });
     },
     onError: (error) => {
       console.error('Failed to create new position:', error);

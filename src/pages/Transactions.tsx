@@ -15,28 +15,32 @@ import PositionsTable from '../components/PositionsTable';
 import { useCreatePosition } from '../hooks/useCreatePosition';
 import { useImportPositions } from '../hooks/useImportPositions';
 import { usePositions } from '../hooks/usePositions';
+import { usePortfolioContext } from '../contexts/PortfolioContext';
 import type { NewPosition } from '../schemas/positionSchema';
 import { parseXlsxFile } from '../utils/xlsxParser';
 import type { RowError } from '../utils/xlsxParser';
 
-interface ImportResult {
+type ImportResult = {
   imported: number;
   errors: RowError[];
-}
+};
 
 const Transactions = () => {
+  const { selectedPortfolioId } = usePortfolioContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const {
     data: positions = [],
     isLoading,
     isError,
     error,
     refetch,
-  } = usePositions();
-  const createPositionMutation = useCreatePosition();
-  const importPositionsMutation = useImportPositions();
+  } = usePositions(selectedPortfolioId ?? '');
+
+  const createPositionMutation = useCreatePosition(selectedPortfolioId ?? '');
+  const importPositionsMutation = useImportPositions(selectedPortfolioId ?? '');
 
   const handleCreatePosition = async (data: NewPosition) => {
     await createPositionMutation.mutateAsync(data);
@@ -51,8 +55,6 @@ const Transactions = () => {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    // Reset input so the same file can be re-imported if needed
     event.target.value = '';
 
     const buffer = await file.arrayBuffer();
@@ -63,18 +65,23 @@ const Transactions = () => {
         await importPositionsMutation.mutateAsync(valid);
         setImportResult({ imported: valid.length, errors });
       } catch {
-        setImportResult({ imported: 0, errors: [{ row: 0, message: 'Failed to save positions to the database. Please try again.' }, ...errors] });
+        setImportResult({
+          imported: 0,
+          errors: [{ row: 0, message: 'Failed to save positions to the database. Please try again.' }, ...errors],
+        });
       }
     } else {
       setImportResult({ imported: 0, errors });
     }
   };
 
+  if (!selectedPortfolioId) return null;
+
   const isImporting = importPositionsMutation.isPending;
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
         <Typography variant="h4">Transactions</Typography>
         <Stack direction="row" spacing={1}>
           <Button
@@ -82,14 +89,14 @@ const Transactions = () => {
             onClick={handleImportClick}
             disabled={isImporting}
             startIcon={isImporting ? <CircularProgress size={16} /> : undefined}
-            sx={{ borderColor: 'text.primary', color: 'text.primary' }}
+            sx={{ borderColor: 'text.primary', color: 'text.primary', whiteSpace: 'nowrap' }}
           >
             {isImporting ? 'Importing…' : 'Import'}
           </Button>
           <Button
             variant="contained"
             onClick={() => setIsModalOpen(true)}
-            sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' } }}
+            sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' }, whiteSpace: 'nowrap' }}
           >
             Add Position
           </Button>
@@ -142,11 +149,7 @@ const Transactions = () => {
       {isError && (
         <Alert
           severity="error"
-          action={(
-            <Button color="inherit" size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          )}
+          action={<Button color="inherit" size="small" onClick={() => refetch()}>Retry</Button>}
         >
           {error instanceof Error ? error.message : 'Unable to load positions.'}
         </Alert>
@@ -160,17 +163,13 @@ const Transactions = () => {
         <PositionsTable positions={positions} />
       )}
 
-      <Dialog
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Add New Position</DialogTitle>
         <DialogContent>
           <NewPositionForm
             onSubmit={handleCreatePosition}
             isSubmitting={createPositionMutation.isPending}
+            portfolioId={selectedPortfolioId}
           />
         </DialogContent>
       </Dialog>

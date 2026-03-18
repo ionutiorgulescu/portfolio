@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import type { ImportRow } from '../utils/xlsxParser';
 
-const importPositions = async (rows: ImportRow[]) => {
+const importPositions = async (rows: ImportRow[], portfolioId: string) => {
   const {
     data: { user },
     error: userError,
@@ -19,7 +19,11 @@ const importPositions = async (rows: ImportRow[]) => {
     throw new Error('You must be signed in to import positions.');
   }
 
-  const payload = rows.map((row) => ({ ...row, user_id: user.id }));
+  const payload = rows.map((row) => ({
+    ...row,
+    user_id: user.id,
+    portfolio_id: portfolioId,
+  }));
 
   const { error } = await supabase.from('positions').insert(payload);
 
@@ -29,13 +33,13 @@ const importPositions = async (rows: ImportRow[]) => {
   }
 };
 
-export const useImportPositions = () => {
+export const useImportPositions = (portfolioId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (rows: ImportRow[]) => importPositions(rows),
+    mutationFn: (rows: ImportRow[]) => importPositions(rows, portfolioId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['positions', portfolioId] });
     },
     onError: (error) => {
       console.error('Failed to import positions:', error);

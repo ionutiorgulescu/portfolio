@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { PositionStatus, TransactionType } from '../types/positions';
+import { Currency, type PositionStatus, type TransactionType } from '../types/positions';
 
 export interface ImportRow {
   asset_name: string;
@@ -8,7 +8,7 @@ export interface ImportRow {
   transaction_type: TransactionType;
   quantity: number;
   price: number;
-  currency: 'USD';
+  currency: Currency;
   status: PositionStatus;
 }
 
@@ -29,6 +29,7 @@ interface RawRow {
   Status?: unknown;
   Amount?: unknown;
   Price?: unknown;
+  Currency?: unknown;
 }
 
 const extractDate = (value: unknown): string | null => {
@@ -105,11 +106,16 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
   const quantity = Number(raw.Amount);
   if (!Number.isFinite(quantity) || quantity <= 0) {
     return { row: rowNum, message: `Amount must be a positive number, got "${raw.Amount}"` };
-  }
+    }
 
-  const price = Number(raw.Price);
-  if (!Number.isFinite(price) || price <= 0) {
-    return { row: rowNum, message: `Price must be a positive number, got "${raw.Price}"` };
+    const price = Number(raw.Price);
+    if (!Number.isFinite(price) || price <= 0) {
+      return { row: rowNum, message: `Price must be a positive number, got "${raw.Price}"` };
+    }
+
+  const currency = raw.Currency !== undefined && raw.Currency !== null ? String(raw.Currency).trim().toUpperCase() : '';
+  if (currency !== Currency.USD && currency !== Currency.RON) {
+    return { row: rowNum, message: `Currency must be "USD" or "RON", got "${raw.Currency}"` };
   }
 
   return {
@@ -119,7 +125,7 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
     transaction_type: 'stock',
     quantity,
     price,
-    currency: 'USD',
+    currency,
     status: statusRaw as PositionStatus,
   };
 };

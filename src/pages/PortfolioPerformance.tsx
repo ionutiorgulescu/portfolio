@@ -4,11 +4,15 @@ import {
   Box,
   CircularProgress,
   Paper,
+  Skeleton,
   Stack,
   Typography,
 } from '@mui/material';
 import { IntervalSelector } from '../components/IntervalSelector';
+import { FilterControl } from '../components/FilterControl';
+import type { CompositionFilter } from '../components/FilterControl';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
+import { usePortfolioContext, ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import {
   formatNumber,
   formatTimestamp,
@@ -21,12 +25,12 @@ import type { PortfolioChartPoint } from '../components/PortfolioChart';
 
 const PortfolioChart = lazy(() => import('../components/PortfolioChart'));
 
-
 const PortfolioPerformance = () => {
   const [interval, setInterval] = useState<ChartInterval>('1Y');
-  const { data: allData, isLoading, isError, error } = usePortfolioPerformance();
+  const [filter, setFilter] = useState<CompositionFilter>('stock');
+  const { selectedPortfolioId } = usePortfolioContext();
+  const { data: allData, isLoading, isError, error } = usePortfolioPerformance(filter, selectedPortfolioId ?? '');
 
-  // Slice the full series by the selected interval without re-running computation
   const filteredData = useMemo(() => {
     if (allData.length === 0) return [];
 
@@ -44,19 +48,16 @@ const PortfolioPerformance = () => {
     }
 
     if (!startDate) return allData;
-
     const sliced = allData.filter((p) => parseIsoDate(p.date) >= startDate!);
     return sliced.length > 0 ? sliced : allData;
   }, [allData, interval]);
 
-  // Convert PortfolioDataPoint[] → PortfolioChartPoint[]
   const chartData = useMemo<PortfolioChartPoint[]>(
-    () =>
-      filteredData.map((p) => ({
-        t: parseIsoDate(p.date).getTime(),
-        close: p.value,
-        costBasis: p.costBasis,
-      })),
+    () => filteredData.map((p) => ({
+      t: parseIsoDate(p.date).getTime(),
+      close: p.value,
+      costBasis: p.costBasis,
+    })),
     [filteredData],
   );
 
@@ -71,7 +72,6 @@ const PortfolioPerformance = () => {
         : interval === '5Y' || interval === '10Y'
           ? { month: 'short', year: '2-digit' }
           : { month: 'short', day: 'numeric', year: '2-digit' };
-
     return (value: number) => formatTimestamp(value, options);
   }, [interval]);
 
@@ -95,117 +95,105 @@ const PortfolioPerformance = () => {
     for (let tick = minTick; tick <= maxTick + step / 2; tick += step) {
       ticks.push(tick);
     }
-
     return { ticks, domain: [minTick, maxTick] as [number, number] };
   }, [chartData]);
 
+  if (!selectedPortfolioId) return null;
+
+  if (selectedPortfolioId === ALL_PORTFOLIOS_ID) {
+    return (
+      <Alert severity="info">
+        Select a specific portfolio to view the performance chart.
+      </Alert>
+    );
+  }
+
+  const filtersRow = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'inline-flex', borderRadius: '12px', backgroundColor: 'grey.200', padding: '4px', gap: '2px', width: 'fit-content' }}>
+        <IntervalSelector interval={interval} onChange={setInterval} />
+      </Box>
+      <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
+    </Box>
+  );
+
   return (
     <Stack spacing={3}>
-
-      {isLoading && (
-        <Box display="flex" justifyContent="center" py={4}>
-          <CircularProgress aria-label="Loading portfolio performance" />
-        </Box>
-      )}
-
       {isError && (
         <Alert severity="error">
           {error instanceof Error ? error.message : 'Failed to load portfolio performance.'}
         </Alert>
       )}
 
+      {isLoading && (
+        <Paper elevation={1} sx={{ p: 3 }}>
+          <Stack spacing={3}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
+              <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1 }}>
+                <Skeleton width={100} height={20} sx={{ mb: 1.5 }} />
+                <Skeleton width={150} height={40} sx={{ mb: 1 }} />
+              </Box>
+              <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1 }}>
+                <Skeleton width={120} height={20} sx={{ mb: 1.5 }} />
+                <Skeleton width={150} height={40} sx={{ mb: 1 }} />
+              </Box>
+            </Box>
+
+            {filtersRow}
+
+            <Skeleton variant="rectangular" width="100%" height={380} sx={{ borderRadius: 3 }} />
+          </Stack>
+        </Paper>
+      )}
+
       {!isLoading && !isError && allData.length === 0 && (
-        <Alert severity="info">
-          No transactions found. Add open or closed positions to see portfolio performance.
-        </Alert>
+        <>
+          <Paper elevation={1} sx={{ p: 3 }}>
+            <Stack spacing={3}>
+              {filtersRow}
+            </Stack>
+          </Paper>
+          <Alert severity="info">
+            No transactions found. Add open or closed positions to see portfolio performance.
+          </Alert>
+        </>
       )}
 
       {!isLoading && !isError && allData.length > 0 && (
         <Paper elevation={1} sx={{ p: 3 }}>
           <Stack spacing={3}>
-            <Stack direction="row" alignItems="flex-start" gap={6}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Total Value
-                </Typography>
-                <Typography variant="h5" fontWeight={700} color="text.primary">
-                  ${formatNumber(currentValue)}
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  All-Time Gain
-                </Typography>
-                <Typography
-                  variant="h5"
-                  fontWeight={700}
-                  color={
-                    allTimeGain > 0
-                      ? 'success.main'
-                      : allTimeGain < 0
-                        ? 'error.main'
-                        : 'text.primary'
-                  }
-                >
-                  {allTimeGain >= 0 ? '+' : '-'}${formatNumber(Math.abs(allTimeGain))}
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Box
-              sx={{
-                display: 'inline-flex',
-                borderRadius: '12px',
-                backgroundColor: 'grey.200',
-                padding: '4px',
-                gap: '2px',
-                width: 'fit-content',      
-                alignSelf: 'flex-start',  
-              }}
-            >
-              <IntervalSelector interval={interval} onChange={setInterval} />
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Stack direction="row" alignItems="flex-start" gap={6}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>Total Value</Typography>
+                  <Typography variant="h5" fontWeight={700} color="text.primary">
+                    {filter === 'bvb' ? 'RON' : '$'}{formatNumber(currentValue)}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>All-Time Gain</Typography>
+                  <Typography
+                    variant="h5"
+                    fontWeight={700}
+                    color={allTimeGain > 0 ? 'success.main' : allTimeGain < 0 ? 'error.main' : 'text.primary'}
+                  >
+                    {allTimeGain >= 0 ? '+' : '-'}{filter === 'bvb' ? 'RON' : '$'}{formatNumber(Math.abs(allTimeGain))}
+                  </Typography>
+                </Box>
+              </Stack>
             </Box>
 
-            <Box
-              sx={{
-                height: 380,
-                width: '100%',
-                borderRadius: 3,
-                bgcolor: 'background.paper',
-                p: 1,
-              }}
-            >
+            {filtersRow}
+
+            <Box sx={{ height: 380, width: '100%', borderRadius: 3, bgcolor: 'background.paper', p: 1 }}>
               {chartData.length > 0 ? (
-                <Suspense
-                  fallback={
-                    <Box display="flex" alignItems="center" justifyContent="center" height="100%">
-                      <CircularProgress size={32} />
-                    </Box>
-                  }
-                >
-                  <PortfolioChart
-                    chartData={chartData}
-                    xAxisTickFormatter={xAxisTickFormatter}
-                    yAxisScale={yAxisScale}
-                  />
+                <Suspense fallback={<Box display="flex" alignItems="center" justifyContent="center" height="100%"><CircularProgress size={32} /></Box>}>
+                  <PortfolioChart chartData={chartData} xAxisTickFormatter={xAxisTickFormatter} yAxisScale={yAxisScale} />
                 </Suspense>
               ) : (
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  height="100%"
-                  sx={{
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    bgcolor: 'grey.50',
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    No data available for the selected period.
-                  </Typography>
+                <Box display="flex" alignItems="center" justifyContent="center" height="100%"
+                  sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="body2" color="text.secondary">No data available for the selected period.</Typography>
                 </Box>
               )}
             </Box>

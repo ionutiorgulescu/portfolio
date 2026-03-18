@@ -2,20 +2,26 @@ import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
 
-export type CompositionFilter = 'all' | 'stock' | 'crypto';
+export type CompositionFilter = 'all' | 'stock' | 'crypto' | 'bvb';
 
 const FILTER_OPTIONS: { label: string; value: CompositionFilter }[] = [
   { label: 'All', value: 'all' },
   { label: 'Stocks', value: 'stock' },
   { label: 'Crypto', value: 'crypto' },
+  { label: 'BVB', value: 'bvb' },
 ];
 
 interface FilterControlProps {
   value: CompositionFilter;
   onChange: (v: CompositionFilter) => void;
+  exclude?: CompositionFilter[];
 }
 
-export function FilterControl({ value, onChange }: FilterControlProps) {
+export function FilterControl({ value, onChange, exclude }: FilterControlProps) {
+  const visibleOptions = exclude
+    ? FILTER_OPTIONS.filter((o) => !exclude.includes(o.value))
+    : FILTER_OPTIONS;
+
   return (
     <Box
       sx={{
@@ -27,7 +33,7 @@ export function FilterControl({ value, onChange }: FilterControlProps) {
         width: 'fit-content',
       }}
     >
-      {FILTER_OPTIONS.map(option => {
+      {visibleOptions.map(option => {
         const selected = value === option.value;
         return (
           <ButtonBase

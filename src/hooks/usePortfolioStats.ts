@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
-import { PositionStatus, TransactionType } from '../types/positions';
+import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { CompositionFilter } from '../components/FilterControl';
 
 export interface PortfolioStats {
@@ -20,18 +20,19 @@ type QuoteResult = {
   regularMarketPrice?: number;
 };
 
-export function usePortfolioStats(filter: CompositionFilter = 'all') {
-  const { data: positions, isLoading: positionsLoading, error: positionsError } = usePositions();
+const RON_USD_TICKER = 'RONUSD=X';
 
-  // Apply asset type filter
+export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId: string = '') {
+  const { data: positions, isLoading: positionsLoading, error: positionsError } = usePositions(portfolioId);
+
   const filteredPositions = (positions ?? []).filter(p => {
     if (filter === 'all') return true;
-    if (filter === 'stock') return p.transaction_type === TransactionType.Stock;
+    if (filter === 'stock') return p.transaction_type === TransactionType.Stock && p.currency === Currency.USD;
     if (filter === 'crypto') return p.transaction_type === TransactionType.Crypto;
+    if (filter === 'bvb') return p.currency === Currency.RON;
     return true;
   });
 
-  // Sort chronologically, buys before sells on same date
   const sortedPositions = [...filteredPositions].sort((a, b) => {
     if (a.buy_date !== b.buy_date) return a.buy_date < b.buy_date ? -1 : 1;
     if (a.status === PositionStatus.Buy && b.status === PositionStatus.Sell) return -1;
@@ -39,13 +40,12 @@ export function usePortfolioStats(filter: CompositionFilter = 'all') {
     return 0;
   });
 
-  // FIFO lot queues per ticker
-  const lotQueues = new Map<string, Array<{ quantity: number; price: number }>>();
+  const lotQueues = new Map<string, Array<{ quantity: number; price: number; currency: Currency }>>();
 
   for (const p of sortedPositions) {
     if (p.status === PositionStatus.Buy) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
-      queue.push({ quantity: p.quantity, price: p.price });
+      queue.push({ quantity: p.quantity, price: p.price, currency: p.currency as Currency });
       lotQueues.set(p.ticker_symbol, queue);
     } else if (p.status === PositionStatus.Sell) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
@@ -64,17 +64,20 @@ export function usePortfolioStats(filter: CompositionFilter = 'all') {
     }
   }
 
-  // Build netHoldings from remaining lots
-  const netHoldings = new Map<string, { quantity: number; costBasis: number }>();
+  const netHoldings = new Map<string, { quantity: number; costBasis: number; currency: Currency }>();
   for (const [ticker, queue] of lotQueues.entries()) {
     const quantity = queue.reduce((sum, lot) => sum + lot.quantity, 0);
     const costBasis = queue.reduce((sum, lot) => sum + lot.quantity * lot.price, 0);
+    const currency = queue[0]?.currency ?? Currency.USD;
     if (quantity > 1e-10) {
-      netHoldings.set(ticker, { quantity, costBasis });
+      netHoldings.set(ticker, { quantity, costBasis, currency });
     }
   }
 
   const activeTickers = [...netHoldings.keys()];
+  const hasRonPositions = [...netHoldings.values()].some(h => h.currency === Currency.RON);
+  const needsRonConversion = hasRonPositions && filter !== 'bvb';
+  const tickersToFetch = needsRonConversion ? [...activeTickers, RON_USD_TICKER] : activeTickers;
 
   const {
     data: quotes,
@@ -84,7 +87,7 @@ export function usePortfolioStats(filter: CompositionFilter = 'all') {
     queryKey: ['portfolioQuotes', filter, activeTickers],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-quotas', {
-        body: { tickers: activeTickers },
+        body: { tickers: tickersToFetch },
       });
       if (error) throw error;
       return data as QuoteResult[];
@@ -97,6 +100,7 @@ export function usePortfolioStats(filter: CompositionFilter = 'all') {
     if (!positions || !quotes) return null;
 
     const quoteMap = new Map(quotes.map(q => [q.symbol, q.regularMarketPrice ?? 0]));
+    const ronToUsd = quoteMap.get(RON_USD_TICKER) ?? 0;
 
     let totalValue = 0;
     let totalCostBasis = 0;
@@ -104,8 +108,14 @@ export function usePortfolioStats(filter: CompositionFilter = 'all') {
     for (const [ticker, holding] of netHoldings.entries()) {
       if (holding.quantity <= 0) continue;
       const currentPrice = quoteMap.get(ticker) ?? 0;
-      totalValue += holding.quantity * currentPrice;
-      totalCostBasis += holding.costBasis;
+
+      if (holding.currency === Currency.RON && filter !== 'bvb') {
+        totalValue += holding.quantity * currentPrice * ronToUsd;
+        totalCostBasis += holding.costBasis * ronToUsd;
+      } else {
+        totalValue += holding.quantity * currentPrice;
+        totalCostBasis += holding.costBasis;
+      }
     }
 
     const allTimeGain = totalValue - totalCostBasis;

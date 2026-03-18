@@ -90,7 +90,9 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
   }
 
   const startDate = sorted[0].buy_date;
-  const endDate = toIsoDate(new Date());
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const endDate = toIsoDate(yesterday);
   const dateRange = buildDateRange(startDate, endDate);
 
   const lotQueues: LotQueues = new Map();
@@ -131,8 +133,11 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
         snapshot.set(ticker, total);
       }
       for (const lot of lots) {
-        totalCostBasis += lot.remainingQty * lot.buyPrice;
+        if (lot.remainingQty > 1e-10) {  // ← add this guard
+          totalCostBasis += lot.remainingQty * lot.buyPrice;
+        }
       }
+      
     }
     dailyHoldings.set(date, snapshot);
     dailyCostBasis.set(date, totalCostBasis);

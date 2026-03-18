@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Markets from './pages/Markets';
 import PortfolioPerformance from './pages/PortfolioPerformance';
 import Transactions from './pages/Transactions';
+import { PortfolioProvider } from './contexts/PortfolioContext';
 
 function App() {
   const { user, loading } = useAuthSession();
@@ -45,19 +46,21 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={<AppShell userEmail={user.email} signOutError={signOutError} onSignOut={handleSignOut} />}
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="transactions" element={<Transactions />} />
-        <Route path="performance" element={<PortfolioPerformance />} />
-        <Route path="markets" element={<Markets />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <PortfolioProvider>
+      <Routes>
+        <Route
+          path="/"
+          element={<AppShell userEmail={user.email} signOutError={signOutError} onSignOut={handleSignOut} />}
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="transactions" element={<Transactions />} />
+          <Route path="performance" element={<PortfolioPerformance />} />
+          <Route path="markets" element={<Markets />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </PortfolioProvider>
   );
 }
 

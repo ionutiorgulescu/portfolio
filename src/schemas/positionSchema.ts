@@ -1,12 +1,10 @@
 import { z } from 'zod';
-import { PositionStatus, TransactionType } from '../types/positions';
+import { Currency, PositionStatus, TransactionType } from '../types/positions';
 
 const buyDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 const parseIsoLocalDate = (value: string): Date | null => {
-  if (!buyDateRegex.test(value)) {
-    return null;
-  }
+  if (!buyDateRegex.test(value)) return null;
 
   const [yearString, monthString, dayString] = value.split('-');
   const year = Number(yearString);
@@ -19,9 +17,7 @@ const parseIsoLocalDate = (value: string): Date | null => {
     parsedDate.getFullYear() !== year ||
     parsedDate.getMonth() !== month - 1 ||
     parsedDate.getDate() !== day
-  ) {
-    return null;
-  }
+  ) return null;
 
   return parsedDate;
 };
@@ -39,10 +35,7 @@ export const positionSchema = z.object({
     })
     .refine((value) => {
       const parsedDate = parseIsoLocalDate(value);
-      if (!parsedDate) {
-        return false;
-      }
-
+      if (!parsedDate) return false;
       const dayOfWeek = parsedDate.getDay();
       return dayOfWeek !== 0 && dayOfWeek !== 6;
     }, {
@@ -50,27 +43,19 @@ export const positionSchema = z.object({
     })
     .refine((value) => {
       const parsedDate = parseIsoLocalDate(value);
-      if (!parsedDate) {
-        return false;
-      }
-
+      if (!parsedDate) return false;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return parsedDate <= today;
     }, {
       message: 'Buy date cannot be in the future',
     }),
-  currency: z.enum(['EUR', 'USD'], {
-    message: 'Currency must be EUR or USD',
+  currency: z.enum(Currency, {
+    message: 'Currency must be USD or RON',
   }),
-  status: z.enum([
-    PositionStatus.Buy,
-    PositionStatus.Sell,
-  ]),
-  transaction_type: z.enum([
-    TransactionType.Stock,
-    TransactionType.Crypto,
-  ]),
+  status: z.enum([PositionStatus.Buy, PositionStatus.Sell]),
+  transaction_type: z.enum([TransactionType.Stock, TransactionType.Crypto]),
+  portfolio_id: z.string().uuid('Invalid portfolio ID'),
 });
 
 export type NewPosition = z.infer<typeof positionSchema>;

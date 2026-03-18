@@ -10,6 +10,9 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  MenuItem,
+  Select,
+  Skeleton,
   Toolbar,
   Typography,
   useMediaQuery,
@@ -20,13 +23,17 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { NavLink, Outlet } from 'react-router-dom';
+import { usePortfolioContext } from '../contexts/PortfolioContext';
+import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
+import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 
-interface AppShellProps {
+type AppShellProps = {
   userEmail?: string;
   signOutError?: string | null;
   onSignOut: () => void;
-}
+};
 
 const drawerWidthOpen = 240;
 const drawerWidthClosed = 72;
@@ -43,6 +50,8 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
 
   const drawerWidth = isMenuOpen ? drawerWidthOpen : drawerWidthClosed;
 
@@ -66,9 +75,7 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
             minHeight: 48,
             px: 2.5,
             justifyContent: (!mobile && !isMenuOpen) ? 'center' : 'initial',
-            '&.active': {
-              bgcolor: 'action.selected',
-            },
+            '&.active': { bgcolor: 'action.selected' },
           }}
         >
           <ListItemIcon
@@ -93,7 +100,6 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* AppBar */}
       <AppBar
         position="fixed"
         color="default"
@@ -120,7 +126,41 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
               Portfolio App
             </Typography>
           </Box>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexShrink: 0 }}>
+            {/* Portfolio switcher + manage */}
+            {portfoliosLoading ? (
+              <Skeleton width={140} height={36} sx={{ borderRadius: 1 }} />
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {portfolios.length > 1 && (
+                  <Select
+                    size="small"
+                    value={selectedPortfolioId ?? ''}
+                    onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                    sx={{
+                      minWidth: 140,
+                      fontSize: 14,
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                    }}
+                  >
+                    <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
+                    {portfolios.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                    ))}
+                  </Select>
+                )}
+                <IconButton
+                  size="small"
+                  onClick={() => setManageOpen(true)}
+                  title="Manage portfolios"
+                  color="inherit"
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+
             <Typography
               variant="body2"
               noWrap
@@ -128,38 +168,26 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
             >
               Signed in as {userEmail ?? 'unknown user'}
             </Typography>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={onSignOut}
-              size="small"
-            >
+            <Button variant="outlined" color="inherit" onClick={onSignOut} size="small">
               Sign out
             </Button>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer — temporary overlay */}
       {isMobile && (
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              width: drawerWidthOpen,
-              boxSizing: 'border-box',
-            },
-          }}
+          sx={{ '& .MuiDrawer-paper': { width: drawerWidthOpen, boxSizing: 'border-box' } }}
         >
           <Toolbar />
           {drawerContent(true)}
         </Drawer>
       )}
 
-      {/* Desktop Drawer — permanent collapsible */}
       {!isMobile && (
         <Drawer
           variant="permanent"
@@ -181,7 +209,6 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
         </Drawer>
       )}
 
-      {/* Main content */}
       <Box
         component="main"
         sx={{
@@ -194,12 +221,12 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
       >
         <Toolbar />
         {signOutError && (
-          <Alert sx={{ mb: 2 }} severity="error">
-            {signOutError}
-          </Alert>
+          <Alert sx={{ mb: 2 }} severity="error">{signOutError}</Alert>
         )}
         <Outlet />
       </Box>
+
+      <PortfolioManagerModal open={manageOpen} onClose={() => setManageOpen(false)} />
     </Box>
   );
 };

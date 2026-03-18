@@ -5,9 +5,13 @@ import { DashboardStats } from '../components/DashboardStats';
 import { PortfolioComposition } from '../components/PortfolioComposition';
 import { FilterControl } from '../components/FilterControl';
 import type { CompositionFilter } from '../components/FilterControl';
+import { usePortfolioContext } from '../contexts/PortfolioContext';
 
 const Dashboard = () => {
   const [filter, setFilter] = useState<CompositionFilter>('all');
+  const { selectedPortfolioId } = usePortfolioContext();
+
+  if (!selectedPortfolioId) return null;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -21,8 +25,8 @@ const Dashboard = () => {
         <Typography variant="h4" fontWeight={700}>Dashboard</Typography>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
-      <DashboardStats filter={filter} />
-      <PortfolioComposition filter={filter} />
+      <DashboardStats filter={filter} portfolioId={selectedPortfolioId} />
+      <PortfolioComposition filter={filter} portfolioId={selectedPortfolioId} />
     </Box>
   );
 };
