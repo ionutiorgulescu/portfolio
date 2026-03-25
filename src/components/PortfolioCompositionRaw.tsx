@@ -92,23 +92,20 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                             {row.assetName}
                         </Typography>
 
-                        {/* Quantity — mobile only */}
-                        <Typography
-                            variant="body2"
-                            fontWeight={500}
-                            color="text.secondary"
-                            sx={{
-                                display: { xs: 'block', sm: 'none' },
-                                px: 1,
-                            }}
-                        >
-                            {formatQuantity(row.quantity)}
-                        </Typography>
+                        {/* Quantity + Avg Cost — mobile only */}
+                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1 }}>
+                            <Typography variant="body2" fontWeight={500} color="text.secondary">
+                                {formatQuantity(row.quantity)}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled">
+                                avg {formatCurrency(row.avgCost, currency)}
+                            </Typography>
+                        </Box>
                     </Box>
                 </Box>
             </Box>
 
-            {/* Weight */}
+            { }
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
                 {formatPercent(row.weight)}
             </Typography>

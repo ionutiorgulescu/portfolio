@@ -10,6 +10,7 @@ export interface TickerComposition {
   assetName: string;
   quantity: number;
   costBasis: number;
+  avgCost: number;
   currentValue: number;
   gainLoss: number;
   weight: number;
@@ -30,6 +31,7 @@ function buildFifoHoldings(
   if (!positions) return new Map<string, {
     quantity: number;
     costBasis: number;
+    avgCost: number;
     assetName: string;
     transactionType: TransactionType;
     currency: Currency;
@@ -90,6 +92,7 @@ function buildFifoHoldings(
   const holdings = new Map<string, {
     quantity: number;
     costBasis: number;
+    avgCost: number;
     assetName: string;
     transactionType: TransactionType;
     currency: Currency;
@@ -98,12 +101,14 @@ function buildFifoHoldings(
   for (const [ticker, queue] of lotQueues.entries()) {
     const quantity = queue.reduce((sum, lot) => sum + lot.quantity, 0);
     const costBasis = queue.reduce((sum, lot) => sum + lot.quantity * lot.price, 0);
+    const avgCost = quantity > 1e-10 ? costBasis / quantity : 0;
     const assetName = queue[0]?.assetName ?? ticker;
     const currency = (queue[0]?.currency ?? Currency.USD) as Currency;
     if (quantity > 1e-10) {
       holdings.set(ticker, {
         quantity,
         costBasis,
+        avgCost,
         assetName,
         transactionType: queue[0]?.transactionType ?? TransactionType.Stock,
         currency,
@@ -178,6 +183,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           assetName: holding.assetName,
           quantity: holding.quantity,
           costBasis: costBasisUsd,
+          avgCost: holding.avgCost,
           currentValue,
           gainLoss,
           weight,
