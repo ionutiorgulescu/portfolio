@@ -33,7 +33,7 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false, portfolioId }: NewPos
       asset_name: '',
       quantity: 1,
       price: 1,
-      buy_date: '',
+      buy_date: new Date().toISOString().split('T')[0],
       currency: Currency.USD,
       status: PositionStatus.Buy,
       transaction_type: TransactionType.Stock,
@@ -57,12 +57,12 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false, portfolioId }: NewPos
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller name="quantity" control={control} render={({ field }) => (
-            <TextField {...field} label="Quantity" type="number" fullWidth error={!!errors.quantity} helperText={errors.quantity?.message} margin="normal" onChange={(e) => field.onChange(Number(e.target.value))} />
+            <TextField {...field} label="Quantity" type="number" fullWidth error={!!errors.quantity} helperText={errors.quantity?.message} margin="normal" />
           )} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller name="price" control={control} render={({ field }) => (
-            <TextField {...field} label="Price" type="number" fullWidth error={!!errors.price} helperText={errors.price?.message} margin="normal" onChange={(e) => field.onChange(Number(e.target.value))} />
+            <TextField {...field} label="Price" type="number" fullWidth error={!!errors.price} helperText={errors.price?.message} margin="normal" />
           )} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
