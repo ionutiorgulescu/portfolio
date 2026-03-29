@@ -45,11 +45,11 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
   for (const p of sortedPositions) {
     if (p.status === PositionStatus.Buy) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
-      queue.push({ quantity: p.quantity, price: p.price, currency: p.currency as Currency });
+      queue.push({ quantity: Number(p.quantity), price: Number(p.price), currency: p.currency as Currency });
       lotQueues.set(p.ticker_symbol, queue);
     } else if (p.status === PositionStatus.Sell) {
       const queue = lotQueues.get(p.ticker_symbol) ?? [];
-      let remaining = p.quantity;
+      let remaining = Number(p.quantity);
       while (remaining > 0 && queue.length > 0) {
         const front = queue[0];
         if (front.quantity <= remaining) {
@@ -127,8 +127,8 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
       allTimeGain,
       allTimeGainPercent,
       totalPositions: filteredPositions.length,
-      openPositions: filteredPositions.filter(p => p.status === PositionStatus.Buy).length,
-      closedPositions: filteredPositions.filter(p => p.status === PositionStatus.Sell).length,
+      openPositions: activeTickers.length,
+      closedPositions: lotQueues.size - activeTickers.length,
       activeTickers: activeTickers.length,
     };
   })();
