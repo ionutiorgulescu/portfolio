@@ -104,13 +104,6 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
 
     let totalValue = 0;
     let totalCostBasis = 0;
-    for (const [ticker, holding] of netHoldings.entries()) {
-      const price = quoteMap.get(ticker) ?? 0;
-      if (price === 0) {
-        console.warn(`⚠️ Zero price for ticker: ${ticker}`, holding);
-      }
-    }
-    
 
     for (const [ticker, holding] of netHoldings.entries()) {
       if (holding.quantity <= 0) continue;
@@ -127,6 +120,22 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
 
     const allTimeGain = totalValue - totalCostBasis;
     const allTimeGainPercent = totalCostBasis > 0 ? (allTimeGain / totalCostBasis) * 100 : 0;
+
+    console.table(
+      [...netHoldings.entries()].map(([ticker, h]) => ({
+        ticker,
+        quantity: h.quantity,
+        costBasis: h.costBasis,
+        avgCost: (h.costBasis / h.quantity).toFixed(2),
+        currentPrice: quoteMap.get(ticker),
+        currentValue: h.quantity * (quoteMap.get(ticker) ?? 0),
+      }))
+    );
+    console.log('Total value:', totalValue.toFixed(2));
+    console.log('Total cost basis:', totalCostBasis.toFixed(2));
+    console.log('Filter used:', filter);
+    console.log('Portfolio ID:', portfolioId);
+    
 
     return {
       totalValue,
