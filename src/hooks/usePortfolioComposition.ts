@@ -175,7 +175,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
         }
 
         const gainLoss = currentValue - costBasisUsd;
-        const weight = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0;
+        const weight = totalPortfolioValue > 0 ? (holding.avgCost / totalPortfolioValue) * 100 : 0;
 
         return {
           ticker,
