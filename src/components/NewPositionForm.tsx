@@ -31,8 +31,8 @@ const NewPositionForm = ({ onSubmit, isSubmitting = false, portfolioId }: NewPos
     defaultValues: {
       ticker_symbol: '',
       asset_name: '',
-      quantity: 1,
-      price: 1,
+      quantity: '1',
+      price: '1',
       buy_date: new Date().toISOString().split('T')[0],
       currency: Currency.USD,
       status: PositionStatus.Buy,
