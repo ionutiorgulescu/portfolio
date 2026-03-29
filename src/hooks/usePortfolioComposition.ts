@@ -154,7 +154,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
 
     const totalPortfolioValue = [...holdings.entries()].reduce((sum, [ticker, holding]) => {
       const currentPrice = quoteMap.get(ticker) ?? 0;
-      if (holding.currency === Currency.RON && filter !== 'bvb') {
+      if (holding.currency === Currency.RON) {
         return sum + holding.quantity * currentPrice * ronToUsd;
       }
       return sum + holding.quantity * currentPrice;
