@@ -22,11 +22,22 @@ const parseIsoLocalDate = (value: string): Date | null => {
   return parsedDate;
 };
 
+const positiveStringNumber = (fieldName: string) =>
+  z
+    .string()
+    .min(1, `${fieldName} is required`)
+    .refine((val) => !isNaN(Number(val)), {
+      message: `${fieldName} must be a valid number`,
+    })
+    .refine((val) => Number(val) > 0, {
+      message: `${fieldName} must be positive`,
+    });
+
 export const positionSchema = z.object({
   ticker_symbol: z.string().min(1, 'Ticker symbol is required'),
   asset_name: z.string().min(1, 'Asset name is required'),
-  quantity: z.number().positive('Quantity must be positive'),
-  price: z.number().positive('Buy price must be positive'),
+  quantity: positiveStringNumber('Quantity'),
+  price: positiveStringNumber('Buy price'),
   buy_date: z
     .string()
     .regex(buyDateRegex, 'Buy date must be in YYYY-MM-DD format')
