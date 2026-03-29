@@ -1,17 +1,23 @@
 import { useMemo, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridSortModel } from '@mui/x-data-grid';
+import type { GridColDef, GridSortModel, GridRenderCellParams } from '@mui/x-data-grid';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Tooltip from '@mui/material/Tooltip';
 import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useMediaQuery, useTheme } from '@mui/material';
 import type { Position } from '../types/positions';
 
 type PositionsTableProps = {
   positions: Position[];
+  onEdit: (position: Position) => void;
+  onDelete: (position: Position) => void;
 };
 
 type StatusFilter = 'all' | 'buy' | 'sell';
@@ -23,7 +29,7 @@ const formatDate = (value: string) => {
   return date.toLocaleDateString('en-GB');
 };
 
-const PositionsTable = ({ positions }: PositionsTableProps) => {
+const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -42,7 +48,50 @@ const PositionsTable = ({ positions }: PositionsTableProps) => {
     { field: 'price', headerName: 'Price', flex: 1, align: 'right', headerAlign: 'right', sortable: true, valueFormatter: (value: number) => `$${value.toFixed(2)}` },
     { field: 'buy_date', headerName: 'Date', flex: 1, sortable: true, valueFormatter: (value: string) => formatDate(value) },
     { field: 'currency', headerName: 'Currency', flex: 0.8, sortable: false },
-    { field: 'status', headerName: 'Status', flex: 0.8, sortable: false, valueFormatter: (value: string) => value ? value.charAt(0).toUpperCase() + value.slice(1) : '-' },
+    {
+      field: 'status',
+      headerName: 'Status',
+      flex: 0.8,
+      sortable: false,
+      valueFormatter: (value: string) => value ? value.charAt(0).toUpperCase() + value.slice(1) : '-',
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      width: 88,
+      sortable: false,
+      disableColumnMenu: true,
+      align: 'right',
+      renderCell: (params: GridRenderCellParams<Position>) => (
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', width: '100%' }}>
+          <Tooltip title="Edit">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(params.row);
+              }}
+              aria-label={`Edit ${params.row.ticker_symbol}`}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(params.row);
+              }}
+              aria-label={`Delete ${params.row.ticker_symbol}`}
+              sx={{ color: 'error.main' }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
   ];
 
   const filtered = useMemo(() => {

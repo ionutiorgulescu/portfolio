@@ -4,19 +4,20 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   Stack,
   Typography,
 } from '@mui/material';
-import NewPositionForm from '../components/NewPositionForm';
 import PositionsTable from '../components/PositionsTable';
+import PositionFormModal from '../components/PositionFormModal';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import { useCreatePosition } from '../hooks/useCreatePosition';
+import { useUpdatePosition } from '../hooks/useUpdatePosition';
+import { useDeletePosition } from '../hooks/useDeletePosition';
 import { useImportPositions } from '../hooks/useImportPositions';
 import { usePositions } from '../hooks/usePositions';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import type { NewPosition } from '../schemas/positionSchema';
+import type { Position } from '../types/positions';
 import { parseXlsxFile } from '../utils/xlsxParser';
 import type { RowError } from '../utils/xlsxParser';
 
@@ -27,10 +28,17 @@ type ImportResult = {
 
 const Transactions = () => {
   const { selectedPortfolioId } = usePortfolioContext();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // ── Modal / dialog state ────────────────────────────────────────────────────
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingPosition, setEditingPosition] = useState<Position | undefined>(undefined);
+  const [deletingPosition, setDeletingPosition] = useState<Position | undefined>(undefined);
+
+  // ── Import state ────────────────────────────────────────────────────────────
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Queries & mutations ─────────────────────────────────────────────────────
   const {
     data: positions = [],
     isLoading,
@@ -40,11 +48,47 @@ const Transactions = () => {
   } = usePositions(selectedPortfolioId ?? '');
 
   const createPositionMutation = useCreatePosition(selectedPortfolioId ?? '');
+  const updatePositionMutation = useUpdatePosition(selectedPortfolioId ?? '');
+  const deletePositionMutation = useDeletePosition(selectedPortfolioId ?? '');
   const importPositionsMutation = useImportPositions(selectedPortfolioId ?? '');
 
-  const handleCreatePosition = async (data: NewPosition) => {
-    await createPositionMutation.mutateAsync(data);
-    setIsModalOpen(false);
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleOpenCreate = () => {
+    setEditingPosition(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEdit = (position: Position) => {
+    setEditingPosition(position);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingPosition(undefined);
+  };
+
+  const handleFormSubmit = async (data: NewPosition) => {
+    if (editingPosition) {
+      await updatePositionMutation.mutateAsync({ id: editingPosition.id, data });
+    } else {
+      await createPositionMutation.mutateAsync(data);
+    }
+    handleCloseForm();
+  };
+
+  const handleOpenDelete = (position: Position) => {
+    setDeletingPosition(position);
+  };
+
+  const handleCloseDelete = () => {
+    setDeletingPosition(undefined);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingPosition) return;
+    await deletePositionMutation.mutateAsync(deletingPosition.id);
+    handleCloseDelete();
   };
 
   const handleImportClick = () => {
@@ -67,7 +111,10 @@ const Transactions = () => {
       } catch {
         setImportResult({
           imported: 0,
-          errors: [{ row: 0, message: 'Failed to save positions to the database. Please try again.' }, ...errors],
+          errors: [
+            { row: 0, message: 'Failed to save positions to the database. Please try again.' },
+            ...errors,
+          ],
         });
       }
     } else {
@@ -78,9 +125,12 @@ const Transactions = () => {
   if (!selectedPortfolioId) return null;
 
   const isImporting = importPositionsMutation.isPending;
+  const isSubmittingForm =
+    createPositionMutation.isPending || updatePositionMutation.isPending;
 
   return (
     <Stack spacing={3}>
+      {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
         <Typography variant="h4">Transactions</Typography>
         <Stack direction="row" spacing={1}>
@@ -95,7 +145,7 @@ const Transactions = () => {
           </Button>
           <Button
             variant="contained"
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreate}
             sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' }, whiteSpace: 'nowrap' }}
           >
             Add Position
@@ -103,6 +153,7 @@ const Transactions = () => {
         </Stack>
       </Stack>
 
+      {/* Hidden file input for xlsx import */}
       <input
         ref={fileInputRef}
         type="file"
@@ -111,26 +162,36 @@ const Transactions = () => {
         onChange={handleFileChange}
       />
 
+      {/* Import result feedback */}
       {importResult !== null && (
         <Alert
-          severity={importResult.errors.length === 0 ? 'success' : importResult.imported > 0 ? 'warning' : 'error'}
+          severity={
+            importResult.errors.length === 0
+              ? 'success'
+              : importResult.imported > 0
+                ? 'warning'
+                : 'error'
+          }
           onClose={() => setImportResult(null)}
         >
           {importResult.imported > 0 && (
             <Typography variant="body2">
-              {importResult.imported} position{importResult.imported !== 1 ? 's' : ''} imported successfully.
+              {importResult.imported} position{importResult.imported !== 1 ? 's' : ''} imported
+              successfully.
             </Typography>
           )}
           {importResult.errors.length > 0 && (
             <Box mt={importResult.imported > 0 ? 1 : 0}>
               <Typography variant="body2" fontWeight="medium">
-                {importResult.errors.length} row{importResult.errors.length !== 1 ? 's' : ''} could not be imported:
+                {importResult.errors.length} row{importResult.errors.length !== 1 ? 's' : ''} could
+                not be imported:
               </Typography>
               <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
                 {importResult.errors.map((err) => (
                   <li key={`${err.row}-${err.message}`}>
                     <Typography variant="body2">
-                      {err.row > 0 ? `Row ${err.row}: ` : ''}{err.message}
+                      {err.row > 0 ? `Row ${err.row}: ` : ''}
+                      {err.message}
                     </Typography>
                   </li>
                 ))}
@@ -140,6 +201,7 @@ const Transactions = () => {
         </Alert>
       )}
 
+      {/* Loading / error / empty states */}
       {isLoading && (
         <Box display="flex" justifyContent="center" py={4}>
           <CircularProgress aria-label="Loading positions" />
@@ -149,7 +211,11 @@ const Transactions = () => {
       {isError && (
         <Alert
           severity="error"
-          action={<Button color="inherit" size="small" onClick={() => refetch()}>Retry</Button>}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
         >
           {error instanceof Error ? error.message : 'Unable to load positions.'}
         </Alert>
@@ -160,19 +226,31 @@ const Transactions = () => {
       )}
 
       {!isLoading && !isError && positions.length > 0 && (
-        <PositionsTable positions={positions} />
+        <PositionsTable
+          positions={positions}
+          onEdit={handleOpenEdit}
+          onDelete={handleOpenDelete}
+        />
       )}
 
-      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add New Position</DialogTitle>
-        <DialogContent>
-          <NewPositionForm
-            onSubmit={handleCreatePosition}
-            isSubmitting={createPositionMutation.isPending}
-            portfolioId={selectedPortfolioId}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Create / Edit modal */}
+      <PositionFormModal
+        open={isFormOpen}
+        portfolioId={selectedPortfolioId}
+        position={editingPosition}
+        isSubmitting={isSubmittingForm}
+        onSubmit={handleFormSubmit}
+        onClose={handleCloseForm}
+      />
+
+      {/* Delete confirmation dialog */}
+      <DeleteConfirmDialog
+        open={Boolean(deletingPosition)}
+        ticker={deletingPosition?.ticker_symbol ?? ''}
+        isDeleting={deletePositionMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={handleCloseDelete}
+      />
     </Stack>
   );
 };
