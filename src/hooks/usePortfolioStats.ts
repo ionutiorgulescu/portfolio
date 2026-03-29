@@ -120,6 +120,7 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
 
     const allTimeGain = totalValue - totalCostBasis;
     const allTimeGainPercent = totalCostBasis > 0 ? (allTimeGain / totalCostBasis) * 100 : 0;
+    const closedPositions = filteredPositions.filter(p => p.status === PositionStatus.Sell).length;
 
     return {
       totalValue,
@@ -127,8 +128,8 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
       allTimeGain,
       allTimeGainPercent,
       totalPositions: filteredPositions.length,
-      openPositions: activeTickers.length,
-      closedPositions: lotQueues.size - activeTickers.length,
+      openPositions: filteredPositions.length - closedPositions,
+      closedPositions: filteredPositions.filter(p => p.status === PositionStatus.Sell).length,
       activeTickers: activeTickers.length,
     };
   })();

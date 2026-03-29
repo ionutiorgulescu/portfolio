@@ -81,16 +81,16 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
         <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>{stats.totalPositions}</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box component="span" sx={{ bgcolor: '#dbeafe', color: '#2563eb', fontSize: 12, fontWeight: 600, px: 1, py: 0.25, borderRadius: '20px' }}>
-            {stats.openPositions} open
+            {stats.openPositions} buy
           </Box>
-          <Typography variant="caption" color="text.disabled">{stats.closedPositions} closed</Typography>
+          <Typography variant="caption" color="text.disabled">{stats.closedPositions} sell</Typography>
         </Box>
       </Box>
 
       <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>Active Assets</Typography>
         <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>{stats.activeTickers}</Typography>
-        <Typography variant="caption" color="text.disabled">{stats.openPositions} open positions</Typography>
+        <Typography variant="caption" color="text.disabled">{stats.openPositions} buy transactions</Typography>
       </Box>
     </Box>
   );
