@@ -104,6 +104,13 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
 
     let totalValue = 0;
     let totalCostBasis = 0;
+    for (const [ticker, holding] of netHoldings.entries()) {
+      const price = quoteMap.get(ticker) ?? 0;
+      if (price === 0) {
+        console.warn(`⚠️ Zero price for ticker: ${ticker}`, holding);
+      }
+    }
+    
 
     for (const [ticker, holding] of netHoldings.entries()) {
       if (holding.quantity <= 0) continue;
