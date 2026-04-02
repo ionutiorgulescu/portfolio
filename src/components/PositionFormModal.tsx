@@ -89,6 +89,7 @@ const PositionFormModal = ({
                     error={!!errors.ticker_symbol}
                     helperText={errors.ticker_symbol?.message}
                     margin="normal"
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                   />
                 )}
               />
