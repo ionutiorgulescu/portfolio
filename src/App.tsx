@@ -7,6 +7,7 @@ import { useAuthSession } from './hooks/useAuthSession';
 import AppShell from './layouts/AppShell';
 import Dashboard from './pages/Dashboard';
 import Markets from './pages/Markets';
+import GoalPage from './pages/GoalPage';
 import PortfolioPerformance from './pages/PortfolioPerformance';
 import Transactions from './pages/Transactions';
 import { PortfolioProvider } from './contexts/PortfolioContext';
@@ -57,6 +58,7 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="performance" element={<PortfolioPerformance />} />
           <Route path="markets" element={<Markets />} />
+          <Route path="goal" element={<GoalPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -21,6 +21,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MenuIcon from '@mui/icons-material/Menu';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import GoalIcon from '@mui/icons-material/PieChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -43,6 +44,7 @@ const menuItems = [
   { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon /> },
   { label: 'Performance', path: '/performance', icon: <AttachMoneyIcon /> },
   { label: 'Markets', path: '/markets', icon: <ShowChartIcon /> },
+  { label: 'Goal', path: '/goal', icon: <GoalIcon /> },
 ];
 
 const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
