@@ -8,35 +8,29 @@ import { useMonthlyGoal, aggregateMonthlyData, type RangeOption } from '../hooks
 import { MonthlyGoalChart } from '../components/GoalTracker/MonthlyGoalChart';
 import { GoalMetrics } from '../components/GoalTracker/GoalMetrics';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
-import { FilterControl, type CompositionFilter } from '../components/FilterControl';
 
-const RANGES: { label: string; value: RangeOption }[] = [
-  { label: '2023', value: '2023' },
-  { label: '2024', value: '2024' },
-  { label: '2025', value: '2025' },
-  { label: '2026', value: '2026' },
-  { label: '2027', value: '2027' },
-  { label: '2028', value: '2028' },
-  { label: '2029', value: '2029' },
-  { label: '2030', value: '2030' },
-];
+const _currentYear = new Date().getFullYear();
+const RANGES: { label: string; value: RangeOption }[] = Array.from(
+  { length: 4 },
+  (_, i) => {
+    const yr = String(_currentYear - 3 + i);
+    return { label: yr, value: yr };
+  }
+);
 
 const EMPTY_STATS = { totalBuys: 0, totalSells: 0, totalInvested: 0, avgMonthly: 0, monthsMet: 0, monthsMissed: 0 };
 
-const GoalPage = () => {
+const Goal = () => {
   const { selectedPortfolioId, isLoading: portfolioLoading } = usePortfolioContext();
   const [goal, setGoal] = useState(1000);
-  const [range, setRange] = useState<RangeOption>('2026');
-  const [filter, setFilter] = useState<CompositionFilter>('stock');
+  const [range, setRange] = useState<RangeOption>(String(_currentYear));
   const goalInputId = useId();
-
-  const currencySymbol = filter === 'bvb' ? 'RON' : '$';
 
   const {
     data: positions = [],
     isLoading: positionsLoading,
     error,
-  } = useMonthlyGoal(selectedPortfolioId, range, filter);
+  } = useMonthlyGoal(selectedPortfolioId, range);
 
   const isLoading = portfolioLoading || positionsLoading;
 
@@ -59,8 +53,6 @@ const GoalPage = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 2, sm: 0 },
       }}>
-        <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
-
         {/* Goal input */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
           <Typography
@@ -83,7 +75,7 @@ const GoalPage = () => {
             px: 1.5,
             py: 0.5,
           }}>
-            <Typography variant="body2" color="text.secondary" sx={{ userSelect: 'none' }}>{currencySymbol}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ userSelect: 'none' }}>$</Typography>
             <InputBase
               id={goalInputId}
               inputProps={{ type: 'number', min: 0, step: 100 }}
@@ -144,13 +136,13 @@ const GoalPage = () => {
       )}
 
       {/* Metrics */}
-      <GoalMetrics stats={stats} loading={isLoading} currencySymbol={currencySymbol} goal={goal} range={range} />
+      <GoalMetrics stats={stats} loading={isLoading} currencySymbol={"$"} goal={goal} range={range} />
 
       {/* Chart */}
-      <MonthlyGoalChart months={months} goal={goal} loading={isLoading} currencySymbol={currencySymbol} />
+      <MonthlyGoalChart months={months} goal={goal} loading={isLoading} currencySymbol={"$"} />
 
     </Box>
   );
 };
 
-export default GoalPage;
+export default Goal;

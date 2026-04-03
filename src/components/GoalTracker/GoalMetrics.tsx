@@ -71,9 +71,14 @@ function ProgressCard({ label, current, total, fmt }: ProgressCardProps) {
             <Typography variant="h5" fontWeight={700}>
                 {fmt(current)}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, mb: 1.5 }}>
-                of {fmt(total)} goal
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.5, mb: 1.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                    of {fmt(total)} goal
+                </Typography>
+                <Typography variant="caption" fontWeight={600} color="text.secondary">
+                    {pct}%
+                </Typography>
+            </Box>
             <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'grey.100', overflow: 'hidden' }}>
                 <Box sx={{
                     height: '100%',
