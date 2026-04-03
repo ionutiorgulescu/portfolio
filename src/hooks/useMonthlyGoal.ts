@@ -4,12 +4,16 @@ import { Currency, TransactionType, PositionStatus, type Position } from '../typ
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import type { CompositionFilter } from '../components/FilterControl';
 
-export type RangeOption = 'alltime' | 'last5' | '2022' | '2023' | '2024' | '2025' | '2026';
+export type RangeOption =  '2023' | '2024' | '2025' | '2026' | '2027' | '2028' | '2029' | '2030';
+
+const rangeOptions: RangeOption[] = ['2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030'];
 
 export interface MonthlyData {
   key: string;      // 'YYYY-MM'
   label: string;    // 'Jan '25' or 'Jan'
   invested: number;
+  buys: number;
+  sells: number;
   shortfall: number;
   metGoal: boolean;
   hasData: boolean;
@@ -18,6 +22,7 @@ export interface MonthlyData {
 export interface GoalStats {
   totalBuys: number;
   totalSells: number;
+  totalInvested: number;
   avgMonthly: number;
   monthsMet: number;
   monthsMissed: number;
@@ -35,17 +40,17 @@ function toMonthKey(dateStr: string): string {
 function monthLabel(key: string, range: RangeOption): string {
   const [yr, mo] = key.split('-');
   const name = MONTH_NAMES[parseInt(mo) - 1];
-  return ['2022','2023','2024','2025','2026'].includes(range)
+  return rangeOptions.includes(range)
     ? name
     : `${name} '${yr.slice(2)}`;
 }
 
-function buildMonthKeys(range: RangeOption, firstKey?: string): string[] {
+function buildMonthKeys(range: RangeOption): string[] {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-indexed
 
-  if (['2022','2023','2024','2025','2026'].includes(range)) {
+  if (rangeOptions.includes(range)) {
     const yr = parseInt(range);
     const maxMonth = yr === currentYear ? currentMonth : 11;
     return Array.from({ length: maxMonth + 1 }, (_, i) =>
@@ -53,10 +58,7 @@ function buildMonthKeys(range: RangeOption, firstKey?: string): string[] {
     );
   }
 
-  let startYear = range === 'last5' ? currentYear - 4 : 2021;
-  if (range === 'alltime' && firstKey) {
-    startYear = parseInt(firstKey.slice(0, 4));
-  }
+  let startYear = 2023;
 
   const keys: string[] = [];
   for (let yr = startYear; yr <= currentYear; yr++) {
@@ -69,14 +71,10 @@ function buildMonthKeys(range: RangeOption, firstKey?: string): string[] {
 }
 
 function getRangeDates(range: RangeOption): { from: string; to: string } | null {
-  const now = new Date();
-  const yr = now.getFullYear();
-  if (['2022','2023','2024','2025','2026'].includes(range)) {
+  if (rangeOptions.includes(range)) {
     return { from: `${range}-01-01`, to: `${range}-12-31` };
   }
-  if (range === 'last5') {
-    return { from: `${yr - 4}-01-01`, to: `${yr}-12-31` };
-  }
+
   return null;
 }
 
@@ -156,23 +154,21 @@ export function aggregateMonthlyData(
     monthlySellMap.set(key, (monthlySellMap.get(key) ?? 0) + qty * px);
   }
 
-  const allActivityKeys = Array.from(
-    new Set([...monthlyMap.keys(), ...monthlySellMap.keys()])
-  ).sort();
-  const allKeys = buildMonthKeys(range, allActivityKeys[0]);
+  const allKeys = buildMonthKeys(range);
 
   const months: MonthlyData[] = allKeys.map(key => {
     const buys = Math.round(monthlyMap.get(key) ?? 0);
     const sells = Math.round(monthlySellMap.get(key) ?? 0);
-    const invested = buys - sells;
+    const invested = (buys - sells) > 0 ? buys - sells : 0;
     const hasData = monthlyMap.has(key) || monthlySellMap.has(key);
     const metGoal = hasData && invested >= goal;
     const shortfall = hasData && !metGoal ? Math.round(goal - invested) : 0;
-    return { key, label: monthLabel(key, range), invested, shortfall, metGoal, hasData };
+    return { key, label: monthLabel(key, range), buys, sells, invested, shortfall, metGoal, hasData };
   });
 
   const activeMonths = months.filter(m => m.hasData);
-  const totalBuys = activeMonths.reduce((sum, m) => sum + m.invested, 0);
+  const totalBuys = activeMonths.reduce((sum, m) => sum + m.buys, 0);
+  const totalInvested = activeMonths.reduce((sum, m) => sum + m.invested, 0);
   const avgMonthly = activeMonths.length
     ? Math.round(totalBuys / activeMonths.length)
     : 0;
@@ -187,7 +183,7 @@ export function aggregateMonthlyData(
 
   return {
     months,
-    stats: { totalBuys: Math.round(totalBuys), totalSells: Math.round(totalSells), avgMonthly, monthsMet, monthsMissed },
+    stats: { totalBuys: Math.round(totalBuys), totalSells: Math.round(totalSells), totalInvested: Math.round(totalInvested), avgMonthly, monthsMet, monthsMissed },
   };
 }
 

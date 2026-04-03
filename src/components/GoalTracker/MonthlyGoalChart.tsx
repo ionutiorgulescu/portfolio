@@ -24,15 +24,18 @@ interface MonthlyGoalChartProps {
 }
 
 interface ChartEntry extends MonthlyData {
+  totalBuys: number;
+  totalSells: number;
+  totalInvested: number;
   shortfallBar: number;
   goal: number;
   currencySymbol: string;
 }
 
-const COLOR_MET = '#3b82f6';
-const COLOR_MISSED = '#6b7280';
-const COLOR_SHORTFALL = '#ef4444';
-const COLOR_GOAL = '#22c55e';
+const COLOR_MET = 'var(--color-goal-met)';
+const COLOR_MISSED = 'var(--color-goal-in-progress)';
+const COLOR_SHORTFALL = 'var(--color-goal-remaining)';
+const COLOR_GOAL = 'var(--color-goal-met)';
 
 function formatCurrency(value: number, symbol: string): string {
   if (symbol === 'RON') {
@@ -45,8 +48,7 @@ function formatCurrency(value: number, symbol: string): string {
 
 const LEGEND = [
   { color: COLOR_MET, label: 'Goal met' },
-  { color: COLOR_MISSED, label: 'Goal missed' },
-  { color: COLOR_SHORTFALL, label: 'Shortfall' },
+  { color: COLOR_SHORTFALL, label: 'Remaining' },
 ];
 
 function fmtAmount(value: number, symbol: string): string {
@@ -71,9 +73,21 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
       {entry.hasData ? (
         <>
           <Typography variant="caption" color="text.secondary" display="block">
+            Buy:{' '}
+            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {fmtAmount(entry.totalBuys, sym)}
+            </Box>
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            Sell:{' '}
+            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {fmtAmount(entry.totalSells, sym)}
+            </Box>
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
             Invested:{' '}
             <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-              {fmtAmount(entry.invested, sym)}
+              {fmtAmount(entry.totalInvested, sym)}
             </Box>
           </Typography>
           {entry.metGoal ? (
@@ -82,7 +96,7 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
             </Typography>
           ) : (
             <Typography variant="caption" sx={{ color: '#dc2626' }} display="block">
-              Shortfall:{' '}
+              Remaining:{' '}
               <Box component="span" sx={{ fontWeight: 600 }}>
                 {fmtAmount(entry.shortfall, sym)}
               </Box>
@@ -105,6 +119,9 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
 
   const data: ChartEntry[] = months.map(m => ({
     ...m,
+    totalBuys: m.buys,
+    totalSells: m.sells,
+    totalInvested: m.invested,
     goal,
     shortfallBar: m.shortfall,
     currencySymbol,
