@@ -147,12 +147,25 @@ export function aggregateMonthlyData(
     monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + qty * px);
   }
 
-  const sortedKeys = Array.from(monthlyMap.keys()).sort();
-  const allKeys = buildMonthKeys(range, sortedKeys[0]);
+  const monthlySellMap = new Map<string, number>();
+  for (const pos of sellPositions) {
+    const key = toMonthKey(pos.buy_date);
+    const qty = Number(pos.quantity);
+    const px = Number(pos.price);
+    if (!Number.isFinite(qty) || !Number.isFinite(px)) continue;
+    monthlySellMap.set(key, (monthlySellMap.get(key) ?? 0) + qty * px);
+  }
+
+  const allActivityKeys = Array.from(
+    new Set([...monthlyMap.keys(), ...monthlySellMap.keys()])
+  ).sort();
+  const allKeys = buildMonthKeys(range, allActivityKeys[0]);
 
   const months: MonthlyData[] = allKeys.map(key => {
-    const invested = Math.round(monthlyMap.get(key) ?? 0);
-    const hasData = monthlyMap.has(key);
+    const buys = Math.round(monthlyMap.get(key) ?? 0);
+    const sells = Math.round(monthlySellMap.get(key) ?? 0);
+    const invested = buys - sells;
+    const hasData = monthlyMap.has(key) || monthlySellMap.has(key);
     const metGoal = hasData && invested >= goal;
     const shortfall = hasData && !metGoal ? Math.round(goal - invested) : 0;
     return { key, label: monthLabel(key, range), invested, shortfall, metGoal, hasData };
