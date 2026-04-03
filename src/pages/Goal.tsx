@@ -43,7 +43,7 @@ const Goal = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
       {/* Header row */}
       <Box sx={{
@@ -53,8 +53,49 @@ const Goal = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 2, sm: 0 },
       }}>
+        {/* Range tabs */}
+        <Box sx={{
+          display: 'inline-flex',
+          borderRadius: '12px',
+          backgroundColor: 'grey.200',
+          padding: '4px',
+          gap: '2px',
+          width: 'fit-content',
+        }}>
+          {RANGES.map(r => {
+            const selected = range === r.value;
+            return (
+              <ButtonBase
+                key={r.value}
+                onClick={() => setRange(r.value)}
+                sx={{
+                  borderRadius: '8px',
+                  px: 2,
+                  py: 0.5,
+                  backgroundColor: selected ? 'white' : 'transparent',
+                  boxShadow: selected ? 1 : 'none',
+                  transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+                  '&:hover': { backgroundColor: selected ? 'white' : 'rgba(0,0,0,0.04)' },
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: selected ? 700 : 400,
+                    color: selected ? 'text.primary' : 'text.secondary',
+                    lineHeight: 1,
+                    userSelect: 'none',
+                  }}
+                >
+                  {r.label}
+                </Typography>
+              </ButtonBase>
+            );
+          })}
+        </Box>
+
         {/* Goal input */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, paddingLeft: 1 }}>
           <Typography
             component="label"
             htmlFor={goalInputId}
@@ -87,46 +128,6 @@ const Goal = () => {
         </Box>
       </Box>
 
-      {/* Range tabs */}
-      <Box sx={{
-        display: 'inline-flex',
-        borderRadius: '12px',
-        backgroundColor: 'grey.200',
-        padding: '4px',
-        gap: '2px',
-        width: 'fit-content',
-      }}>
-        {RANGES.map(r => {
-          const selected = range === r.value;
-          return (
-            <ButtonBase
-              key={r.value}
-              onClick={() => setRange(r.value)}
-              sx={{
-                borderRadius: '8px',
-                px: 2,
-                py: 0.5,
-                backgroundColor: selected ? 'white' : 'transparent',
-                boxShadow: selected ? 1 : 'none',
-                transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
-                '&:hover': { backgroundColor: selected ? 'white' : 'rgba(0,0,0,0.04)' },
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: selected ? 700 : 400,
-                  color: selected ? 'text.primary' : 'text.secondary',
-                  lineHeight: 1,
-                  userSelect: 'none',
-                }}
-              >
-                {r.label}
-              </Typography>
-            </ButtonBase>
-          );
-        })}
-      </Box>
 
       {/* Error */}
       {error && (
