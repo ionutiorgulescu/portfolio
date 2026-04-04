@@ -35,8 +35,9 @@ function buildDateRange(startIso: string, endIso: string): string[] {
  */
 function consumeFifo(queue: Lot[], sellQty: number, ticker: string, date: string): void {
   let remaining = sellQty;
+  const EPSILON = 1e-10;
 
-  while (remaining > 0) {
+  while (remaining > EPSILON) {
     if (queue.length === 0) {
       console.warn(`[FIFO] Over-sold ${ticker} by ${remaining} shares on ${date}`);
       break;

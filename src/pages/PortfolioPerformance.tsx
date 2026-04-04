@@ -109,12 +109,46 @@ const PortfolioPerformance = () => {
   }
 
   const filtersRow = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-      <Box sx={{ display: 'inline-flex', borderRadius: '12px', backgroundColor: 'grey.200', padding: '4px', gap: '2px', width: 'fit-content' }}>
-        <IntervalSelector interval={interval} onChange={setInterval} />
+    <Stack spacing={1.5}>
+      {/* Interval row: full width, scrolls horizontally on mobile, no overflow */}
+      <Box
+        sx={{
+          width: '100%',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            borderRadius: '12px',
+            backgroundColor: 'grey.200',
+            padding: '4px',
+            gap: '2px',
+            minWidth: 'max-content', // prevents wrapping, enables scroll
+          }}
+        >
+          <IntervalSelector interval={interval} onChange={setInterval} />
+        </Box>
       </Box>
-      <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
-    </Box>
+
+      {/* Filter row: naturally sized, no overflow needed */}
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          borderRadius: '12px',
+          backgroundColor: 'grey.200',
+          padding: '4px',
+          gap: '2px',
+          alignSelf: 'flex-start',
+        }}
+      >
+        <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
+      </Box>
+    </Stack>
   );
 
   return (
