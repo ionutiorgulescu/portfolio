@@ -108,47 +108,46 @@ const PortfolioPerformance = () => {
     );
   }
 
+  const pillBox = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '12px',
+    backgroundColor: 'grey.200',
+    padding: '4px',
+    gap: '2px',
+  } as const;
+
   const filtersRow = (
-    <Stack spacing={1.5}>
-      {/* Interval row: full width, scrolls horizontally on mobile, no overflow */}
+    <Box
+      sx={{
+        display: 'flex',
+        // column on mobile, row on sm+ — same height naturally via align-items: center
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: 1.5,
+      }}
+    >
+      {/* Interval pills: scrollable on mobile so they never overflow */}
       <Box
         sx={{
-          width: '100%',
+          // on mobile take full width so the scroll container is bounded
+          width: { xs: '100%', sm: 'auto' },
           overflowX: 'auto',
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
+          flexShrink: 0,
         }}
       >
-        <Box
-          sx={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            borderRadius: '12px',
-            backgroundColor: 'grey.200',
-            padding: '4px',
-            gap: '2px',
-            minWidth: 'max-content', // prevents wrapping, enables scroll
-          }}
-        >
+        <Box sx={{ ...pillBox, minWidth: 'max-content' }}>
           <IntervalSelector interval={interval} onChange={setInterval} />
         </Box>
       </Box>
 
-      {/* Filter row: naturally sized, no overflow needed */}
-      <Box
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          borderRadius: '12px',
-          backgroundColor: 'grey.200',
-          padding: '4px',
-          gap: '2px',
-          alignSelf: 'flex-start',
-        }}
-      >
+      {/* Filter control: never overflows, always fits */}
+      <Box sx={{ ...pillBox, flexShrink: 0 }}>
         <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
       </Box>
-    </Stack>
+    </Box>
   );
 
   return (
