@@ -8,7 +8,7 @@ import type { CompositionFilter } from '../components/FilterControl';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 
 const Dashboard = () => {
-  const [filter, setFilter] = useState<CompositionFilter>('all');
+  const [filter, setFilter] = useState<CompositionFilter>('stock');
   const { selectedPortfolioId } = usePortfolioContext();
 
   if (!selectedPortfolioId) return null;

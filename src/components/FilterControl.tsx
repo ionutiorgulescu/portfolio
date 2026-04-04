@@ -5,10 +5,10 @@ import Typography from '@mui/material/Typography';
 export type CompositionFilter = 'all' | 'stock' | 'crypto' | 'bvb';
 
 const FILTER_OPTIONS: { label: string; value: CompositionFilter }[] = [
-  { label: 'All', value: 'all' },
   { label: 'Stocks', value: 'stock' },
   { label: 'Crypto', value: 'crypto' },
   { label: 'BVB', value: 'bvb' },
+  { label: 'All', value: 'all' },
 ];
 
 interface FilterControlProps {
