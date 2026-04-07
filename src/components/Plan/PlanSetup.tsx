@@ -171,27 +171,24 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
           </Box>
 
           {/* Fields */}
-          <Stack divider={<Divider flexItem />} spacing={0}>
-            <Box sx={{ py: 1.75 }}>
-              {editing ? (
+          {editing ? (
+            <>
+              <Box sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                gap: 2,
+                alignItems: { xs: "stretch", md: "flex-end" },
+              }}>
                 <TextField
                   label="Start date"
                   type="date"
-                  fullWidth
                   size="small"
                   InputLabelProps={{ shrink: true }}
                   value={form.startDate}
                   InputProps={{ readOnly: true }}
-                  sx={fieldSx}
+                  sx={{ flex: 1, ...fieldSx }}
                 />
-              ) : (
-                <ReadOnlyField label="Start date" value={formatDate(form.startDate)} />
-              )}
-            </Box>
-
-            <Box sx={{ py: 1.75 }}>
-              {editing ? (
-                <FormControl fullWidth size="small" sx={fieldSx}>
+                <FormControl size="small" sx={{ flex: 1, ...fieldSx }}>
                   <InputLabel>Target value</InputLabel>
                   <Select<string>
                     label="Target value"
@@ -204,14 +201,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     ))}
                   </Select>
                 </FormControl>
-              ) : (
-                <ReadOnlyField label="Target value" value={form.targetValue ? `$${form.targetValue}` : "—"} />
-              )}
-            </Box>
-
-            <Box sx={{ py: 1.75 }}>
-              {editing ? (
-                <FormControl fullWidth size="small" sx={fieldSx}>
+                <FormControl size="small" sx={{ flex: 1, ...fieldSx }}>
                   <InputLabel>Target time</InputLabel>
                   <Select<string>
                     label="Target time"
@@ -224,31 +214,57 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     ))}
                   </Select>
                 </FormControl>
-              ) : (
-                <ReadOnlyField label="Target time" value={form.targetYears ? `${form.targetYears} years` : "—"} />
+                <Button
+                  variant="contained"
+                  disabled={!isComplete}
+                  onClick={handleSave}
+                  sx={{
+                    py: 1,
+                    px: { xs: 0, md: 3 },
+                    borderRadius: 3,
+                    bgcolor: "#111",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    textTransform: "none",
+                    letterSpacing: 0.3,
+                    boxShadow: "none",
+                    flexShrink: 0,
+                    width: { xs: "100%", md: "auto" },
+                    mt: { xs: 0.5, md: 0 },
+                    "&:hover": { bgcolor: "#333", boxShadow: "none" },
+                    "&.Mui-disabled": { bgcolor: "#ccc", color: "#fff" },
+                  }}
+                >
+                  Calculate Plan
+                </Button>
+              </Box>
+
+              {/* Monthly needed hint */}
+              {monthlyNeeded && (
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#f7f7f7", borderRadius: 2.5, px: 2, py: 1.5, mt: 2.5 }}>
+                  <Typography sx={{ fontSize: 13, color: "#888", fontWeight: 500 }}>Monthly needed</Typography>
+                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#111" }}>${monthlyNeeded} / mo</Typography>
+                </Box>
               )}
-            </Box>
-          </Stack>
-
-          {/* Monthly needed hint — only visible while editing */}
-          {monthlyNeeded && editing && (
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#f7f7f7", borderRadius: 2.5, px: 2, py: 1.5, mt: 2.5 }}>
-              <Typography sx={{ fontSize: 13, color: "#888", fontWeight: 500 }}>Monthly needed</Typography>
-              <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#111" }}>${monthlyNeeded} / mo</Typography>
-            </Box>
-          )}
-
-          {/* Save button */}
-          {editing && (
-            <Button
-              fullWidth
-              variant="contained"
-              disabled={!isComplete}
-              onClick={handleSave}
-              sx={{ mt: 2, py: 1.5, borderRadius: 3, bgcolor: "#111", fontWeight: 700, fontSize: 15, textTransform: "none", letterSpacing: 0.3, boxShadow: "none", "&:hover": { bgcolor: "#333", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: "#ccc", color: "#fff" } }}
-            >
-              Calculate Plan
-            </Button>
+            </>
+          ) : (
+            <Box sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                gap: { xs: 0, md: 4 },
+              }}>
+                <Box sx={{ py: 1.75, flex: 1, borderBottom: { xs: "1px solid #f0f0f0", md: "none" } }}>
+                  <ReadOnlyField label="Start date" value={formatDate(form.startDate)} />
+                </Box>
+                <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" } }} />
+                <Box sx={{ py: 1.75, flex: 1, borderBottom: { xs: "1px solid #f0f0f0", md: "none" } }}>
+                  <ReadOnlyField label="Target value" value={form.targetValue ? `$${form.targetValue}` : "—"} />
+                </Box>
+                <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" } }} />
+                <Box sx={{ py: 1.75, flex: 1 }}>
+                  <ReadOnlyField label="Target time" value={form.targetYears ? `${form.targetYears} years` : "—"} />
+                </Box>
+              </Box>
           )}
         </CardContent>
       </Card>
@@ -258,7 +274,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
         <>
           {/* Stats Cards */}
           {data && (
-            <Box sx={{ mx: 2, mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+            <Box sx={{ mx: 2, mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr 1fr 1fr" }, gap: 1.5 }}>
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", p: 2 }}>
                 <Typography sx={{ fontSize: 12, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                   Progress
