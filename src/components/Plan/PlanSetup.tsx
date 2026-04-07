@@ -353,14 +353,14 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 10, fill: "#bbb" }}
+                      tick={{ fontSize: 10, fill: "#8F8F8F" }}
                       tickLine={false}
                       axisLine={false}
                       interval="preserveStartEnd"
                     />
                     <YAxis
                       tickFormatter={formatDollar}
-                      tick={{ fontSize: 10, fill: "#bbb" }}
+                      tick={{ fontSize: 10, fill: "#8F8F8F" }}
                       tickLine={false}
                       axisLine={false}
                       width={36}
@@ -377,7 +377,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                       y={submittedParams!.targetValue}
                       stroke="#ddd"
                       strokeDasharray="4 4"
-                      label={{ value: `$${form.targetValue}`, position: "insideTopRight", fontSize: 10, fill: "#bbb" }}
+                      label={{ value: `$${form.targetValue}`, position: "insideTopRight", fontSize: 10, fill: "#8F8F8F" }}
                     />
                     {/* Target line — dashed gray */}
                     <Line
