@@ -1,5 +1,5 @@
-import { formatNumber } from './stockDashboard.types';
-import type { StockBarWithDate } from '../hooks/useStockData';
+import { formatNumber } from '../stockMarket.types';
+import type { StockBarWithDate } from '../../hooks/useStockData';
 
 type Props = {
   latestBar: StockBarWithDate | null;

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useStockData } from '../hooks/useStockData';
-import { IntervalSelector } from './IntervalSelector';
+import { useStockData } from '../../hooks/useStockData';
+import { IntervalSelector } from '../IntervalSelector';
 import { StockStats } from './StockStats';
 import { StockTickerForm } from './StockTickerForm';
 import {
@@ -9,13 +9,13 @@ import {
   intervalOptions,
   parseIsoDate,
   formatTimestamp,
-} from './stockDashboard.types';
-import type { ChartInterval, ChartPoint } from './stockDashboard.types';
+} from '../stockMarket.types';
+import type { ChartInterval, ChartPoint } from '../stockMarket.types';
 import { Box } from '@mui/material';
 
 const StockChart = lazy(() => import('./StockChart'));
 
-const StockDashboard = () => {
+const Market = () => {
   const [inputTicker, setInputTicker] = useState<string>('AAPL');
   const [ticker, setTicker] = useState<string>('AAPL');
   const [interval, setInterval] = useState<ChartInterval>('YTD');
@@ -213,4 +213,4 @@ const StockDashboard = () => {
   );
 };
 
-export default StockDashboard;
+export default Market;

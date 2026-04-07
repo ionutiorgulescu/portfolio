@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumber, formatTimestamp } from './stockDashboard.types';
+import { formatNumber, formatTimestamp } from './stockMarket.types';
 
 export type PortfolioChartPoint = {
   t: number;

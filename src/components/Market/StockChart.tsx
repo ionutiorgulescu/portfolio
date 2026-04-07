@@ -7,8 +7,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumber, formatTimestamp } from './stockDashboard.types';
-import type { ChartPoint } from './stockDashboard.types';
+import { formatNumber, formatTimestamp } from '../stockMarket.types';
+import type { ChartPoint } from '../stockMarket.types';
 
 type Props = {
   chartData: ChartPoint[];

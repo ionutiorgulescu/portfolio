@@ -1,8 +1,8 @@
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
-import { intervalOptions } from './stockDashboard.types';
-import type { ChartInterval } from './stockDashboard.types';
+import { intervalOptions } from './stockMarket.types';
+import type { ChartInterval } from './stockMarket.types';
 
 type Props = {
   interval: ChartInterval;

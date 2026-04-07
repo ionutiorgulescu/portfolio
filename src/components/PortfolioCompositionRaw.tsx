@@ -91,9 +91,17 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                         >
                             {row.assetName}
                         </Typography>
+                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
+                            <Typography variant="body2" fontWeight={500} color="text.secondary">
+                                qty {formatQuantity(row.quantity)}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled">
+                                avg {formatCurrency(row.avgCost, currency)}
+                            </Typography>
+                        </Box>
 
                         {/* Quantity + Avg Cost — mobile only */}
-                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1 }}>
+                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1, zIndex: 1, }}>
                             <Typography variant="body2" fontWeight={500} color="text.secondary">
                                 {formatQuantity(row.quantity)}
                             </Typography>

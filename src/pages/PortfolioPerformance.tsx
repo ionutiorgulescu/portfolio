@@ -19,8 +19,8 @@ import {
   getNiceTickStep,
   intervalOptions,
   parseIsoDate,
-} from '../components/stockDashboard.types';
-import type { ChartInterval } from '../components/stockDashboard.types';
+} from '../components/stockMarket.types';
+import type { ChartInterval } from '../components/stockMarket.types';
 import type { PortfolioChartPoint } from '../components/PortfolioChart';
 
 const PortfolioChart = lazy(() => import('../components/PortfolioChart'));
