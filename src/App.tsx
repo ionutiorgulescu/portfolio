@@ -11,6 +11,7 @@ import Goal from './pages/Goal';
 import PortfolioPerformance from './pages/PortfolioPerformance';
 import Transactions from './pages/Transactions';
 import { PortfolioProvider } from './contexts/PortfolioContext';
+import Plan from './pages/Plan';
 
 function App() {
   const { user, loading } = useAuthSession();
@@ -59,6 +60,7 @@ function App() {
           <Route path="performance" element={<PortfolioPerformance />} />
           <Route path="markets" element={<Markets />} />
           <Route path="goal" element={<Goal />} />
+          <Route path="plan" element={<Plan />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

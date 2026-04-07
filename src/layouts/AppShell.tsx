@@ -25,6 +25,7 @@ import GoalIcon from '@mui/icons-material/PieChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
+import CallMadeIcon from '@mui/icons-material/CallMade';
 import { NavLink, Outlet } from 'react-router-dom';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
@@ -45,6 +46,7 @@ const menuItems = [
   { label: 'Performance', path: '/performance', icon: <AttachMoneyIcon /> },
   { label: 'Markets', path: '/markets', icon: <ShowChartIcon /> },
   { label: 'Goal', path: '/goal', icon: <GoalIcon /> },
+  { label: 'Plan', path: '/plan', icon: <CallMadeIcon /> },
 ];
 
 const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
