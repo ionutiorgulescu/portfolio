@@ -109,7 +109,7 @@ const fieldSx = {
 
 export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetupProps) {
   const [form, setForm] = useState<PlanForm>(
-    existingPlan ?? { startDate: "", targetValue: "", targetYears: "" }
+    existingPlan ?? { startDate: "2023-06-01", targetValue: "", targetYears: "" }
   );
   const [saved, setSaved] = useState<boolean>(!!existingPlan);
   const [editing, setEditing] = useState<boolean>(!existingPlan);
@@ -181,9 +181,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                   size="small"
                   InputLabelProps={{ shrink: true }}
                   value={form.startDate}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    handleFieldChange("startDate", e.target.value)
-                  }
+                  InputProps={{ readOnly: true }}
                   sx={fieldSx}
                 />
               ) : (
