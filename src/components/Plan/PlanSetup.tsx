@@ -11,7 +11,6 @@ import {
   FormControl,
   InputLabel,
   TextField,
-  Stack,
   CircularProgress,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -87,7 +86,7 @@ function toPlanParams(form: PlanForm): PlanParams {
 function ReadOnlyField({ label, value }: ReadOnlyFieldProps) {
   return (
     <Box>
-      <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: "#aaa", textTransform: "uppercase", mb: 0.5 }}>
+      <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: "#8F8F8F", textTransform: "uppercase", mb: 0.5 }}>
         {label}
       </Typography>
       <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
@@ -149,7 +148,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
           {/* Card Header */}
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2.5 }}>
             <Box>
-              <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.5, color: "#aaa", textTransform: "uppercase", mb: 0.5 }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.5, color: "#8F8F8F", textTransform: "uppercase", mb: 0.5 }}>
                 Investment Plan
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 700, color: "#111" }}>
@@ -276,13 +275,13 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
           {data && (
             <Box sx={{ mx: 2, mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr 1fr 1fr" }, gap: 1.5 }}>
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", p: 2 }}>
-                <Typography sx={{ fontSize: 12, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                   Progress
                 </Typography>
                 <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#111", mt: 0.5 }}>
                   ${data.stats.totalInvested.toLocaleString()}
                 </Typography>
-                <Typography sx={{ fontSize: 12, color: "#aaa", mt: 0.25 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", mt: 0.25 }}>
                   of ${form.targetValue} · {data.stats.currentProgress}%
                 </Typography>
                 <Box sx={{ mt: 1, height: 4, borderRadius: 2, bgcolor: "#f0f0f0", overflow: "hidden" }}>
@@ -291,31 +290,31 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
               </Card>
 
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", p: 2 }}>
-                <Typography sx={{ fontSize: 12, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                   Schedule
                 </Typography>
                 <Typography sx={{ fontSize: 18, fontWeight: 800, color: scheduleColor, mt: 0.5 }}>
                   {data.stats.scheduleStatus === "on-track" ? "On Track" : data.stats.scheduleStatus === "ahead" ? "Ahead" : "Behind"}
                 </Typography>
-                <Typography sx={{ fontSize: 12, color: "#aaa", mt: 0.25 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", mt: 0.25 }}>
                   avg ${data.stats.avgMonthly.toLocaleString()} / mo
                 </Typography>
               </Card>
 
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", p: 2 }}>
-                <Typography sx={{ fontSize: 12, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                   Monthly Target
                 </Typography>
                 <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#111", mt: 0.5 }}>
                   ${data.stats.targetPerMonth.toLocaleString()}
                 </Typography>
-                <Typography sx={{ fontSize: 12, color: "#aaa", mt: 0.25 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", mt: 0.25 }}>
                   {data.stats.monthsTracked} of {data.stats.monthsTotal} months
                 </Typography>
               </Card>
 
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", p: 2 }}>
-                <Typography sx={{ fontSize: 12, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
                   Est. Finish
                 </Typography>
                 <Typography sx={{ fontSize: 18, fontWeight: 800, color: "#111", mt: 0.5 }}>
@@ -323,7 +322,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     ? new Date(`${data.stats.projectedFinishMonth}-01`).toLocaleDateString("en-US", { month: "short", year: "numeric" })
                     : "—"}
                 </Typography>
-                <Typography sx={{ fontSize: 12, color: "#aaa", mt: 0.25 }}>
+                <Typography sx={{ fontSize: 12, color: "#8F8F8F", mt: 0.25 }}>
                   at current pace
                 </Typography>
               </Card>
@@ -336,7 +335,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
               <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111", mb: 0.5 }}>
                 Investment Trajectory
               </Typography>
-              <Typography sx={{ fontSize: 12, color: "#aaa", mb: 2 }}>
+              <Typography sx={{ fontSize: 12, color: "#8F8F8F", mb: 2 }}>
                 Actual vs target · ${data?.stats.targetPerMonth.toLocaleString()} / mo target
               </Typography>
 
