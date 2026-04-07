@@ -29,8 +29,8 @@ import { usePlan, type PlanParams } from "../../hooks/usePlan";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const TARGET_VALUES: string[] = ["50,000", "75,000", "100,000", "125,000", "150,000"];
-const TARGET_YEARS: number[] = [5, 7, 10, 12, 15];
+const TARGET_VALUES: string[] = ["50,000", "75,000", "100,000", "125,000", "150,000", "200,000"];
+const TARGET_YEARS: number[] = [5, 7, 10, 12, 15, 20];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
