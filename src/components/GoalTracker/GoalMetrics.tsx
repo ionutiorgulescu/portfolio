@@ -37,13 +37,25 @@ const variantColor: Record<Variant, string | undefined> = {
 
 const gridSx = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: 2,
+    gridTemplateColumns: {
+        xs: '1fr',
+        sm: 'repeat(2, minmax(0, 1fr))',
+        lg: 'repeat(3, minmax(0, 1fr))',
+    },
+    gap: { xs: 1.5, sm: 2 },
+};
+
+const cardSx = {
+    bgcolor: 'white',
+    borderRadius: '16px',
+    p: { xs: 2, sm: 3 },
+    boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+    minWidth: 0,
 };
 
 function MetricCardSkeleton({ withBar = false }: { withBar?: boolean }) {
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+        <Box sx={cardSx}>
             <Skeleton width={120} height={20} sx={{ mb: 1.5 }} />
             <Skeleton width={140} height={36} />
             {withBar && <Skeleton width="100%" height={6} sx={{ mt: 2, borderRadius: 3 }} />}
@@ -53,13 +65,13 @@ function MetricCardSkeleton({ withBar = false }: { withBar?: boolean }) {
 
 function MetricCard({ label, value, variant = 'default' }: MetricCardProps) {
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+        <Box sx={cardSx}>
             <Typography
                 sx={{
                     ...primaryTextSx,
                     mb: 1.5,
-                    fontSize: 20,
-                    lineHeight: '28px',
+                    fontSize: { xs: 16, sm: 18, md: 20 },
+                    lineHeight: { xs: '24px', sm: '26px', md: '28px' },
                     fontWeight: 600,
                 }}
             >
@@ -68,10 +80,11 @@ function MetricCard({ label, value, variant = 'default' }: MetricCardProps) {
             <Typography
                 sx={{
                     fontFamily: '"Open Sans", sans-serif',
-                    fontSize: 40,
-                    lineHeight: '40px',
+                    fontSize: { xs: 28, sm: 34, md: 40 },
+                    lineHeight: { xs: '34px', sm: '36px', md: '40px' },
                     fontWeight: 700,
                     color: variantColor[variant],
+                    wordBreak: 'break-word',
                 }}
             >
                 {value}
@@ -90,13 +103,13 @@ interface ProgressCardProps {
 function ProgressCard({ label, current, total, fmt }: ProgressCardProps) {
     const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <Box sx={{ ...cardSx, display: 'flex', flexDirection: 'column', gap: 0 }}>
             <Typography
                 sx={{
                     ...primaryTextSx,
                     mb: 1.5,
-                    fontSize: 20,
-                    lineHeight: '28px',
+                    fontSize: { xs: 16, sm: 18, md: 20 },
+                    lineHeight: { xs: '24px', sm: '26px', md: '28px' },
                     fontWeight: 600,
                 }}
             >
@@ -105,18 +118,19 @@ function ProgressCard({ label, current, total, fmt }: ProgressCardProps) {
             <Typography
                 sx={{
                     ...primaryTextSx,
-                    fontSize: 40,
-                    lineHeight: '40px',
+                    fontSize: { xs: 28, sm: 34, md: 40 },
+                    lineHeight: { xs: '34px', sm: '36px', md: '40px' },
                     fontWeight: 700,
+                    wordBreak: 'break-word',
                 }}
             >
                 {fmt(current)}
             </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.5, mb: 1.5 }}>
-                <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'baseline' }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.5, sm: 0 }, mt: 0.5, mb: 1.5 }}>
+                <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: '18px', sm: '20px' }, wordBreak: 'break-word' }}>
                     of {fmt(total)} goal
                 </Typography>
-                <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px', fontWeight: 600 }}>
+                <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: '18px', sm: '20px' }, fontWeight: 600 }}>
                     {pct}%
                 </Typography>
             </Box>

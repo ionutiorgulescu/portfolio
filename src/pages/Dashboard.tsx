@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import { DashboardStats } from '../components/DashboardStats';
 import { PortfolioComposition } from '../components/PortfolioComposition';
 import { FilterControl } from '../components/FilterControl';
@@ -21,6 +20,7 @@ const Dashboard = () => {
         justifyContent: 'space-between',
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 0 },
+        paddingTop: { xs: 4, sm: 2 },
       }}>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
