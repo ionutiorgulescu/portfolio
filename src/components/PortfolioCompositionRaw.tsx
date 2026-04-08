@@ -115,7 +115,7 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                                 fontWeight={500}
                                 sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: "18px", sm: "20px" } }}
                             >
-                                qty {formatQuantity(row.quantity)}
+                                {formatQuantity(row.quantity)}
                             </Typography>
                             <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 12, sm: 14 }, lineHeight: { xs: "18px", sm: "20px" } }}>
                                 avg {formatCurrency(row.avgCost, currency)}
