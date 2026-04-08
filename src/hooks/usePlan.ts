@@ -123,43 +123,77 @@ function computePlanData(
   const currentKey = getCurrentMonthKey();
   const startKey = toMonthKey(startDate);
 
-  // Build monthly net invested map from positions
-  const buyMap = new Map<string, number>();
-  const sellMap = new Map<string, number>();
+  // Sort chronologically, buys before sells on the same date (mirrors usePortfolioStats)
+  const sortedPositions = [...positions].sort((a, b) => {
+    if (a.buy_date !== b.buy_date) return a.buy_date < b.buy_date ? -1 : 1;
+    if (a.status === PositionStatus.Buy && b.status === PositionStatus.Sell) return -1;
+    if (a.status === PositionStatus.Sell && b.status === PositionStatus.Buy) return 1;
+    return 0;
+  });
 
-  for (const pos of positions) {
+  // Group positions by month
+  const positionsByMonth = new Map<string, Position[]>();
+  for (const pos of sortedPositions) {
     const key = toMonthKey(pos.buy_date);
-    const qty = Number(pos.quantity);
-    const px = Number(pos.price);
-    if (!Number.isFinite(qty) || !Number.isFinite(px)) continue;
-
-    if (pos.status === PositionStatus.Buy) {
-      buyMap.set(key, (buyMap.get(key) ?? 0) + qty * px);
-    } else if (pos.status === PositionStatus.Sell) {
-      sellMap.set(key, (sellMap.get(key) ?? 0) + qty * px);
-    }
+    const list = positionsByMonth.get(key) ?? [];
+    list.push(pos);
+    positionsByMonth.set(key, list);
   }
 
   const allKeys = buildAllMonthKeys(startKey, targetYears);
 
-  // Build trajectory with cumulative actual
-  let cumulativeActual = 0;
+  // FIFO lot queues per ticker — same approach as usePortfolioStats so that
+  // sells remove cost basis at original buy price, not at sell price.
+  const lotQueues = new Map<string, Array<{ quantity: number; price: number }>>();
+
+  const getTotalCostBasis = (): number => {
+    let total = 0;
+    for (const queue of lotQueues.values()) {
+      for (const lot of queue) total += lot.quantity * lot.price;
+    }
+    return total;
+  };
+
+  // Build trajectory: each past month's "actual" = cost basis of open lots at month-end
   const trajectory: TrajectoryPoint[] = allKeys.map((key, index) => {
-    const monthIndex = index + 1; // 1-based
+    const monthIndex = index + 1;
     const target = Math.round(targetPerMonth * monthIndex);
     const isPast = key <= currentKey;
 
     if (isPast) {
-      const buys = buyMap.get(key) ?? 0;
-      const sells = sellMap.get(key) ?? 0;
-      const net = Math.max(0, buys - sells);
-      cumulativeActual += net;
+      for (const pos of positionsByMonth.get(key) ?? []) {
+        const qty = Number(pos.quantity);
+        const px = Number(pos.price);
+        if (!Number.isFinite(qty) || !Number.isFinite(px)) continue;
+
+        if (pos.status === PositionStatus.Buy) {
+          const queue = lotQueues.get(pos.ticker_symbol) ?? [];
+          queue.push({ quantity: qty, price: px });
+          lotQueues.set(pos.ticker_symbol, queue);
+        } else if (pos.status === PositionStatus.Sell) {
+          const queue = lotQueues.get(pos.ticker_symbol) ?? [];
+          let remaining = qty;
+          while (remaining > 0 && queue.length > 0) {
+            const front = queue[0];
+            if (front.quantity <= remaining) {
+              remaining -= front.quantity;
+              queue.shift();
+            } else {
+              front.quantity -= remaining;
+              remaining = 0;
+            }
+          }
+          lotQueues.set(pos.ticker_symbol, queue);
+        }
+      }
+
+      const costBasis = getTotalCostBasis();
       return {
         key,
         label: monthLabel(key),
-        actual: Math.round(cumulativeActual),
+        actual: Math.round(costBasis),
         target,
-        isAhead: cumulativeActual >= target,
+        isAhead: costBasis >= target,
       };
     }
 
@@ -179,13 +213,11 @@ function computePlanData(
     ? (pastPoints[pastPoints.length - 1].actual ?? 0)
     : 0;
 
-  const monthlyContributions = allKeys
-    .filter(key => key <= currentKey)
-    .map(key => {
-      const buys = buyMap.get(key) ?? 0;
-      const sells = sellMap.get(key) ?? 0;
-      return Math.max(0, buys - sells);
-    });
+  // Monthly delta of cost basis (how much the invested amount grew each month)
+  const monthlyContributions = pastPoints.map((p, i) => {
+    const prev = i > 0 ? (pastPoints[i - 1].actual ?? 0) : 0;
+    return Math.max(0, (p.actual ?? 0) - prev);
+  });
 
   const avgMonthly = monthsTracked > 0
     ? Math.round(monthlyContributions.reduce((s, v) => s + v, 0) / monthsTracked)
@@ -202,7 +234,6 @@ function computePlanData(
         ? 'ahead'
         : 'behind';
 
-  // Projected finish: based on avg monthly pace, how many more months needed
   let projectedFinishMonth: string | null = null;
   if (avgMonthly > 0) {
     const remaining = targetValue - totalInvested;
