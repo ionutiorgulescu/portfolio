@@ -19,10 +19,20 @@ interface MetricCardProps {
     variant?: Variant;
 }
 
+const primaryTextSx = {
+    color: '#393a36',
+    fontFamily: '"Open Sans", sans-serif',
+};
+
+const secondaryTextSx = {
+    color: '#61615e',
+    fontFamily: '"Open Sans", sans-serif',
+};
+
 const variantColor: Record<Variant, string | undefined> = {
-    default: undefined,
-    success: '#16a34a',
-    danger: '#dc2626',
+    default: '#393a36',
+    success: '#27a69a',
+    danger: '#d92673',
 };
 
 const gridSx = {
@@ -33,7 +43,7 @@ const gridSx = {
 
 function MetricCardSkeleton({ withBar = false }: { withBar?: boolean }) {
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
             <Skeleton width={120} height={20} sx={{ mb: 1.5 }} />
             <Skeleton width={140} height={36} />
             {withBar && <Skeleton width="100%" height={6} sx={{ mt: 2, borderRadius: 3 }} />}
@@ -43,11 +53,27 @@ function MetricCardSkeleton({ withBar = false }: { withBar?: boolean }) {
 
 function MetricCard({ label, value, variant = 'default' }: MetricCardProps) {
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+            <Typography
+                sx={{
+                    ...primaryTextSx,
+                    mb: 1.5,
+                    fontSize: 20,
+                    lineHeight: '28px',
+                    fontWeight: 600,
+                }}
+            >
                 {label}
             </Typography>
-            <Typography variant="h5" fontWeight={700} sx={{ color: variantColor[variant] }}>
+            <Typography
+                sx={{
+                    fontFamily: '"Open Sans", sans-serif',
+                    fontSize: 40,
+                    lineHeight: '40px',
+                    fontWeight: 700,
+                    color: variantColor[variant],
+                }}
+            >
                 {value}
             </Typography>
         </Box>
@@ -64,18 +90,33 @@ interface ProgressCardProps {
 function ProgressCard({ label, current, total, fmt }: ProgressCardProps) {
     const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
     return (
-        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+        <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <Typography
+                sx={{
+                    ...primaryTextSx,
+                    mb: 1.5,
+                    fontSize: 20,
+                    lineHeight: '28px',
+                    fontWeight: 600,
+                }}
+            >
                 {label}
             </Typography>
-            <Typography variant="h5" fontWeight={700}>
+            <Typography
+                sx={{
+                    ...primaryTextSx,
+                    fontSize: 40,
+                    lineHeight: '40px',
+                    fontWeight: 700,
+                }}
+            >
                 {fmt(current)}
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mt: 0.5, mb: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}>
                     of {fmt(total)} goal
                 </Typography>
-                <Typography variant="caption" fontWeight={600} color="text.secondary">
+                <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px', fontWeight: 600 }}>
                     {pct}%
                 </Typography>
             </Box>

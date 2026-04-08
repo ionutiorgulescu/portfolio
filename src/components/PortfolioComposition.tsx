@@ -34,6 +34,16 @@ type PortfolioCompositionProps = {
   portfolioId: string;
 };
 
+const primaryTextSx = {
+  color: '#393a36',
+  fontFamily: '"Open Sans", sans-serif',
+};
+
+const secondaryTextSx = {
+  color: '#61615e',
+  fontFamily: '"Open Sans", sans-serif',
+};
+
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
   const { composition, loading, error } = usePortfolioComposition(filter, portfolioId);
   const currency = filter === 'bvb' ? 'RON' : 'USD';
@@ -43,8 +53,16 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
   const maxWeight = composition[0]?.weight ?? 100;
 
   return (
-    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+      <Typography
+        sx={{
+          ...primaryTextSx,
+          fontSize: 20,
+          lineHeight: '28px',
+          fontWeight: 600,
+          mb: 2,
+        }}
+      >
         Composition
       </Typography>
 
@@ -61,14 +79,24 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
       >
         {/* Stock column header — shows "Stock" on desktop, "Stock / Amount" on mobile */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <Typography
+            sx={{
+              ...secondaryTextSx,
+              fontSize: 16,
+              lineHeight: '20px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
             Stock
           </Typography>
           <Typography
-            variant="caption"
-            color="text.disabled"
-            fontWeight={600}
             sx={{
+              ...secondaryTextSx,
+              fontSize: 16,
+              lineHeight: '20px',
+              fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
               display: { xs: 'block', sm: 'none' },
@@ -78,10 +106,30 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           </Typography>
         </Box>
 
-        <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'right' }}>
+        <Typography
+          sx={{
+            ...secondaryTextSx,
+            fontSize: 16,
+            lineHeight: '20px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            textAlign: 'right',
+          }}
+        >
           Weight
         </Typography>
-        <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'right' }}>
+        <Typography
+          sx={{
+            ...secondaryTextSx,
+            fontSize: 16,
+            lineHeight: '20px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            textAlign: 'right',
+          }}
+        >
           Gain / Loss
         </Typography>
       </Box>
@@ -89,7 +137,15 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
       {loading ? (
         [...Array(8)].map((_, i) => <RowSkeleton key={i} />)
       ) : composition.length === 0 ? (
-        <Typography variant="body2" color="text.disabled" sx={{ py: 4, textAlign: 'center' }}>
+        <Typography
+          sx={{
+            ...secondaryTextSx,
+            fontSize: 16,
+            lineHeight: '20px',
+            py: 4,
+            textAlign: 'center',
+          }}
+        >
           No positions found.
         </Typography>
       ) : (

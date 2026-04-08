@@ -28,6 +28,52 @@ const gridSx = {
   gap: 2,
 };
 
+const statCardSx = {
+  bgcolor: 'white',
+  borderRadius: '16px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+  p: 3,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 3,
+};
+
+const statTitleSx = {
+  fontSize: 20,
+  lineHeight: '28px',
+  color: '#393a36',
+  fontWeight: 600,
+};
+
+const statValueSx = {
+  fontSize: 40,
+  lineHeight: '40px',
+  fontWeight: 700,
+  color: '#393a36',
+};
+
+const statSubTextSx = {
+  fontSize: 20,
+  lineHeight: '28px',
+  color: '#61615e',
+  mt: 1.5,
+};
+
+const chipSxBase = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '4px',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  px: 1,
+  py: 0.5,
+  fontSize: 16,
+  lineHeight: '20px',
+  fontWeight: 600,
+  width: 'fit-content',
+};
+
 type DashboardStatsProps = {
   filter: CompositionFilter;
   portfolioId: string;
@@ -51,46 +97,57 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
 
   return (
     <Box sx={gridSx}>
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+      <Box sx={statCardSx}>
+        <Typography sx={statTitleSx}>
           Total Portfolio Value
         </Typography>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>
-          {formatCurrency(stats.totalValue, currency)}
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box component="span" sx={{ bgcolor: gainPositive ? '#dcfce7' : '#fee2e2', color: gainPositive ? '#16a34a' : '#dc2626', fontSize: 12, fontWeight: 600, px: 1, py: 0.25, borderRadius: '20px' }}>
-            {gainPositive ? '↑' : '↓'} {Math.abs(stats.allTimeGainPercent).toFixed(2)}%
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Typography sx={statValueSx}>
+              {formatCurrency(stats.totalValue, currency)}
+            </Typography>
+            <Box
+              component="span"
+              sx={{
+                ...chipSxBase,
+                bgcolor: gainPositive ? '#edf9f8' : '#fdf2f7',
+                borderColor: gainPositive ? '#9ed9d4' : '#ea88b2',
+                color: gainPositive ? '#27a69a' : '#d92673',
+              }}
+            >
+              {gainPositive ? '▲' : '▼'} {Math.abs(stats.allTimeGainPercent).toFixed(2)}%
+            </Box>
           </Box>
-          <Typography variant="caption" color="text.disabled">all time</Typography>
+          <Typography sx={statSubTextSx}>
+            based on current holdings
+          </Typography>
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>All-Time Gain</Typography>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25, color: gainPositive ? '#16a34a' : '#dc2626' }}>
-          {gainPositive ? '+' : ''}{formatCurrency(stats.allTimeGain, currency)}
-        </Typography>
-        <Typography variant="caption" color="text.disabled">
-          vs cost basis {formatCurrency(stats.totalCostBasis, currency)}
-        </Typography>
-      </Box>
-
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>Total Transactions</Typography>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>{stats.totalPositions}</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box component="span" sx={{ bgcolor: '#dbeafe', color: '#2563eb', fontSize: 12, fontWeight: 600, px: 1, py: 0.25, borderRadius: '20px' }}>
-            {stats.openPositions} buy
-          </Box>
-          <Typography variant="caption" color="text.disabled">{stats.closedPositions} sell</Typography>
+      <Box sx={statCardSx}>
+        <Typography sx={statTitleSx}>All-Time Gain</Typography>
+        <Box>
+          <Typography
+            sx={{
+              ...statValueSx,
+              color: gainPositive ? '#27a69a' : '#d92673',
+            }}
+          >
+            {gainPositive ? '+' : ''}
+            {formatCurrency(stats.allTimeGain, currency)}
+          </Typography>
+          <Typography sx={statSubTextSx}>
+            vs cost basis {formatCurrency(stats.totalCostBasis, currency)}
+          </Typography>
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>Active Assets</Typography>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 1.25 }}>{stats.activeTickers}</Typography>
-        <Typography variant="caption" color="text.disabled">{stats.openPositions} buy transactions</Typography>
+      <Box sx={statCardSx}>
+        <Typography sx={statTitleSx}>Active Assets</Typography>
+        <Box>
+          <Typography sx={statValueSx}>{stats.activeTickers}</Typography>
+          <Typography sx={statSubTextSx}>{stats.openPositions} buy transactions</Typography>
+        </Box>
       </Box>
     </Box>
   );

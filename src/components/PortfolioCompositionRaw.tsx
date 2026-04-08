@@ -1,6 +1,16 @@
 import { Box, Typography } from "@mui/material";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
 
+const primaryTextSx = {
+    color: "#393a36",
+    fontFamily: '"Open Sans", sans-serif',
+};
+
+const secondaryTextSx = {
+    color: "#61615e",
+    fontFamily: '"Open Sans", sans-serif',
+};
+
 function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
     return new Intl.NumberFormat(currency === 'RON' ? 'ro-RO' : 'en-US', {
         style: 'currency',
@@ -50,7 +60,14 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                         flexShrink: 0,
                     }}
                 >
-                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: 10 }}>
+                    <Typography
+                        fontWeight={700}
+                        sx={{
+                            ...secondaryTextSx,
+                            fontSize: 10,
+                            lineHeight: "12px",
+                        }}
+                    >
                         {row.ticker.slice(0, 4)}
                     </Typography>
                 </Box>
@@ -76,9 +93,11 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
 
                         {/* Asset name — desktop only */}
                         <Typography
-                            variant="body2"
                             fontWeight={500}
                             sx={{
+                                ...primaryTextSx,
+                                fontSize: 16,
+                                lineHeight: "20px",
                                 position: 'relative',
                                 zIndex: 1,
                                 px: 1,
@@ -92,20 +111,26 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                             {row.assetName}
                         </Typography>
                         <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
-                            <Typography variant="body2" fontWeight={500} color="text.secondary">
+                            <Typography
+                                fontWeight={500}
+                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: "20px" }}
+                            >
                                 qty {formatQuantity(row.quantity)}
                             </Typography>
-                            <Typography variant="caption" color="text.disabled">
+                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: "20px" }}>
                                 avg {formatCurrency(row.avgCost, currency)}
                             </Typography>
                         </Box>
 
                         {/* Quantity + Avg Cost — mobile only */}
                         <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1, zIndex: 1, }}>
-                            <Typography variant="body2" fontWeight={500} color="text.secondary">
+                            <Typography
+                                fontWeight={500}
+                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: "20px" }}
+                            >
                                 {formatQuantity(row.quantity)}
                             </Typography>
-                            <Typography variant="caption" color="text.disabled">
+                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: "20px" }}>
                                 avg {formatCurrency(row.avgCost, currency)}
                             </Typography>
                         </Box>
@@ -114,16 +139,27 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
             </Box>
 
             { }
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right' }}>
+            <Typography
+                sx={{
+                    ...secondaryTextSx,
+                    fontSize: 16,
+                    lineHeight: "20px",
+                    textAlign: 'right',
+                }}
+            >
                 {formatPercent(row.weight)}
             </Typography>
 
             {/* Gain/Loss */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
                 <Typography
-                    variant="body2"
                     fontWeight={600}
-                    sx={{ color: gainPositive ? '#16a34a' : '#dc2626' }}
+                    sx={{
+                        fontFamily: '"Open Sans", sans-serif',
+                        fontSize: 16,
+                        lineHeight: "20px",
+                        color: gainPositive ? '#27a69a' : '#d92673',
+                    }}
                 >
                     {gainPositive ? '↑' : '↓'} {gainPositive ? '+' : ''}{formatCurrency(row.gainLoss, currency)}
                 </Typography>

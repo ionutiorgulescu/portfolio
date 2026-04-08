@@ -32,6 +32,16 @@ interface ChartEntry extends MonthlyData {
   currencySymbol: string;
 }
 
+const primaryTextSx = {
+  color: '#393a36',
+  fontFamily: '"Open Sans", sans-serif',
+};
+
+const secondaryTextSx = {
+  color: '#61615e',
+  fontFamily: '"Open Sans", sans-serif',
+};
+
 const COLOR_MET = 'var(--color-goal-met)';
 const COLOR_MISSED = 'var(--color-goal-in-progress)';
 const COLOR_SHORTFALL = 'var(--color-goal-remaining)';
@@ -67,44 +77,44 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
 
   return (
     <Box sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider', borderRadius: '12px', px: 1.5, py: 1.25, minWidth: 150, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
-      <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+      <Typography sx={{ ...primaryTextSx, fontSize: 16, lineHeight: '20px', fontWeight: 600, mb: 0.5 }}>
         {String(label)}
       </Typography>
       {entry.hasData ? (
         <>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
             Buy:{' '}
-            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
               {fmtAmount(entry.totalBuys, sym)}
             </Box>
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
             Sell:{' '}
-            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
               {fmtAmount(entry.totalSells, sym)}
             </Box>
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
             Invested:{' '}
-            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
               {fmtAmount(entry.totalInvested, sym)}
             </Box>
           </Typography>
           {entry.metGoal ? (
-            <Typography variant="caption" sx={{ color: '#16a34a' }} display="block">
+            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#27a69a', fontFamily: '"Open Sans", sans-serif' }} display="block">
               +{fmtAmount(entry.invested - entry.goal, sym)} above goal
             </Typography>
           ) : (
-            <Typography variant="caption" sx={{ color: '#dc2626' }} display="block">
+            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#d92673', fontFamily: '"Open Sans", sans-serif' }} display="block">
               Remaining:{' '}
-              <Box component="span" sx={{ fontWeight: 600 }}>
+              <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
                 {fmtAmount(entry.shortfall, sym)}
               </Box>
             </Typography>
           )}
         </>
       ) : (
-        <Typography variant="caption" color="text.disabled" display="block">
+        <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
           No investment
         </Typography>
       )}
@@ -128,7 +138,7 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
   }));
 
   return (
-    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 2.5, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 2.5, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart
           data={data}
@@ -138,7 +148,7 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
           <CartesianGrid vertical={false} stroke="#e5e7eb" strokeOpacity={1} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 12, fill: '#61615e' }}
             tickLine={false}
             axisLine={false}
             interval={months.length > 24 ? 2 : months.length > 12 ? 1 : 0}
@@ -147,7 +157,7 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
             height={months.length > 18 ? 40 : 24}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 12, fill: '#61615e' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => formatCurrency(v, currencySymbol)}
@@ -195,7 +205,7 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
         {LEGEND.map(l => (
           <Box key={l.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: l.color }} />
-            <Typography variant="caption" color="text.secondary">{l.label}</Typography>
+            <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}>{l.label}</Typography>
           </Box>
         ))}
       </Box>

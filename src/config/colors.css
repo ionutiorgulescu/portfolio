@@ -14,7 +14,7 @@
   --color-interval-default-text: #4b5563;
 
   /* Goal tracker */
-  --color-goal-met: #03ca0a;
-  --color-goal-in-progress: #03ca0a;
-  --color-goal-remaining: #A6FCA9;
+  --color-goal-met: #27a69a;
+  --color-goal-in-progress: #27a69a;
+  --color-goal-remaining: #B4EEE5;
 }

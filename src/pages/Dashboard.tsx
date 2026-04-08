@@ -22,7 +22,6 @@ const Dashboard = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 0 },
       }}>
-        <Typography variant="h4" fontWeight={700}>Dashboard</Typography>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
       <DashboardStats filter={filter} portfolioId={selectedPortfolioId} />
