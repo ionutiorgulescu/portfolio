@@ -117,6 +117,13 @@ const PortfolioPerformance = () => {
     gap: '2px',
   } as const;
 
+  const statCardSx = {
+    borderRadius: '16px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+    p: 3,
+    bgcolor: 'background.paper',
+  } as const;
+
   const filtersRow = (
     <Box
       sx={{
@@ -193,32 +200,38 @@ const PortfolioPerformance = () => {
       )}
 
       {!isLoading && !isError && allData.length > 0 && (
-        <Paper elevation={1} sx={{ p: 3 }}>
-          <Stack spacing={3}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-              <Stack direction="row" alignItems="flex-start" gap={6}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>Total Value</Typography>
-                  <Typography variant="h5" fontWeight={700} color="text.primary">
-                    {filter === 'bvb' ? 'RON' : '$'}{formatNumber(currentValue)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>All-Time Gain</Typography>
-                  <Typography
-                    variant="h5"
-                    fontWeight={700}
-                    color={allTimeGain > 0 ? 'success.main' : allTimeGain < 0 ? 'error.main' : 'text.primary'}
-                  >
-                    {allTimeGain >= 0 ? '+' : '-'}{filter === 'bvb' ? 'RON' : '$'}{formatNumber(Math.abs(allTimeGain))}
-                  </Typography>
-                </Box>
-              </Stack>
+        <Stack spacing={2}>
+          {filtersRow}
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
+              <Box sx={statCardSx}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>Total Value</Typography>
+                <Typography variant="h5" fontWeight={700} color="text.primary">
+                  {filter === 'bvb' ? 'RON' : '$'}{formatNumber(currentValue)}
+                </Typography>
+              </Box>
+              <Box sx={statCardSx}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>All-Time Gain</Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight={700}
+                  color={allTimeGain > 0 ? 'success.main' : allTimeGain < 0 ? 'error.main' : 'text.primary'}
+                >
+                  {allTimeGain >= 0 ? '+' : '-'}{filter === 'bvb' ? 'RON' : '$'}{formatNumber(Math.abs(allTimeGain))}
+                </Typography>
+              </Box>
             </Box>
 
-            {filtersRow}
-
-            <Box sx={{ height: 380, width: '100%', borderRadius: 3, bgcolor: 'background.paper', p: 1 }}>
+            <Box
+              sx={{
+                height: 380,
+                width: '100%',
+                borderRadius: '16px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+                bgcolor: 'background.paper',
+                p: 1,
+              }}
+            >
               {chartData.length > 0 ? (
                 <Suspense fallback={<Box display="flex" alignItems="center" justifyContent="center" height="100%"><CircularProgress size={32} /></Box>}>
                   <PortfolioChart chartData={chartData} xAxisTickFormatter={xAxisTickFormatter} yAxisScale={yAxisScale} />
@@ -230,8 +243,7 @@ const PortfolioPerformance = () => {
                 </Box>
               )}
             </Box>
-          </Stack>
-        </Paper>
+        </Stack>
       )}
     </Stack>
   );
