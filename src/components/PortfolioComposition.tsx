@@ -82,8 +82,8 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           <Typography
             sx={{
               ...secondaryTextSx,
-              fontSize: 16,
-              lineHeight: '20px',
+              fontSize: { xs: 13, sm: 16 },
+              lineHeight: { xs: '18px', sm: '20px' },
               fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -94,8 +94,8 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           <Typography
             sx={{
               ...secondaryTextSx,
-              fontSize: 16,
-              lineHeight: '20px',
+              fontSize: { xs: 12, sm: 16 },
+              lineHeight: { xs: '18px', sm: '20px' },
               fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -109,8 +109,8 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
         <Typography
           sx={{
             ...secondaryTextSx,
-            fontSize: 16,
-            lineHeight: '20px',
+            fontSize: { xs: 12, sm: 16 },
+            lineHeight: { xs: '18px', sm: '20px' },
             fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: 0.5,
@@ -122,8 +122,8 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
         <Typography
           sx={{
             ...secondaryTextSx,
-            fontSize: 16,
-            lineHeight: '20px',
+            fontSize: { xs: 12, sm: 16 },
+            lineHeight: { xs: '18px', sm: '20px' },
             fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: 0.5,

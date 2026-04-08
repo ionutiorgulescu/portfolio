@@ -113,11 +113,11 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                         <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
                             <Typography
                                 fontWeight={500}
-                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: "20px" }}
+                                sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: "18px", sm: "20px" } }}
                             >
                                 qty {formatQuantity(row.quantity)}
                             </Typography>
-                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: "20px" }}>
+                            <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 12, sm: 14 }, lineHeight: { xs: "18px", sm: "20px" } }}>
                                 avg {formatCurrency(row.avgCost, currency)}
                             </Typography>
                         </Box>
@@ -126,11 +126,11 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                         <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1, zIndex: 1, }}>
                             <Typography
                                 fontWeight={500}
-                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: "20px" }}
+                                sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: "18px", sm: "20px" } }}
                             >
                                 {formatQuantity(row.quantity)}
                             </Typography>
-                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: "20px" }}>
+                            <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 12, sm: 14 }, lineHeight: { xs: "18px", sm: "20px" } }}>
                                 avg {formatCurrency(row.avgCost, currency)}
                             </Typography>
                         </Box>
@@ -142,8 +142,8 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
             <Typography
                 sx={{
                     ...secondaryTextSx,
-                    fontSize: 16,
-                    lineHeight: "20px",
+                    fontSize: { xs: 14, sm: 16 },
+                    lineHeight: { xs: "18px", sm: "20px" },
                     textAlign: 'right',
                 }}
             >
@@ -156,8 +156,8 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                     fontWeight={600}
                     sx={{
                         fontFamily: '"Open Sans", sans-serif',
-                        fontSize: 16,
-                        lineHeight: "20px",
+                        fontSize: { xs: 14, sm: 16 },
+                        lineHeight: { xs: "18px", sm: "20px" },
                         color: gainPositive ? '#27a69a' : '#d92673',
                     }}
                 >
