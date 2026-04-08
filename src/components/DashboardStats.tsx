@@ -14,9 +14,9 @@ function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string 
 
 function StatCardSkeleton() {
   return (
-    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      <Skeleton width={120} height={20} sx={{ mb: 1.5 }} />
-      <Skeleton width={150} height={36} sx={{ mb: 1.25 }} />
+    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: { xs: 2, sm: 3 }, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <Skeleton width={120} height={20} sx={{ mb: 1.5, width: { xs: '55%', sm: 120 } }} />
+      <Skeleton width={150} height={36} sx={{ mb: 1.25, width: { xs: '70%', sm: 150 } }} />
       <Skeleton width={100} height={20} />
     </Box>
   );
@@ -24,7 +24,7 @@ function StatCardSkeleton() {
 
 const gridSx = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(240px, 1fr))' },
   gap: 2,
 };
 
@@ -32,31 +32,32 @@ const statCardSx = {
   bgcolor: 'white',
   borderRadius: '16px',
   boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
-  p: 3,
+  p: { xs: 2, sm: 3 },
   display: 'flex',
   flexDirection: 'column',
-  gap: 3,
+  gap: { xs: 2, sm: 3 },
 };
 
 const statTitleSx = {
-  fontSize: 20,
-  lineHeight: '28px',
+  fontSize: { xs: 16, sm: 18, md: 20 },
+  lineHeight: { xs: '24px', sm: '26px', md: '28px' },
   color: '#393a36',
   fontWeight: 600,
 };
 
 const statValueSx = {
-  fontSize: 40,
-  lineHeight: '40px',
+  fontSize: { xs: 28, sm: 34, md: 40 },
+  lineHeight: { xs: '32px', sm: '36px', md: '40px' },
   fontWeight: 700,
   color: '#393a36',
+  wordBreak: 'break-word',
 };
 
 const statSubTextSx = {
-  fontSize: 20,
-  lineHeight: '28px',
+  fontSize: { xs: 14, sm: 16, md: 20 },
+  lineHeight: { xs: '20px', sm: '24px', md: '28px' },
   color: '#61615e',
-  mt: 1.5,
+  mt: { xs: 1, sm: 1.5 },
 };
 
 const chipSxBase = {
@@ -68,8 +69,8 @@ const chipSxBase = {
   borderStyle: 'solid',
   px: 1,
   py: 0.5,
-  fontSize: 16,
-  lineHeight: '20px',
+  fontSize: { xs: 14, sm: 16 },
+  lineHeight: { xs: '18px', sm: '20px' },
   fontWeight: 600,
   width: 'fit-content',
 };
@@ -102,7 +103,7 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
           Total Portfolio Value
         </Typography>
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.5 }}>
             <Typography sx={statValueSx}>
               {formatCurrency(stats.totalValue, currency)}
             </Typography>
