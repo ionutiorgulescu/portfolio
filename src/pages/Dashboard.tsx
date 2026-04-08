@@ -20,7 +20,6 @@ const Dashboard = () => {
         justifyContent: 'space-between',
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 0 },
-        paddingTop: { xs: 4, sm: 2 },
       }}>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
