@@ -124,6 +124,21 @@ const PortfolioPerformance = () => {
     bgcolor: 'background.paper',
   } as const;
 
+  const statTitleSx = {
+    fontSize: { xs: 16, sm: 18, md: 20 },
+    lineHeight: { xs: '24px', sm: '26px', md: '28px' },
+    color: '#393a36',
+    fontWeight: 600,
+    mb: 1,
+  } as const;
+
+  const statValueSx = {
+    fontSize: { xs: 28, sm: 34, md: 40 },
+    lineHeight: { xs: '32px', sm: '36px', md: '40px' },
+    fontWeight: 700,
+    color: '#393a36',
+  } as const;
+
   const filtersRow = (
     <Box
       sx={{
@@ -205,17 +220,18 @@ const PortfolioPerformance = () => {
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
               <Box sx={statCardSx}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>Total Value</Typography>
-                <Typography variant="h5" fontWeight={700} color="text.primary">
+                <Typography sx={statTitleSx}>Total Value</Typography>
+                <Typography sx={statValueSx}>
                   {filter === 'bvb' ? 'RON' : '$'}{formatNumber(currentValue)}
                 </Typography>
               </Box>
               <Box sx={statCardSx}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>All-Time Gain</Typography>
+                <Typography sx={statTitleSx}>All-Time Gain</Typography>
                 <Typography
-                  variant="h5"
-                  fontWeight={700}
-                  color={allTimeGain > 0 ? 'success.main' : allTimeGain < 0 ? 'error.main' : 'text.primary'}
+                  sx={{
+                    ...statValueSx,
+                    color: allTimeGain > 0 ? '#27a69a' : allTimeGain < 0 ? '#d92673' : '#393a36',
+                  }}
                 >
                   {allTimeGain >= 0 ? '+' : '-'}{filter === 'bvb' ? 'RON' : '$'}{formatNumber(Math.abs(allTimeGain))}
                 </Typography>
