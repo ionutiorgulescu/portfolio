@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { useState } from "react";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
 
 const primaryTextSx = {
@@ -30,6 +31,8 @@ function formatQuantity(value: number): string {
 
 export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: TickerComposition; maxWeight: number; currency: 'USD' | 'RON' }) {
     const gainPositive = row.gainLoss >= 0;
+    const [showPercent, setShowPercent] = useState(false);
+    const gainLossPercent = row.costBasis !== 0 ? (row.gainLoss / row.costBasis) * 100 : 0;
 
     return (
         <Box
@@ -151,7 +154,10 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
             </Typography>
 
             {/* Gain/Loss */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+            <Box
+                onClick={() => setShowPercent(prev => !prev)}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, cursor: 'pointer' }}
+            >
                 <Typography
                     fontWeight={600}
                     sx={{
@@ -161,7 +167,11 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
                         color: gainPositive ? '#27a69a' : '#d92673',
                     }}
                 >
-                    {gainPositive ? '↑' : '↓'} {gainPositive ? '+' : ''}{formatCurrency(row.gainLoss, currency)}
+                    {gainPositive ? '↑' : '↓'}{' '}
+                    {showPercent
+                        ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
+                        : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
+                    }
                 </Typography>
             </Box>
         </Box>
