@@ -1,5 +1,4 @@
 import { Box, Typography } from "@mui/material";
-import { useState } from "react";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
 
 const primaryTextSx = {
@@ -29,9 +28,8 @@ function formatQuantity(value: number): string {
         : value.toFixed(4).replace(/\.?0+$/, '');
 }
 
-export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: TickerComposition; maxWeight: number; currency: 'USD' | 'RON' }) {
+export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent, onTogglePercent }: { row: TickerComposition; maxWeight: number; currency: 'USD' | 'RON'; showPercent: boolean; onTogglePercent: () => void }) {
     const gainPositive = row.gainLoss >= 0;
-    const [showPercent, setShowPercent] = useState(false);
     const gainLossPercent = row.costBasis !== 0 ? (row.gainLoss / row.costBasis) * 100 : 0;
 
     return (
@@ -154,10 +152,7 @@ export function PortfolioCompositionRow({ row, maxWeight, currency }: { row: Tic
             </Typography>
 
             {/* Gain/Loss */}
-            <Box
-                onClick={() => setShowPercent(prev => !prev)}
-                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, cursor: 'pointer' }}
-            >
+            <Box onClick={onTogglePercent} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, cursor: 'pointer' }}>
                 <Typography
                     fontWeight={600}
                     sx={{

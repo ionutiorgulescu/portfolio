@@ -2,6 +2,7 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import { useState } from 'react';
 import { usePortfolioComposition } from '../hooks/usePortfolioComposition';
 import type { CompositionFilter } from './FilterControl';
 import { PortfolioCompositionRow } from './PortfolioCompositionRaw';
@@ -47,6 +48,7 @@ const secondaryTextSx = {
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
   const { composition, loading, error } = usePortfolioComposition(filter, portfolioId);
   const currency = filter === 'bvb' ? 'RON' : 'USD';
+  const [showPercent, setShowPercent] = useState(false);
 
   if (error) return <Alert severity="error">{error.message}</Alert>;
 
@@ -120,6 +122,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           Weight
         </Typography>
         <Typography
+          onClick={() => setShowPercent(prev => !prev)}
           sx={{
             ...secondaryTextSx,
             fontSize: { xs: 12, sm: 16 },
@@ -128,6 +131,8 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
             textTransform: 'uppercase',
             letterSpacing: 0.5,
             textAlign: 'right',
+            cursor: 'pointer',
+            userSelect: 'none',
           }}
         >
           Gain / Loss
@@ -150,7 +155,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
         </Typography>
       ) : (
         composition.map(row => (
-          <PortfolioCompositionRow key={row.ticker} row={row} maxWeight={maxWeight} currency={currency} />
+          <PortfolioCompositionRow key={row.ticker} row={row} maxWeight={maxWeight} currency={currency} showPercent={showPercent} onTogglePercent={() => setShowPercent(prev => !prev)} />
         ))
       )}
     </Box>
