@@ -12,6 +12,7 @@ export interface TickerComposition {
   costBasis: number;
   avgCost: number;
   currentValue: number;
+  currentPrice: number;
   gainLoss: number;
   weight: number;
   currency: Currency;
@@ -165,13 +166,16 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
         const currentPrice = quoteMap.get(ticker) ?? 0;
         let currentValue: number;
         let costBasisUsd: number;
+        let displayCurrentPrice: number;
 
         if (holding.currency === Currency.RON && filter !== 'bvb') {
           currentValue = holding.quantity * currentPrice * ronToUsd;
           costBasisUsd = holding.costBasis * ronToUsd;
+          displayCurrentPrice = currentPrice * ronToUsd;
         } else {
           currentValue = holding.quantity * currentPrice;
           costBasisUsd = holding.costBasis;
+          displayCurrentPrice = currentPrice;
         }
 
         const gainLoss = currentValue - costBasisUsd;
@@ -185,6 +189,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           costBasis: costBasisUsd,
           avgCost: holding.avgCost,
           currentValue,
+          currentPrice: displayCurrentPrice,
           gainLoss,
           weight,
           currency: holding.currency,

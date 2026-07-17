@@ -49,27 +49,43 @@ export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent,
         >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
                 {/* Ticker avatar */}
-                <Box
-                    sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        bgcolor: 'grey.100',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                    }}
-                >
-                    <Typography
-                        fontWeight={700}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                    <Box
                         sx={{
-                            ...secondaryTextSx,
-                            fontSize: 10,
-                            lineHeight: "12px",
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: 'grey.100',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
                         }}
                     >
-                        {row.ticker.slice(0, 4)}
+                        <Typography
+                            fontWeight={700}
+                            sx={{
+                                ...secondaryTextSx,
+                                fontSize: 10,
+                                lineHeight: "12px",
+                            }}
+                        >
+                            {row.ticker.slice(0, 4)}
+                        </Typography>
+                    </Box>
+
+                    {/* Current price — mobile only */}
+                    <Typography
+                        sx={{
+                            ...secondaryTextSx,
+                            fontSize: 11,
+                            lineHeight: "14px",
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            display: { xs: 'block', sm: 'none' },
+                        }}
+                    >
+                        {formatCurrency(row.currentPrice, currency)}
                     </Typography>
                 </Box>
 
@@ -109,7 +125,7 @@ export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent,
                                 display: { xs: 'none', sm: 'block' },
                             }}
                         >
-                            {row.assetName}
+                            {row.assetName} ({formatCurrency(row.currentPrice, currency)})
                         </Typography>
                         <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
                             <Typography
