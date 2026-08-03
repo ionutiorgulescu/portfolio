@@ -200,6 +200,7 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
 
   return {
     composition,
+    tickers: activeTickers,
     loading: positionsLoading || (activeTickers.length > 0 && quotesLoading),
     error: (positionsError ?? quotesError) as Error | null,
   };

@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { useState } from "react";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
 
 const primaryTextSx = {
@@ -28,7 +29,63 @@ function formatQuantity(value: number): string {
         : value.toFixed(4).replace(/\.?0+$/, '');
 }
 
-export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent, onTogglePercent }: { row: TickerComposition; maxWeight: number; currency: 'USD' | 'RON'; showPercent: boolean; onTogglePercent: () => void }) {
+function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
+    const showLogo = Boolean(logoUrl) && logoUrl !== failedUrl;
+
+    return (
+        <Box
+            sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                bgcolor: 'grey.100',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                overflow: 'hidden',
+            }}
+        >
+            {showLogo ? (
+                <Box
+                    component="img"
+                    src={logoUrl!}
+                    alt={`${ticker} logo`}
+                    onError={() => setFailedUrl(logoUrl!)}
+                    sx={{ width: '70%', height: '70%', objectFit: 'contain' }}
+                />
+            ) : (
+                <Typography
+                    fontWeight={700}
+                    sx={{
+                        ...secondaryTextSx,
+                        fontSize: 10,
+                        lineHeight: "12px",
+                    }}
+                >
+                    {ticker.slice(0, 4)}
+                </Typography>
+            )}
+        </Box>
+    );
+}
+
+export function PortfolioCompositionRow({
+    row,
+    maxWeight,
+    currency,
+    showPercent,
+    onTogglePercent,
+    logoUrl,
+}: {
+    row: TickerComposition;
+    maxWeight: number;
+    currency: 'USD' | 'RON';
+    showPercent: boolean;
+    onTogglePercent: () => void;
+    logoUrl?: string | null;
+}) {
     const gainPositive = row.gainLoss >= 0;
     const gainLossPercent = row.costBasis !== 0 ? (row.gainLoss / row.costBasis) * 100 : 0;
 
@@ -36,12 +93,12 @@ export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent,
         <Box
             sx={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 80px 110px',
+                gridTemplateColumns: { xs: '1fr 48px 88px', sm: '1fr 80px 110px' },
                 alignItems: 'center',
                 py: 1.5,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
-                gap: 2,
+                gap: { xs: 1, sm: 2 },
                 '&:last-child': { borderBottom: 'none' },
                 '&:hover': { bgcolor: 'grey.50' },
                 transition: 'background-color 0.15s ease',
@@ -49,30 +106,21 @@ export function PortfolioCompositionRow({ row, maxWeight, currency, showPercent,
         >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
                 {/* Ticker avatar */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                    <Box
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+                    <TickerAvatar ticker={row.ticker} logoUrl={logoUrl} />
+
+                    <Typography
+                        fontWeight={600}
                         sx={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: '50%',
-                            bgcolor: 'grey.100',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
+                            ...secondaryTextSx,
+                            fontSize: 11,
+                            lineHeight: '14px',
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
                         }}
                     >
-                        <Typography
-                            fontWeight={700}
-                            sx={{
-                                ...secondaryTextSx,
-                                fontSize: 10,
-                                lineHeight: "12px",
-                            }}
-                        >
-                            {row.ticker.slice(0, 4)}
-                        </Typography>
-                    </Box>
+                        {row.ticker}
+                    </Typography>
 
                     {/* Current price — mobile only */}
                     <Typography
