@@ -17,7 +17,7 @@ function buildLogoCandidates(logoUrl?: string | null): string[] {
 }
 
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
-const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN']);
+const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
 
 function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
     return new Intl.NumberFormat(currency === 'RON' ? 'ro-RO' : 'en-US', {
