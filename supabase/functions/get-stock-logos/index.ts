@@ -44,6 +44,50 @@ const fetchLogoFromFinnhub = async (ticker: string, token: string): Promise<stri
   return typeof data.logo === 'string' && data.logo.length > 0 ? data.logo : null;
 };
 
+const fetchLogoFromFmp = async (ticker: string, apiKey: string): Promise<string | null> => {
+  const url =
+    `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(ticker)}` +
+    `&apikey=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json() as Array<{ image?: unknown; defaultImage?: unknown }>;
+  const profile = Array.isArray(data) ? data[0] : undefined;
+  if (!profile || profile.defaultImage === true) {
+    return null;
+  }
+
+  return typeof profile.image === 'string' && profile.image.length > 0 ? profile.image : null;
+};
+
+const fetchLogo = async (
+  ticker: string,
+  finnhubToken: string | undefined,
+  fmpApiKey: string | undefined,
+): Promise<string | null> => {
+  if (finnhubToken) {
+    try {
+      const logo = await fetchLogoFromFinnhub(ticker, finnhubToken);
+      if (logo) return logo;
+    } catch {
+      // Fall through to FMP.
+    }
+  }
+
+  if (fmpApiKey) {
+    try {
+      return await fetchLogoFromFmp(ticker, fmpApiKey);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -58,11 +102,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const finnhubToken = Deno.env.get('FINNHUB_API_KEY');
-    if (!finnhubToken) {
-      return new Response(JSON.stringify({ error: 'FINNHUB_API_KEY is not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const fmpApiKey = Deno.env.get('FMP_API_KEY');
+    if (!finnhubToken && !fmpApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'FINNHUB_API_KEY or FMP_API_KEY must be configured' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -106,20 +154,26 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Logo cache read failed: ${cacheReadError.message}`);
     }
 
-    const cachedByTicker = new Map<string, string | null>(
-      ((cachedRows ?? []) as CacheRow[]).map((row) => [row.ticker, row.logo]),
-    );
+    // Only positive hits are trusted. A prior null (e.g. Finnhub miss) must not
+    // block FMP fallback for the rest of a long TTL window.
+    const cachedByTicker = new Map<string, string>();
+    for (const row of (cachedRows ?? []) as CacheRow[]) {
+      if (typeof row.logo === 'string' && row.logo.length > 0) {
+        cachedByTicker.set(row.ticker, row.logo);
+      }
+    }
 
     const missingTickers = tickers.filter((ticker) => !cachedByTicker.has(ticker));
+    const fetchedByTicker = new Map<string, string | null>();
 
     if (missingTickers.length > 0) {
-      const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
       const updatedAt = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
 
       const fetched = await Promise.all(
         missingTickers.map(async (ticker) => {
           try {
-            const logo = await fetchLogoFromFinnhub(ticker, finnhubToken);
+            const logo = await fetchLogo(ticker, finnhubToken, fmpApiKey);
             return { ticker, logo };
           } catch {
             return { ticker, logo: null as string | null };
@@ -127,28 +181,37 @@ Deno.serve(async (req: Request) => {
         }),
       );
 
-      const { error: cacheWriteError } = await supabase.from('stock_logo_cache').upsert(
-        fetched.map(({ ticker, logo }) => ({
-          ticker,
-          logo,
-          expires_at: expiresAt,
-          updated_at: updatedAt,
-        })),
-        { onConflict: 'ticker' },
+      const toCache = fetched.filter(
+        (item): item is { ticker: string; logo: string } => typeof item.logo === 'string' && item.logo.length > 0,
       );
 
-      if (cacheWriteError) {
-        throw new Error(`Logo cache write failed: ${cacheWriteError.message}`);
+      if (toCache.length > 0) {
+        const { error: cacheWriteError } = await supabase.from('stock_logo_cache').upsert(
+          toCache.map(({ ticker, logo }) => ({
+            ticker,
+            logo,
+            expires_at: expiresAt,
+            updated_at: updatedAt,
+          })),
+          { onConflict: 'ticker' },
+        );
+
+        if (cacheWriteError) {
+          throw new Error(`Logo cache write failed: ${cacheWriteError.message}`);
+        }
       }
 
       for (const item of fetched) {
-        cachedByTicker.set(item.ticker, item.logo);
+        fetchedByTicker.set(item.ticker, item.logo);
+        if (item.logo) {
+          cachedByTicker.set(item.ticker, item.logo);
+        }
       }
     }
 
     const results: LogoResult[] = tickers.map((ticker) => ({
       ticker,
-      logo: cachedByTicker.get(ticker) ?? null,
+      logo: cachedByTicker.get(ticker) ?? fetchedByTicker.get(ticker) ?? null,
     }));
 
     return new Response(JSON.stringify(results), {

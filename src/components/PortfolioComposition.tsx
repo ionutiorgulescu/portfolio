@@ -13,7 +13,7 @@ function RowSkeleton() {
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr 48px 88px', sm: '1fr 80px 110px' },
+        gridTemplateColumns: { xs: 'minmax(0, 1fr) 40px 108px', sm: '1fr 80px 110px' },
         alignItems: 'center',
         py: 1.5,
         borderBottom: '1px solid',
@@ -48,13 +48,15 @@ const secondaryTextSx = {
 
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
   const { composition, tickers, loading, error } = usePortfolioComposition(filter, portfolioId);
-  const { logosByTicker } = useStockLogos(tickers);
+  const { logosByTicker, loading: logosLoading } = useStockLogos(tickers);
   const currency = filter === 'bvb' ? 'RON' : 'USD';
   const [showPercent, setShowPercent] = useState(false);
 
   if (error) return <Alert severity="error">{error.message}</Alert>;
 
   const maxWeight = composition[0]?.weight ?? 100;
+  // Wait for logo URLs (React Query cache or edge function) before painting rows.
+  const showRowsLoading = loading || logosLoading;
 
   return (
     <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
@@ -73,7 +75,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr 48px 88px', sm: '1fr 80px 110px' },
+          gridTemplateColumns: { xs: 'minmax(0, 1fr) 40px 108px', sm: '1fr 80px 110px' },
           gap: { xs: 1, sm: 2 },
           pb: 1,
           borderBottom: '2px solid',
@@ -197,7 +199,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
         </Typography>
       </Box>
 
-      {loading ? (
+      {showRowsLoading ? (
         [...Array(8)].map((_, i) => <RowSkeleton key={i} />)
       ) : composition.length === 0 ? (
         <Typography

@@ -52,6 +52,7 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                     component="img"
                     src={logoUrl!}
                     alt={`${ticker} logo`}
+                    referrerPolicy="no-referrer"
                     onError={() => setFailedUrl(logoUrl!)}
                     sx={{ width: '70%', height: '70%', objectFit: 'contain' }}
                 />
@@ -93,7 +94,7 @@ export function PortfolioCompositionRow({
         <Box
             sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr 48px 88px', sm: '1fr 80px 110px' },
+                gridTemplateColumns: { xs: 'minmax(0, 1fr) 40px 108px', sm: '1fr 80px 110px' },
                 alignItems: 'center',
                 py: 1.5,
                 borderBottom: '1px solid',
@@ -216,14 +217,25 @@ export function PortfolioCompositionRow({
             </Typography>
 
             {/* Gain/Loss */}
-            <Box onClick={onTogglePercent} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, cursor: 'pointer' }}>
+            <Box
+                onClick={onTogglePercent}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    cursor: 'pointer',
+                    minWidth: 0,
+                }}
+            >
                 <Typography
                     fontWeight={600}
                     sx={{
                         fontFamily: '"Open Sans", sans-serif',
-                        fontSize: { xs: 14, sm: 16 },
+                        fontSize: { xs: 13, sm: 16 },
                         lineHeight: { xs: "18px", sm: "20px" },
                         color: gainPositive ? '#27a69a' : '#d92673',
+                        whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
                     }}
                 >
                     {gainPositive ? '↑' : '↓'}{' '}
