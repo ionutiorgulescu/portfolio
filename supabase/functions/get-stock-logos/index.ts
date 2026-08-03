@@ -1,3 +1,6 @@
+// @ts-ignore: Resolved by Deno's npm specifier support in Supabase Edge runtime.
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,33 +19,17 @@ type LogoResult = {
   logo: string | null;
 };
 
-type CacheEntry = {
+type CacheRow = {
+  ticker: string;
   logo: string | null;
-  expiresAt: number;
 };
 
-/** In-memory cache shared across warm isolates. Logos rarely change. */
-const logoCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const normalizeTicker = (value: string): string | null => {
   const ticker = value.trim().toUpperCase();
   const tickerPattern = /^[A-Z0-9.-]{1,15}$/;
   return tickerPattern.test(ticker) ? ticker : null;
-};
-
-const getCachedLogo = (ticker: string): string | null | undefined => {
-  const entry = logoCache.get(ticker);
-  if (!entry) return undefined;
-  if (Date.now() > entry.expiresAt) {
-    logoCache.delete(ticker);
-    return undefined;
-  }
-  return entry.logo;
-};
-
-const setCachedLogo = (ticker: string, logo: string | null): void => {
-  logoCache.set(ticker, { logo, expiresAt: Date.now() + CACHE_TTL_MS });
 };
 
 const fetchLogoFromFinnhub = async (ticker: string, token: string): Promise<string | null> => {
@@ -70,9 +57,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const token = Deno.env.get('FINNHUB_API_KEY');
-    if (!token) {
+    const finnhubToken = Deno.env.get('FINNHUB_API_KEY');
+    if (!finnhubToken) {
       return new Response(JSON.stringify({ error: 'FINNHUB_API_KEY is not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'Supabase service credentials are not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -97,23 +93,63 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const results: LogoResult[] = await Promise.all(
-      tickers.map(async (ticker) => {
-        const cached = getCachedLogo(ticker);
-        if (cached !== undefined) {
-          return { ticker, logo: cached };
-        }
+    // Service role bypasses RLS — this table has no client-facing policies.
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-        try {
-          const logo = await fetchLogoFromFinnhub(ticker, token);
-          setCachedLogo(ticker, logo);
-          return { ticker, logo };
-        } catch {
-          setCachedLogo(ticker, null);
-          return { ticker, logo: null };
-        }
-      }),
+    const { data: cachedRows, error: cacheReadError } = await supabase
+      .from('stock_logo_cache')
+      .select('ticker, logo')
+      .in('ticker', tickers)
+      .gt('expires_at', new Date().toISOString());
+
+    if (cacheReadError) {
+      throw new Error(`Logo cache read failed: ${cacheReadError.message}`);
+    }
+
+    const cachedByTicker = new Map<string, string | null>(
+      ((cachedRows ?? []) as CacheRow[]).map((row) => [row.ticker, row.logo]),
     );
+
+    const missingTickers = tickers.filter((ticker) => !cachedByTicker.has(ticker));
+
+    if (missingTickers.length > 0) {
+      const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
+      const updatedAt = new Date().toISOString();
+
+      const fetched = await Promise.all(
+        missingTickers.map(async (ticker) => {
+          try {
+            const logo = await fetchLogoFromFinnhub(ticker, finnhubToken);
+            return { ticker, logo };
+          } catch {
+            return { ticker, logo: null as string | null };
+          }
+        }),
+      );
+
+      const { error: cacheWriteError } = await supabase.from('stock_logo_cache').upsert(
+        fetched.map(({ ticker, logo }) => ({
+          ticker,
+          logo,
+          expires_at: expiresAt,
+          updated_at: updatedAt,
+        })),
+        { onConflict: 'ticker' },
+      );
+
+      if (cacheWriteError) {
+        throw new Error(`Logo cache write failed: ${cacheWriteError.message}`);
+      }
+
+      for (const item of fetched) {
+        cachedByTicker.set(item.ticker, item.logo);
+      }
+    }
+
+    const results: LogoResult[] = tickers.map((ticker) => ({
+      ticker,
+      logo: cachedByTicker.get(ticker) ?? null,
+    }));
 
     return new Response(JSON.stringify(results), {
       status: 200,

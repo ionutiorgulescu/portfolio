@@ -1,3 +1,4 @@
+// @ts-ignore: Resolved by Deno's npm specifier support in Supabase Edge runtime.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // @ts-ignore: Resolved by Deno's npm specifier support in Supabase Edge runtime.
 import YahooFinance from "npm:yahoo-finance2";
