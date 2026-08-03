@@ -16,6 +16,9 @@ function buildLogoCandidates(logoUrl?: string | null): string[] {
     return logoUrl ? [logoUrl] : [];
 }
 
+/** Light/white logos that disappear on the white avatar — invert to make them visible. */
+const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN']);
+
 function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
     return new Intl.NumberFormat(currency === 'RON' ? 'ro-RO' : 'en-US', {
         style: 'currency',
@@ -45,6 +48,7 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
 
     const src = candidates[attempt] ?? null;
     const exhausted = attempt >= candidates.length;
+    const invertLogo = INVERT_LOGO_TICKERS.has(ticker.toUpperCase());
 
     return (
         <Box
@@ -100,6 +104,7 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                         p: '4px',
                         opacity: loaded ? 1 : 0,
                         transition: 'opacity 0.15s ease',
+                        ...(invertLogo ? { filter: 'invert(1)' } : null),
                     }}
                 />
             )}
