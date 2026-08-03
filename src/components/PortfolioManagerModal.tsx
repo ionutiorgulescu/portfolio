@@ -6,10 +6,14 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
+  MenuItem,
+  Select,
   TextField,
   Typography,
   DialogActions,
@@ -21,7 +25,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useCreatePortfolio } from '../hooks/useCreatePortfolio';
 import { useDeletePortfolio } from '../hooks/useDeletePortfolio';
 import { useUpdatePortfolio } from '../hooks/useUpdatePortfolio';
-import { usePortfolioContext } from '../contexts/PortfolioContext';
+import { ALL_PORTFOLIOS_ID, usePortfolioContext } from '../contexts/PortfolioContext';
 
 type PortfolioManagerModalProps = {
   open: boolean;
@@ -85,6 +89,23 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
         </DialogTitle>
 
         <DialogContent dividers>
+          <FormControl fullWidth size="small" sx={{ mb: 3 }}>
+            <InputLabel id="default-portfolio-label">Default portfolio</InputLabel>
+            <Select
+              labelId="default-portfolio-label"
+              label="Default portfolio"
+              value={selectedPortfolioId ?? ''}
+              onChange={(e) => setSelectedPortfolioId(e.target.value)}
+            >
+              <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
+              {portfolios.map((portfolio) => (
+                <MenuItem key={portfolio.id} value={portfolio.id}>
+                  {portfolio.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           {/* Existing portfolios */}
           <List disablePadding>
             {portfolios.map((portfolio) => (
