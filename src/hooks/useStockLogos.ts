@@ -40,7 +40,7 @@ async function fetchStockLogos(tickers: string[]): Promise<StockLogoResult[]> {
 
 /**
  * Resolves logos for tickers: local assets for known crypto pairs,
- * Finnhub (Postgres-cached) for everything else.
+ * Postgres-cached FMP/Finnhub URLs for everything else.
  */
 export function useStockLogos(tickers: string[]) {
   const normalized = [

@@ -63,23 +63,28 @@ const fetchLogoFromFmp = async (ticker: string, apiKey: string): Promise<string 
   return typeof profile.image === 'string' && profile.image.length > 0 ? profile.image : null;
 };
 
+/** Finnhub CDN images often fail to paint in mobile browsers even when the URL is valid. */
+const isUnreliableLogoHost = (logo: string): boolean =>
+  /finnhub\.io/i.test(logo);
+
 const fetchLogo = async (
   ticker: string,
   finnhubToken: string | undefined,
   fmpApiKey: string | undefined,
 ): Promise<string | null> => {
-  if (finnhubToken) {
+  // Prefer FMP — image host is more reliable in browsers than Finnhub's CDN.
+  if (fmpApiKey) {
     try {
-      const logo = await fetchLogoFromFinnhub(ticker, finnhubToken);
+      const logo = await fetchLogoFromFmp(ticker, fmpApiKey);
       if (logo) return logo;
     } catch {
-      // Fall through to FMP.
+      // Fall through to Finnhub.
     }
   }
 
-  if (fmpApiKey) {
+  if (finnhubToken) {
     try {
-      return await fetchLogoFromFmp(ticker, fmpApiKey);
+      return await fetchLogoFromFinnhub(ticker, finnhubToken);
     } catch {
       return null;
     }
@@ -154,11 +159,15 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Logo cache read failed: ${cacheReadError.message}`);
     }
 
-    // Only positive hits are trusted. A prior null (e.g. Finnhub miss) must not
-    // block FMP fallback for the rest of a long TTL window.
+    // Only positive, browser-reliable hits are trusted. Nulls and Finnhub CDN URLs
+    // are treated as misses so we can refresh them via FMP.
     const cachedByTicker = new Map<string, string>();
     for (const row of (cachedRows ?? []) as CacheRow[]) {
-      if (typeof row.logo === 'string' && row.logo.length > 0) {
+      if (
+        typeof row.logo === 'string' &&
+        row.logo.length > 0 &&
+        !isUnreliableLogoHost(row.logo)
+      ) {
         cachedByTicker.set(row.ticker, row.logo);
       }
     }

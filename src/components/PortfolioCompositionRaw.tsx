@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
 
 const primaryTextSx = {
@@ -11,6 +11,24 @@ const secondaryTextSx = {
     color: "#61615e",
     fontFamily: '"Open Sans", sans-serif',
 };
+
+/** Browser-friendly fallback when Finnhub CDN images fail to paint. */
+function fmpLogoUrl(ticker: string): string {
+    return `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(ticker)}.png`;
+}
+
+function buildLogoCandidates(ticker: string, logoUrl?: string | null): string[] {
+    const candidates: string[] = [];
+    if (logoUrl) candidates.push(logoUrl);
+
+    // Local public assets do not need a remote fallback.
+    if (!logoUrl?.startsWith('/')) {
+        const fmp = fmpLogoUrl(ticker);
+        if (!candidates.includes(fmp)) candidates.push(fmp);
+    }
+
+    return candidates;
+}
 
 function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
     return new Intl.NumberFormat(currency === 'RON' ? 'ro-RO' : 'en-US', {
@@ -30,8 +48,14 @@ function formatQuantity(value: number): string {
 }
 
 function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
-    const [failedUrl, setFailedUrl] = useState<string | null>(null);
-    const showLogo = Boolean(logoUrl) && logoUrl !== failedUrl;
+    const candidates = buildLogoCandidates(ticker, logoUrl);
+    const [attempt, setAttempt] = useState(0);
+
+    useEffect(() => {
+        setAttempt(0);
+    }, [ticker, logoUrl]);
+
+    const src = candidates[attempt] ?? null;
 
     return (
         <Box
@@ -47,13 +71,14 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                 overflow: 'hidden',
             }}
         >
-            {showLogo ? (
+            {src ? (
                 <Box
                     component="img"
-                    src={logoUrl!}
+                    key={src}
+                    src={src}
                     alt={`${ticker} logo`}
                     referrerPolicy="no-referrer"
-                    onError={() => setFailedUrl(logoUrl!)}
+                    onError={() => setAttempt((current) => current + 1)}
                     sx={{ width: '70%', height: '70%', objectFit: 'contain' }}
                 />
             ) : (
