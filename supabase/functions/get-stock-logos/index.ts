@@ -14,6 +14,9 @@ declare const Deno: {
   };
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClient = any;
+
 type LogoResult = {
   ticker: string;
   logo: string | null;
@@ -25,6 +28,7 @@ type CacheRow = {
 };
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const STORAGE_BUCKET = 'stock-logos';
 
 const normalizeTicker = (value: string): string | null => {
   const ticker = value.trim().toUpperCase();
@@ -32,19 +36,7 @@ const normalizeTicker = (value: string): string | null => {
   return tickerPattern.test(ticker) ? ticker : null;
 };
 
-const fetchLogoFromFinnhub = async (ticker: string, token: string): Promise<string | null> => {
-  const url = `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(token)}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = await response.json() as { logo?: unknown };
-  return typeof data.logo === 'string' && data.logo.length > 0 ? data.logo : null;
-};
-
-const fetchLogoFromFmp = async (ticker: string, apiKey: string): Promise<string | null> => {
+const fetchLogoUrlFromFmp = async (ticker: string, apiKey: string): Promise<string | null> => {
   const url =
     `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(ticker)}` +
     `&apikey=${encodeURIComponent(apiKey)}`;
@@ -63,35 +55,60 @@ const fetchLogoFromFmp = async (ticker: string, apiKey: string): Promise<string 
   return typeof profile.image === 'string' && profile.image.length > 0 ? profile.image : null;
 };
 
-/** Finnhub CDN images often fail to paint in mobile browsers even when the URL is valid. */
-const isUnreliableLogoHost = (logo: string): boolean =>
-  /finnhub\.io/i.test(logo);
-
-const fetchLogo = async (
+const fetchSourceLogoUrl = async (
   ticker: string,
-  finnhubToken: string | undefined,
   fmpApiKey: string | undefined,
 ): Promise<string | null> => {
-  // Prefer FMP — image host is more reliable in browsers than Finnhub's CDN.
-  if (fmpApiKey) {
-    try {
-      const logo = await fetchLogoFromFmp(ticker, fmpApiKey);
-      if (logo) return logo;
-    } catch {
-      // Fall through to Finnhub.
-    }
-  }
+  if (!fmpApiKey) return null;
 
-  if (finnhubToken) {
-    try {
-      return await fetchLogoFromFinnhub(ticker, finnhubToken);
-    } catch {
-      return null;
-    }
+  try {
+    return await fetchLogoUrlFromFmp(ticker, fmpApiKey);
+  } catch {
+    return null;
   }
-
-  return null;
 };
+
+const extensionForContentType = (contentType: string): string => {
+  if (contentType.includes('svg')) return 'svg';
+  if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
+  if (contentType.includes('webp')) return 'webp';
+  return 'png';
+};
+
+/**
+ * Downloads a logo once from FMP and re-hosts it in our own Storage bucket.
+ * This is what makes logos load reliably: the browser only ever talks to
+ * Supabase's CDN, never to FMP's image host whose availability and latency
+ * vary per-request (especially on mobile networks).
+ */
+const proxyLogoToStorage = async (
+  supabase: SupabaseClient,
+  supabaseUrl: string,
+  ticker: string,
+  sourceUrl: string,
+): Promise<string | null> => {
+  const imageResponse = await fetch(sourceUrl);
+  if (!imageResponse.ok) return null;
+
+  const contentType = imageResponse.headers.get('content-type') ?? 'image/png';
+  const bytes = new Uint8Array(await imageResponse.arrayBuffer());
+  if (bytes.length === 0) return null;
+
+  const path = `${ticker}.${extensionForContentType(contentType)}`;
+
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, bytes, {
+    contentType,
+    upsert: true,
+    cacheControl: `${Math.floor(CACHE_TTL_MS / 1000)}`,
+  });
+
+  if (error) return null;
+
+  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+};
+
+const isOwnStorageUrl = (logo: string, supabaseUrl: string): boolean =>
+  logo.startsWith(`${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/`);
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -106,11 +123,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const finnhubToken = Deno.env.get('FINNHUB_API_KEY');
     const fmpApiKey = Deno.env.get('FMP_API_KEY');
-    if (!finnhubToken && !fmpApiKey) {
+    if (!fmpApiKey) {
       return new Response(
-        JSON.stringify({ error: 'FINNHUB_API_KEY or FMP_API_KEY must be configured' }),
+        JSON.stringify({ error: 'FMP_API_KEY is not configured' }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -159,21 +175,17 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Logo cache read failed: ${cacheReadError.message}`);
     }
 
-    // Only positive, browser-reliable hits are trusted. Nulls and Finnhub CDN URLs
-    // are treated as misses so we can refresh them via FMP.
+    // Only trust cache rows already pointing at our own Storage bucket. Older rows
+    // (raw provider URLs from before proxying was added) or nulls are treated
+    // as misses so they get re-fetched and re-hosted below.
     const cachedByTicker = new Map<string, string>();
     for (const row of (cachedRows ?? []) as CacheRow[]) {
-      if (
-        typeof row.logo === 'string' &&
-        row.logo.length > 0 &&
-        !isUnreliableLogoHost(row.logo)
-      ) {
+      if (typeof row.logo === 'string' && isOwnStorageUrl(row.logo, supabaseUrl)) {
         cachedByTicker.set(row.ticker, row.logo);
       }
     }
 
     const missingTickers = tickers.filter((ticker) => !cachedByTicker.has(ticker));
-    const fetchedByTicker = new Map<string, string | null>();
 
     if (missingTickers.length > 0) {
       const updatedAt = new Date().toISOString();
@@ -182,8 +194,11 @@ Deno.serve(async (req: Request) => {
       const fetched = await Promise.all(
         missingTickers.map(async (ticker) => {
           try {
-            const logo = await fetchLogo(ticker, finnhubToken, fmpApiKey);
-            return { ticker, logo };
+            const sourceUrl = await fetchSourceLogoUrl(ticker, fmpApiKey);
+            if (!sourceUrl) return { ticker, logo: null as string | null };
+
+            const storageUrl = await proxyLogoToStorage(supabase, supabaseUrl, ticker, sourceUrl);
+            return { ticker, logo: storageUrl };
           } catch {
             return { ticker, logo: null as string | null };
           }
@@ -211,7 +226,6 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const item of fetched) {
-        fetchedByTicker.set(item.ticker, item.logo);
         if (item.logo) {
           cachedByTicker.set(item.ticker, item.logo);
         }
@@ -220,7 +234,7 @@ Deno.serve(async (req: Request) => {
 
     const results: LogoResult[] = tickers.map((ticker) => ({
       ticker,
-      logo: cachedByTicker.get(ticker) ?? fetchedByTicker.get(ticker) ?? null,
+      logo: cachedByTicker.get(ticker) ?? null,
     }));
 
     return new Response(JSON.stringify(results), {

@@ -12,22 +12,8 @@ const secondaryTextSx = {
     fontFamily: '"Open Sans", sans-serif',
 };
 
-/** Browser-friendly fallback when Finnhub CDN images fail to paint. */
-function fmpLogoUrl(ticker: string): string {
-    return `https://images.financialmodelingprep.com/symbol/${encodeURIComponent(ticker)}.png`;
-}
-
-function buildLogoCandidates(ticker: string, logoUrl?: string | null): string[] {
-    const candidates: string[] = [];
-    if (logoUrl) candidates.push(logoUrl);
-
-    // Local public assets do not need a remote fallback.
-    if (!logoUrl?.startsWith('/')) {
-        const fmp = fmpLogoUrl(ticker);
-        if (!candidates.includes(fmp)) candidates.push(fmp);
-    }
-
-    return candidates;
+function buildLogoCandidates(logoUrl?: string | null): string[] {
+    return logoUrl ? [logoUrl] : [];
 }
 
 function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
@@ -48,22 +34,31 @@ function formatQuantity(value: number): string {
 }
 
 function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
-    const candidates = buildLogoCandidates(ticker, logoUrl);
+    const candidates = buildLogoCandidates(logoUrl);
     const [attempt, setAttempt] = useState(0);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         setAttempt(0);
+        setLoaded(false);
     }, [ticker, logoUrl]);
 
     const src = candidates[attempt] ?? null;
+    const exhausted = attempt >= candidates.length;
 
     return (
         <Box
             sx={{
+                position: 'relative',
                 width: 40,
                 height: 40,
-                borderRadius: '50%',
-                bgcolor: 'grey.100',
+                // Rounded-square "squircle" instead of a strict circle: brand logos come in a mix
+                // of square app-icon assets and round vector marks, and a square container looks
+                // consistent for both instead of clipping square logos into an odd shape.
+                borderRadius: '10px',
+                bgcolor: 'white',
+                border: '1px solid',
+                borderColor: 'grey.200',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -71,17 +66,8 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                 overflow: 'hidden',
             }}
         >
-            {src ? (
-                <Box
-                    component="img"
-                    key={src}
-                    src={src}
-                    alt={`${ticker} logo`}
-                    referrerPolicy="no-referrer"
-                    onError={() => setAttempt((current) => current + 1)}
-                    sx={{ width: '70%', height: '70%', objectFit: 'contain' }}
-                />
-            ) : (
+            {/* Initials render underneath immediately so a slow network never shows a blank circle. */}
+            {(!src || !loaded) && (
                 <Typography
                     fontWeight={700}
                     sx={{
@@ -92,6 +78,30 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                 >
                     {ticker.slice(0, 4)}
                 </Typography>
+            )}
+            {src && !exhausted && (
+                <Box
+                    component="img"
+                    key={src}
+                    src={src}
+                    alt={`${ticker} logo`}
+                    referrerPolicy="no-referrer"
+                    onLoad={() => setLoaded(true)}
+                    onError={() => {
+                        setLoaded(false);
+                        setAttempt((current) => current + 1);
+                    }}
+                    sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        p: '4px',
+                        opacity: loaded ? 1 : 0,
+                        transition: 'opacity 0.15s ease',
+                    }}
+                />
             )}
         </Box>
     );
