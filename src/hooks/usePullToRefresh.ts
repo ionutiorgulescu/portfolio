@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type UsePullToRefreshOptions = {
   /** Distance in px required before release triggers refresh. */
   threshold?: number;
   /** Max visual pull distance in px. */
   maxPull?: number;
-  /** Disable the gesture (e.g. while already loading). */
+  /** Disable the gesture (e.g. while no handler is registered). */
   disabled?: boolean;
 };
 
@@ -15,16 +15,12 @@ type UsePullToRefreshResult = {
   isPulling: boolean;
 };
 
-function getScrollTop() {
-  return window.scrollY || document.documentElement.scrollTop || 0;
-}
-
 /**
- * Touch pull-to-refresh when the page is scrolled to the top.
- * Attach the returned handlers via the container ref.
+ * Touch pull-to-refresh when `scrollElement` is scrolled to the top.
+ * Pass the dedicated scroll root element (not window/document).
  */
 export function usePullToRefresh(
-  containerRef: RefObject<HTMLElement | null>,
+  scrollElement: HTMLElement | null,
   onRefresh: () => void | Promise<void>,
   options: UsePullToRefreshOptions = {},
 ): UsePullToRefreshResult {
@@ -55,8 +51,12 @@ export function usePullToRefresh(
   }, []);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el || disabled) return;
+    if (!scrollElement || disabled) {
+      resetPull();
+      return;
+    }
+
+    const getScrollTop = () => scrollElement.scrollTop;
 
     const onTouchStart = (event: TouchEvent) => {
       if (isRefreshingRef.current) return;
@@ -124,18 +124,18 @@ export function usePullToRefresh(
       }
     };
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
-    el.addEventListener('touchcancel', resetPull);
+    scrollElement.addEventListener('touchstart', onTouchStart, { passive: true });
+    scrollElement.addEventListener('touchmove', onTouchMove, { passive: false });
+    scrollElement.addEventListener('touchend', onTouchEnd);
+    scrollElement.addEventListener('touchcancel', resetPull);
 
     return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', resetPull);
+      scrollElement.removeEventListener('touchstart', onTouchStart);
+      scrollElement.removeEventListener('touchmove', onTouchMove);
+      scrollElement.removeEventListener('touchend', onTouchEnd);
+      scrollElement.removeEventListener('touchcancel', resetPull);
     };
-  }, [containerRef, disabled, maxPull, resetPull, threshold]);
+  }, [disabled, maxPull, resetPull, scrollElement, threshold]);
 
   return { pullDistance, isRefreshing, isPulling };
 }

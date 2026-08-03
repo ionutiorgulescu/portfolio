@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   AppBar,
   Box,
   Button,
+  CircularProgress,
   Drawer,
   IconButton,
   List,
@@ -30,6 +31,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
+import { PullToRefreshProvider } from '../contexts/PullToRefreshContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 type AppShellProps = {
   userEmail?: string;
@@ -37,8 +40,11 @@ type AppShellProps = {
   onSignOut: () => void;
 };
 
+type RefreshHandler = () => void | Promise<void>;
+
 const drawerWidthOpen = 240;
 const drawerWidthClosed = 72;
+const PULL_THRESHOLD = 72;
 
 const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
@@ -57,6 +63,26 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
 
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+  const refreshHandlerRef = useRef<RefreshHandler | null>(null);
+  const [hasRefreshHandler, setHasRefreshHandler] = useState(false);
+
+  const handleHandlerChange = useCallback((handler: RefreshHandler | null) => {
+    refreshHandlerRef.current = handler;
+    setHasRefreshHandler(handler !== null);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await refreshHandlerRef.current?.();
+  }, []);
+
+  const { pullDistance, isRefreshing, isPulling } = usePullToRefresh(
+    scrollEl,
+    handleRefresh,
+    { disabled: !hasRefreshHandler, threshold: PULL_THRESHOLD },
+  );
+
+  const showIndicator = hasRefreshHandler && (isPulling || isRefreshing || pullDistance > 0);
   const drawerWidth = isMenuOpen ? drawerWidthOpen : drawerWidthClosed;
 
   const handleDrawerToggle = () => {
@@ -103,7 +129,7 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <AppBar
         position="fixed"
         color="default"
@@ -215,19 +241,46 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
 
       <Box
         component="main"
+        ref={setScrollEl}
         sx={{
           flexGrow: 1,
+          height: '100dvh',
+          minWidth: 0,
+          overflowY: 'auto',
+          overscrollBehaviorY: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
           p: { xs: 2, sm: 3 },
           backgroundColor: 'grey.100',
-          minHeight: '100vh',
-          minWidth: 0,
         }}
       >
         <Toolbar />
+
+        <Box
+          aria-hidden={!showIndicator}
+          sx={{
+            height: showIndicator ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            transition: isPulling ? 'none' : 'height 0.2s ease',
+            opacity: showIndicator
+              ? (isRefreshing ? 1 : Math.min(1, pullDistance / PULL_THRESHOLD))
+              : 0,
+          }}
+        >
+          <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
+        </Box>
+
         {signOutError && (
           <Alert sx={{ mb: 2 }} severity="error">{signOutError}</Alert>
         )}
-        <Outlet />
+
+        <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
+          <Outlet />
+        </PullToRefreshProvider>
       </Box>
 
       <PortfolioManagerModal open={manageOpen} onClose={() => setManageOpen(false)} />
