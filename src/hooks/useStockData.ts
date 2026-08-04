@@ -111,25 +111,30 @@ const parseResponseError = (payload: EdgeFunctionError | null): string => {
     return payload.message;
   }
 
-  return 'Failed to load stock history.'; 
+  return 'Failed to load stock history.';
 };
 
 export const fetchStockHistory = async (ticker: string): Promise<StockBarWithDate[]> => {
-  const { data: responseData, error: invokeError } = await supabase.functions.invoke<
-    FetchStockHistoryResponse | EdgeFunctionError
-  >('fetch-stock-history', {
-    body: { ticker },
-  });
+  try {
+    const { data: responseData, error: invokeError } = await supabase.functions.invoke<
+      FetchStockHistoryResponse | EdgeFunctionError
+    >('fetch-stock-history', {
+      body: { ticker },
+    });
 
-  if (invokeError) {
-    throw new Error(invokeError.message || 'Failed to invoke fetch-stock-history.');
+    if (invokeError) {
+      throw new Error(invokeError.message || 'Failed to invoke fetch-stock-history.');
+    }
+
+    if (!responseData || !('data' in responseData) || !Array.isArray(responseData.data)) {
+      throw new Error(parseResponseError((responseData as EdgeFunctionError | null) ?? null));
+    }
+
+    return normalizeBars(responseData.data);
+  } catch (error) {
+    console.error(error);
+    return [];
   }
-
-  if (!responseData || !('data' in responseData) || !Array.isArray(responseData.data)) {
-    throw new Error(parseResponseError((responseData as EdgeFunctionError | null) ?? null));
-  }
-
-  return normalizeBars(responseData.data);
 };
 
 export const useStockData = (ticker: string) => {

@@ -6,7 +6,11 @@ import YahooFinance from "npm:yahoo-finance2";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 type JsonRecord = Record<string, unknown>;
-const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical'] });
+const yahooFinance = new YahooFinance({
+  suppressNotices: ['ripHistorical'], validation: {
+    logErrors: false, // stops it from console.error-ing on schema failures
+  },
+});
 
 // Local fallback type for editors/linters that are not configured with Deno libs.
 declare const Deno: {
@@ -222,16 +226,20 @@ const fetchAllBars = async (
   to: string,
 ): Promise<StockBar[]> => {
   try {
-    const rows = await yahooFinance.historical(ticker, {
-      period1: from,
-      period2: to,
+    const result = await yahooFinance.chart(ticker, {
+      period1: new Date(from),
+      period2: new Date(to),
       interval: "1d",
     });
-    const normalizedRows = Array.isArray(rows) ? rows : [];
+
+    const normalizedRows: unknown[] = Array.isArray(result?.quotes)
+      ? result.quotes
+      : [];
     const bars = normalizedRows
       .filter(isYahooHistoricalRow)
       .map(mapYahooRow)
       .filter((bar): bar is StockBar => bar !== null)
+      .filter((bar) => bar.close > 0 && bar.volume > 0)
       .sort((left, right) => left.timestamp - right.timestamp);
 
     return bars;
@@ -245,12 +253,13 @@ const fetchAllBars = async (
     error.status = mapped.code === "rate_limited"
       ? 429
       : mapped.code === "ticker_not_found"
-      ? 404
-      : mapped.code === "bad_request"
-      ? 400
-      : 502;
+        ? 404
+        : mapped.code === "bad_request"
+          ? 400
+          : 502;
     error.code = mapped.code;
     error.details = mapped.details;
+    console.log(error);
     throw error;
   }
 };
