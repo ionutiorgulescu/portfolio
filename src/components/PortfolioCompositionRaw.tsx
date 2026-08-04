@@ -168,20 +168,43 @@ export function PortfolioCompositionRow({
         <Box
             sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: 'minmax(0, 1fr) 40px 108px', sm: '1fr 80px 110px' },
+                // Mobile: ticker | qty | wt | p/l — equal column treatment
+                // Desktop: stock+qty | wt | p/l
+                gridTemplateColumns: {
+                    xs: '56px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+                    sm: '1fr 80px 110px',
+                },
                 alignItems: 'center',
                 py: 1.5,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
-                gap: { xs: 1, sm: 2 },
+                columnGap: { xs: 1.5, sm: 3 },
                 '&:last-child': { borderBottom: 'none' },
                 '&:hover': { bgcolor: 'grey.50' },
                 transition: 'background-color 0.15s ease',
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
-                {/* Ticker avatar */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+            {/* Ticker — mobile. On desktop: ticker + name/qty */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    columnGap: 2,
+                    minWidth: 0,
+                    // Span is automatic; on desktop this is the wide first column
+                }}
+            >
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 0.25,
+                        flexShrink: 0,
+                        width: { xs: '100%', sm: 'auto' },
+                        overflow: 'hidden',
+                    }}
+                >
                     <TickerAvatar
                         ticker={row.ticker}
                         logoUrl={logoUrl}
@@ -196,19 +219,25 @@ export function PortfolioCompositionRow({
                             lineHeight: '14px',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                            display: { xs: 'block', sm: 'none' },
                         }}
                     >
-                        {row.ticker}
+                        {(row.assetName.length > 9) ? row.assetName.slice(0, 3) + '...' : row.assetName}
                     </Typography>
 
-                    {/* Current price — mobile only */}
                     <Typography
                         sx={{
                             ...secondaryTextSx,
                             fontSize: 11,
-                            lineHeight: "14px",
+                            lineHeight: '14px',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
                             display: { xs: 'block', sm: 'none' },
                         }}
                     >
@@ -216,10 +245,9 @@ export function PortfolioCompositionRow({
                     </Typography>
                 </Box>
 
-                {/* Name + progress bar area */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
+                {/* Name + qty — desktop only */}
+                <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', sm: 'block' } }}>
                     <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: '100%' }}>
-                        {/* Progress bar — desktop only */}
                         <Box
                             sx={{
                                 position: 'absolute',
@@ -231,17 +259,15 @@ export function PortfolioCompositionRow({
                                 bgcolor: 'grey.100',
                                 borderRadius: '6px',
                                 zIndex: 0,
-                                display: { xs: 'none', sm: 'block' },
                             }}
                         />
 
-                        {/* Asset name — desktop only */}
                         <Typography
                             fontWeight={500}
                             sx={{
                                 ...primaryTextSx,
                                 fontSize: 16,
-                                lineHeight: "20px",
+                                lineHeight: '20px',
                                 position: 'relative',
                                 zIndex: 1,
                                 px: 1,
@@ -249,32 +275,18 @@ export function PortfolioCompositionRow({
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                display: { xs: 'none', sm: 'block' },
                             }}
                         >
                             {row.assetName} ({formatCurrency(row.currentPrice, currency)})
                         </Typography>
-                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
                             <Typography
                                 fontWeight={500}
-                                sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: "18px", sm: "20px" } }}
+                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}
                             >
                                 {formatQuantity(row.quantity)}
                             </Typography>
-                            <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 12, sm: 14 }, lineHeight: { xs: "18px", sm: "20px" } }}>
-                                avg {formatCurrency(row.avgCost, currency)}
-                            </Typography>
-                        </Box>
-
-                        {/* Quantity + Avg Cost — mobile only */}
-                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', px: 1, zIndex: 1, }}>
-                            <Typography
-                                fontWeight={500}
-                                sx={{ ...secondaryTextSx, fontSize: { xs: 14, sm: 16 }, lineHeight: { xs: "18px", sm: "20px" } }}
-                            >
-                                {formatQuantity(row.quantity)}
-                            </Typography>
-                            <Typography sx={{ ...secondaryTextSx, fontSize: { xs: 12, sm: 14 }, lineHeight: { xs: "18px", sm: "20px" } }}>
+                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }}>
                                 avg {formatCurrency(row.avgCost, currency)}
                             </Typography>
                         </Box>
@@ -282,25 +294,77 @@ export function PortfolioCompositionRow({
                 </Box>
             </Box>
 
-            { }
-            <Typography
+            {/* Qty / Avg — mobile only (own grid column, mirrors ticker column) */}
+            <Box
                 sx={{
-                    ...secondaryTextSx,
-                    fontSize: { xs: 14, sm: 16 },
-                    lineHeight: { xs: "18px", sm: "20px" },
-                    textAlign: 'right',
+                    display: { xs: 'flex', sm: 'none' },
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 0,
+                    gap: 0.25,
                 }}
             >
-                {formatPercent(row.weight)}
-            </Typography>
+                <Typography
+                    fontWeight={500}
+                    sx={{
+                        ...secondaryTextSx,
+                        fontSize: 14,
+                        lineHeight: '18px',
+                        fontVariantNumeric: 'tabular-nums',
+                        textAlign: 'center',
+                    }}
+                >
+                    {formatQuantity(row.quantity)}
+                </Typography>
+                <Typography
+                    sx={{
+                        ...secondaryTextSx,
+                        fontSize: 12,
+                        lineHeight: '18px',
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
+                        textAlign: 'center',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                    }}
+                >
+                    avg {formatCurrency(row.avgCost, currency)}
+                </Typography>
+            </Box>
+
+            {/* Weight */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 0,
+                }}
+            >
+                <Typography
+                    sx={{
+                        ...secondaryTextSx,
+                        fontSize: { xs: 14, sm: 16 },
+                        lineHeight: { xs: '18px', sm: '20px' },
+                        textAlign: 'center',
+                        fontVariantNumeric: 'tabular-nums',
+                    }}
+                >
+                    {formatPercent(row.weight)}
+                </Typography>
+            </Box>
 
             {/* Gain/Loss */}
             <Box
                 onClick={onTogglePercent}
                 sx={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
+                    flexDirection: 'column',
+                    alignItems: { xs: 'center', sm: 'flex-end' },
+                    justifyContent: 'center',
                     cursor: 'pointer',
                     minWidth: 0,
                 }}
@@ -309,11 +373,15 @@ export function PortfolioCompositionRow({
                     fontWeight={600}
                     sx={{
                         fontFamily: '"Open Sans", sans-serif',
-                        fontSize: { xs: 13, sm: 16 },
-                        lineHeight: { xs: "18px", sm: "20px" },
+                        fontSize: { xs: 11, sm: 16 },
+                        lineHeight: { xs: '14px', sm: '20px' },
                         color: gainPositive ? '#27a69a' : '#d92673',
                         whiteSpace: 'nowrap',
                         fontVariantNumeric: 'tabular-nums',
+                        textAlign: { xs: 'center', sm: 'right' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
                     }}
                 >
                     {gainPositive ? '↑' : '↓'}{' '}
