@@ -19,22 +19,28 @@ function RowSkeleton() {
   return (
     <Box
       sx={{
-        display: 'grid',
-        gridTemplateColumns: {
-          xs: '56px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
-          sm: '1fr 80px 110px',
-        },
-        alignItems: 'center',
-        py: 1.5,
+        display: 'flex',
+        alignItems: 'flex-start',
+        columnGap: 1.5,
+        py: 2,
         borderBottom: '1px solid',
         borderColor: 'divider',
-        columnGap: { xs: 1.5, sm: 3 },
       }}
     >
-      <Skeleton variant="circular" width={40} height={40} sx={{ justifySelf: 'center' }} />
-      <Skeleton width="70%" height={20} sx={{ justifySelf: 'center', display: { xs: 'block', sm: 'none' } }} />
-      <Skeleton width={40} height={20} sx={{ justifySelf: 'center' }} />
-      <Skeleton width={70} height={20} sx={{ justifySelf: { xs: 'center', sm: 'end' } }} />
+      <Skeleton variant="rounded" width={44} height={44} sx={{ borderRadius: '10px', flexShrink: 0 }} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', columnGap: 1.5 }}>
+          <Box sx={{ flex: 1 }}>
+            <Skeleton width={64} height={18} sx={{ mb: 0.5 }} />
+            <Skeleton width="55%" height={16} />
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <Skeleton width={110} height={18} sx={{ mb: 0.5 }} />
+            <Skeleton width={56} height={14} />
+          </Box>
+        </Box>
+        <Skeleton width="70%" height={14} sx={{ mt: 1 }} />
+      </Box>
     </Box>
   );
 }
@@ -86,7 +92,6 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
 
   if (error) return <Alert severity="error">{error.message}</Alert>;
 
-  const maxWeight = composition[0]?.weight ?? 100;
   // Wait for logo URLs (React Query cache or edge function) before painting rows.
   const showRowsLoading = loading || logosLoading;
 
@@ -98,166 +103,11 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           fontSize: 20,
           lineHeight: '28px',
           fontWeight: 600,
-          mb: 2,
+          mb: 1,
         }}
       >
         Composition
       </Typography>
-
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '56px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
-            sm: '1fr 80px 110px',
-          },
-          columnGap: { xs: 1.5, sm: 3 },
-          pb: 1,
-          borderBottom: '2px solid',
-          borderColor: 'divider',
-          mb: 0.5,
-        }}
-      >
-        {/* Ticker / Price */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: { xs: 'center', sm: 'flex-start' },
-            gap: 0.25,
-            minWidth: 0,
-            pl: { xs: 0, sm: 0.5 },
-          }}
-        >
-          <Typography
-            sx={{
-              ...secondaryTextSx,
-              fontSize: { xs: 11, sm: 16 },
-              lineHeight: { xs: '14px', sm: '20px' },
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-              textAlign: { xs: 'center', sm: 'left' },
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Stock
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-              Ticker
-            </Box>
-          </Typography>
-          <Typography
-            sx={{
-              ...secondaryTextSx,
-              fontSize: 10,
-              lineHeight: '12px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-              display: { xs: 'block', sm: 'none' },
-            }}
-          >
-            Price
-          </Typography>
-        </Box>
-
-        {/* Qty / Avg — mobile only */}
-        <Box
-          sx={{
-            display: { xs: 'flex', sm: 'none' },
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 0.25,
-            minWidth: 0,
-          }}
-        >
-          <Typography
-            sx={{
-              ...secondaryTextSx,
-              fontSize: 11,
-              lineHeight: '14px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-              textAlign: 'center',
-            }}
-          >
-            Qty
-          </Typography>
-          <Typography
-            sx={{
-              ...secondaryTextSx,
-              fontSize: 10,
-              lineHeight: '12px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-              textAlign: 'center',
-            }}
-          >
-            Avg
-          </Typography>
-        </Box>
-
-        {/* Weight */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: 0,
-          }}
-        >
-          <Typography
-            sx={{
-              ...secondaryTextSx,
-              fontSize: { xs: 11, sm: 16 },
-              lineHeight: { xs: '14px', sm: '20px' },
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-              textAlign: 'center',
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Weight
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-              Wt
-            </Box>
-          </Typography>
-        </Box>
-
-        {/* P/L */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: { xs: 'center', sm: 'flex-end' },
-            justifyContent: 'center',
-            minWidth: 0,
-          }}
-        >
-          <Typography
-            onClick={() => setShowPercent(prev => !prev)}
-            sx={{
-              ...secondaryTextSx,
-              fontSize: { xs: 11, sm: 16 },
-              lineHeight: { xs: '14px', sm: '20px' },
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-              textAlign: { xs: 'center', sm: 'right' },
-              cursor: 'pointer',
-              userSelect: 'none',
-            }}
-          >
-            P/L
-          </Typography>
-        </Box>
-      </Box>
 
       {showRowsLoading ? (
         [...Array(8)].map((_, i) => <RowSkeleton key={i} />)
@@ -278,7 +128,6 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
           <PortfolioCompositionRow
             key={row.ticker}
             row={row}
-            maxWeight={maxWeight}
             currency={currency}
             showPercent={showPercent}
             onTogglePercent={() => setShowPercent(prev => !prev)}

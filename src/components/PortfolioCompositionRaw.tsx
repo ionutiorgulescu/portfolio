@@ -12,6 +12,11 @@ const secondaryTextSx = {
     fontFamily: '"Open Sans", sans-serif',
 };
 
+const mutedTextSx = {
+    color: "#9a9a96",
+    fontFamily: '"Open Sans", sans-serif',
+};
+
 function buildLogoCandidates(logoUrl?: string | null): string[] {
     return logoUrl ? [logoUrl] : [];
 }
@@ -76,11 +81,8 @@ function TickerAvatar({
             aria-label={onClick ? `Add position for ${ticker}` : undefined}
             sx={{
                 position: 'relative',
-                width: 40,
-                height: 40,
-                // Rounded-square "squircle" instead of a strict circle: brand logos come in a mix
-                // of square app-icon assets and round vector marks, and a square container looks
-                // consistent for both instead of clipping square logos into an odd shape.
+                width: 44,
+                height: 44,
                 borderRadius: '10px',
                 bgcolor: 'white',
                 border: '1px solid',
@@ -91,25 +93,27 @@ function TickerAvatar({
                 flexShrink: 0,
                 overflow: 'hidden',
                 cursor: onClick ? 'pointer' : 'default',
-                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
                 ...(onClick
                     ? {
                         '&:hover': {
-                            borderColor: 'grey.400',
+                            bgcolor: '#e6e6e3',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                         },
                     }
                     : null),
             }}
         >
-            {/* Initials render underneath immediately so a slow network never shows a blank circle. */}
+            {/* Initials render underneath immediately so a slow network never shows a blank square. */}
             {(!src || !loaded) && (
                 <Typography
-                    fontWeight={700}
+                    fontWeight={600}
                     sx={{
                         ...secondaryTextSx,
-                        fontSize: 10,
-                        lineHeight: "12px",
+                        fontSize: 11,
+                        lineHeight: '14px',
+                        letterSpacing: 0.2,
+                        textTransform: 'uppercase',
                     }}
                 >
                     {ticker.slice(0, 4)}
@@ -133,7 +137,7 @@ function TickerAvatar({
                         width: '100%',
                         height: '100%',
                         objectFit: 'contain',
-                        p: '4px',
+                        p: '6px',
                         opacity: loaded ? 1 : 0,
                         transition: 'opacity 0.15s ease',
                         ...(invertLogo ? { filter: 'invert(1)' } : null),
@@ -146,7 +150,6 @@ function TickerAvatar({
 
 export function PortfolioCompositionRow({
     row,
-    maxWeight,
     currency,
     showPercent,
     onTogglePercent,
@@ -154,7 +157,6 @@ export function PortfolioCompositionRow({
     logoUrl,
 }: {
     row: TickerComposition;
-    maxWeight: number;
     currency: 'USD' | 'RON';
     showPercent: boolean;
     onTogglePercent: () => void;
@@ -167,228 +169,120 @@ export function PortfolioCompositionRow({
     return (
         <Box
             sx={{
-                display: 'grid',
-                // Mobile: ticker | qty | wt | p/l — equal column treatment
-                // Desktop: stock+qty | wt | p/l
-                gridTemplateColumns: {
-                    xs: '56px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
-                    sm: '1fr 80px 110px',
-                },
-                alignItems: 'center',
-                py: 1.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                columnGap: 1.5,
+                py: 2,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
-                columnGap: { xs: 1.5, sm: 3 },
                 '&:last-child': { borderBottom: 'none' },
                 '&:hover': { bgcolor: 'grey.50' },
                 transition: 'background-color 0.15s ease',
+                mx: -1,
+                px: 1,
+                borderRadius: '8px',
             }}
         >
-            {/* Ticker — mobile. On desktop: ticker + name/qty */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    columnGap: 2,
-                    minWidth: 0,
-                    // Span is automatic; on desktop this is the wide first column
-                }}
-            >
+            <TickerAvatar
+                ticker={row.ticker}
+                logoUrl={logoUrl}
+                onClick={onLogoClick ? () => onLogoClick(row) : undefined}
+            />
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box
                     sx={{
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 0.25,
-                        flexShrink: 0,
-                        width: { xs: '100%', sm: 'auto' },
-                        overflow: 'hidden',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        columnGap: 1.5,
                     }}
                 >
-                    <TickerAvatar
-                        ticker={row.ticker}
-                        logoUrl={logoUrl}
-                        onClick={onLogoClick ? () => onLogoClick(row) : undefined}
-                    />
-
-                    <Typography
-                        fontWeight={600}
-                        sx={{
-                            ...secondaryTextSx,
-                            fontSize: 11,
-                            lineHeight: '14px',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                            display: { xs: 'block', sm: 'none' },
-                        }}
-                    >
-                        {(row.assetName.length > 9) ? row.assetName.slice(0, 3) + '...' : row.assetName}
-                    </Typography>
-
-                    <Typography
-                        sx={{
-                            ...secondaryTextSx,
-                            fontSize: 11,
-                            lineHeight: '14px',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                            display: { xs: 'block', sm: 'none' },
-                        }}
-                    >
-                        {formatCurrency(row.currentPrice, currency)}
-                    </Typography>
-                </Box>
-
-                {/* Name + qty — desktop only */}
-                <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', sm: 'block' } }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: '100%' }}>
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                left: 0,
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                height: 32,
-                                width: `${(row.weight / maxWeight) * 100}%`,
-                                bgcolor: 'grey.100',
-                                borderRadius: '6px',
-                                zIndex: 0,
-                            }}
-                        />
-
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography
-                            fontWeight={500}
+                            fontWeight={700}
                             sx={{
                                 ...primaryTextSx,
-                                fontSize: 16,
+                                fontSize: 15,
                                 lineHeight: '20px',
-                                position: 'relative',
-                                zIndex: 1,
-                                px: 1,
-                                py: 0.5,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                             }}
                         >
-                            {row.assetName} ({formatCurrency(row.currentPrice, currency)})
+                            {row.ticker}
                         </Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'row', px: 1, zIndex: 1, gap: 1 }}>
-                            <Typography
-                                fontWeight={500}
-                                sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}
-                            >
-                                {formatQuantity(row.quantity)}
-                            </Typography>
-                            <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }}>
-                                avg {formatCurrency(row.avgCost, currency)}
-                            </Typography>
-                        </Box>
+                        <Typography
+                            sx={{
+                                ...secondaryTextSx,
+                                fontSize: 13,
+                                lineHeight: '18px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            {row.assetName}
+                        </Typography>
+                    </Box>
+
+                    <Box
+                        onClick={onTogglePercent}
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-end',
+                            flexShrink: 0,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                        }}
+                    >
+                        <Typography
+                            fontWeight={600}
+                            sx={{
+                                fontFamily: '"Open Sans", sans-serif',
+                                fontSize: 14,
+                                lineHeight: '20px',
+                                color: gainPositive ? '#27a69a' : '#d92673',
+                                whiteSpace: 'nowrap',
+                                fontVariantNumeric: 'tabular-nums',
+                            }}
+                        >
+                            {gainPositive ? '↑' : '↓'}{' '}
+                            {showPercent
+                                ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
+                                : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
+                            }
+                        </Typography>
+                        <Typography
+                            sx={{
+                                ...mutedTextSx,
+                                fontSize: 12,
+                                lineHeight: '16px',
+                                fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {formatPercent(row.weight)} wt
+                        </Typography>
                     </Box>
                 </Box>
-            </Box>
 
-            {/* Qty / Avg — mobile only (own grid column, mirrors ticker column) */}
-            <Box
-                sx={{
-                    display: { xs: 'flex', sm: 'none' },
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 0,
-                    gap: 0.25,
-                }}
-            >
-                <Typography
-                    fontWeight={500}
-                    sx={{
-                        ...secondaryTextSx,
-                        fontSize: 14,
-                        lineHeight: '18px',
-                        fontVariantNumeric: 'tabular-nums',
-                        textAlign: 'center',
-                    }}
-                >
-                    {formatQuantity(row.quantity)}
-                </Typography>
                 <Typography
                     sx={{
-                        ...secondaryTextSx,
+                        ...mutedTextSx,
                         fontSize: 12,
-                        lineHeight: '18px',
+                        lineHeight: '16px',
+                        mt: 0.75,
                         fontVariantNumeric: 'tabular-nums',
                         whiteSpace: 'nowrap',
-                        textAlign: 'center',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        maxWidth: '100%',
                     }}
                 >
-                    avg {formatCurrency(row.avgCost, currency)}
-                </Typography>
-            </Box>
-
-            {/* Weight */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 0,
-                }}
-            >
-                <Typography
-                    sx={{
-                        ...secondaryTextSx,
-                        fontSize: { xs: 14, sm: 16 },
-                        lineHeight: { xs: '18px', sm: '20px' },
-                        textAlign: 'center',
-                        fontVariantNumeric: 'tabular-nums',
-                    }}
-                >
-                    {formatPercent(row.weight)}
-                </Typography>
-            </Box>
-
-            {/* Gain/Loss */}
-            <Box
-                onClick={onTogglePercent}
-                sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: { xs: 'center', sm: 'flex-end' },
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    minWidth: 0,
-                }}
-            >
-                <Typography
-                    fontWeight={600}
-                    sx={{
-                        fontFamily: '"Open Sans", sans-serif',
-                        fontSize: { xs: 11, sm: 16 },
-                        lineHeight: { xs: '14px', sm: '20px' },
-                        color: gainPositive ? '#27a69a' : '#d92673',
-                        whiteSpace: 'nowrap',
-                        fontVariantNumeric: 'tabular-nums',
-                        textAlign: { xs: 'center', sm: 'right' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%',
-                    }}
-                >
-                    {gainPositive ? '↑' : '↓'}{' '}
-                    {showPercent
-                        ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
-                        : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
-                    }
+                    {formatCurrency(row.currentPrice, currency)}
+                    {' · '}
+                    {formatQuantity(row.quantity)} sh @ {formatCurrency(row.avgCost, currency)}
                 </Typography>
             </Box>
         </Box>
