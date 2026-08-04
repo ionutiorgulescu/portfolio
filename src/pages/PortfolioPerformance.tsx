@@ -129,21 +129,30 @@ const PortfolioPerformance = () => {
     );
   }
 
-  const controls = (
-    <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
-      <Box
-        sx={{
-          width: '100%',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-        }}
-      >
-        <IntervalSelector interval={interval} onChange={setInterval} fullWidth />
-      </Box>
+  const filterControl = (
+    <FilterControl value={filter} onChange={setFilter} exclude={['all']} hideName />
+  );
 
-      <FilterControl value={filter} onChange={setFilter} exclude={['all']} hideName />
-    </Stack>
+  const intervalSelector = (
+    <Box
+      sx={{
+        width: '100%',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
+        pt: { xs: 1.25, sm: 1.5 },
+        mt: { xs: 1.25, sm: 1.5 },
+        borderTop: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <IntervalSelector
+        interval={interval}
+        onChange={setInterval}
+        fullWidth
+        variant="underline"
+      />
+    </Box>
   );
 
   const legend = (
@@ -254,7 +263,7 @@ const PortfolioPerformance = () => {
 
       {isLoading && (
         <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
-          {controls}
+          {filterControl}
           <Box sx={cardSx}>
             <Skeleton width={90} height={18} sx={{ mb: 1 }} />
             <Skeleton height={40} sx={{ mb: 1.5, width: { xs: '70%', sm: 200 } }} />
@@ -264,6 +273,7 @@ const PortfolioPerformance = () => {
               width="100%"
               sx={{ borderRadius: 2, height: chartHeight }}
             />
+            {intervalSelector}
           </Box>
           {footer}
         </Stack>
@@ -271,7 +281,7 @@ const PortfolioPerformance = () => {
 
       {!isLoading && !isError && allData.length === 0 && (
         <>
-          {controls}
+          {filterControl}
           <Alert severity="info">
             No transactions found. Add open or closed positions to see portfolio performance.
           </Alert>
@@ -280,7 +290,7 @@ const PortfolioPerformance = () => {
 
       {!isLoading && !isError && allData.length > 0 && (
         <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
-          {controls}
+          {filterControl}
 
           <Box sx={cardSx}>
             <Typography
@@ -348,6 +358,7 @@ const PortfolioPerformance = () => {
 
             {legend}
             {chartArea}
+            {intervalSelector}
           </Box>
 
           {footer}

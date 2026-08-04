@@ -8,9 +8,74 @@ type Props = {
   interval: ChartInterval;
   onChange: (interval: ChartInterval) => void;
   fullWidth?: boolean;
+  variant?: 'pill' | 'underline';
 };
 
-export function IntervalSelector({ interval, onChange, fullWidth }: Props) {
+export function IntervalSelector({
+  interval,
+  onChange,
+  fullWidth,
+  variant = 'pill',
+}: Props) {
+  if (variant === 'underline') {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          minWidth: 'max-content',
+          width: fullWidth ? '100%' : 'auto',
+          justifyContent: 'space-between',
+          gap: { xs: 0.5, sm: 1 },
+        }}
+      >
+        {intervalOptions.map((option) => {
+          const selected = interval === option.key;
+          return (
+            <ButtonBase
+              key={option.key}
+              onClick={() => onChange(option.key)}
+              sx={{
+                flex: fullWidth ? 1 : '0 0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 0.75,
+                px: { xs: 0.5, sm: 1 },
+                py: 0.5,
+                minWidth: 0,
+                borderRadius: 0,
+                transition: 'color 0.15s ease',
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: selected ? 700 : 500,
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                  color: selected ? '#1f2937' : '#9ca3af',
+                  lineHeight: 1,
+                  userSelect: 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {option.key}
+              </Typography>
+              <Box
+                sx={{
+                  width: 18,
+                  height: 3,
+                  borderRadius: 999,
+                  bgcolor: selected ? 'var(--color-portfolio-value)' : 'transparent',
+                  transition: 'background-color 0.15s ease',
+                }}
+              />
+            </ButtonBase>
+          );
+        })}
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
