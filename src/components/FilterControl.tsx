@@ -32,15 +32,17 @@ interface FilterControlProps {
   value: CompositionFilter;
   onChange: (v: CompositionFilter) => void;
   exclude?: CompositionFilter[];
+  hideName?: boolean;
 }
 
-export function FilterControl({ value, onChange, exclude }: FilterControlProps) {
+export function FilterControl({ value, onChange, exclude, hideName }: FilterControlProps) {
   const visibleOptions = exclude
     ? FILTER_OPTIONS.filter((o) => !exclude.includes(o.value))
     : FILTER_OPTIONS;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, width: '100%' }}>
+      {!hideName && (
       <Typography
         variant="caption"
         sx={{
@@ -53,7 +55,7 @@ export function FilterControl({ value, onChange, exclude }: FilterControlProps) 
       >
         Portfolio View
       </Typography>
-
+      )}
       <Box
         sx={{
           display: 'flex',
@@ -70,7 +72,6 @@ export function FilterControl({ value, onChange, exclude }: FilterControlProps) 
               sx={{
                 flex: '1 1 0',
                 minWidth: 0,
-                maxWidth: { sm: 140 },
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-start',

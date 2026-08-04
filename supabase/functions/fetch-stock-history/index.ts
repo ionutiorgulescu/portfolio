@@ -84,7 +84,7 @@ const formatDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 const getDateRange = (): { from: string; to: string } => {
   const toDate = new Date();
-  toDate.setUTCDate(toDate.getUTCDate() - 1);
+  toDate.setUTCDate(toDate.getUTCDate() + 1);
   const fromDate = new Date(toDate);
   fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 9);
 
@@ -241,6 +241,32 @@ const fetchAllBars = async (
       .filter((bar): bar is StockBar => bar !== null)
       .filter((bar) => bar.close > 0 && bar.volume > 0)
       .sort((left, right) => left.timestamp - right.timestamp);
+    // Yahoo's daily `quotes` candle for the most recent session sometimes
+    // arrives with a null close before it's fully finalized. Fall back to
+    // the live quote snapshot in `meta` when it's more recent than our
+    // last valid bar, so the chart doesn't lag behind the live price.
+    const lastBar = bars[bars.length - 1];
+    const metaPrice = result?.meta?.regularMarketPrice;
+    const metaTimeRaw = result?.meta?.regularMarketTime;
+    const metaTimestamp = metaTimeRaw ? new Date(metaTimeRaw).getTime() : NaN;
+
+    if (
+      Number.isFinite(metaTimestamp) &&
+      typeof metaPrice === "number" &&
+      Number.isFinite(metaPrice) &&
+      metaPrice > 0 &&
+      (!lastBar || formatDate(new Date(metaTimestamp)) !== lastBar.date)
+    ) {
+      bars.push({
+        timestamp: metaTimestamp,
+        date: formatDate(new Date(metaTimestamp)),
+        open: metaPrice,
+        high: metaPrice,
+        low: metaPrice,
+        close: metaPrice,
+        volume: 0,
+      });
+    }
 
     return bars;
   } catch (upstreamError) {
@@ -303,6 +329,8 @@ Deno.serve(async (request) => {
   }
 
   const { from, to } = getDateRange();
+
+  console.log("date range:", { from, to });
 
   try {
     const bars = await fetchAllBars(ticker, from, to);

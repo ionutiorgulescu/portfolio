@@ -1,3 +1,4 @@
+import { useMediaQuery, useTheme } from '@mui/material';
 import {
   Area,
   CartesianGrid,
@@ -33,9 +34,15 @@ function abbreviateDollar(value: number): string {
 }
 
 export default function PortfolioChart({ chartData, xAxisTickFormatter, yAxisScale }: Props) {
+  const theme = useTheme();
+  const isNarrow = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={chartData} margin={{ top: 16, right: 20, left: 8, bottom: 16 }}>
+      <ComposedChart
+        data={chartData}
+        margin={{ top: 8, right: isNarrow ? 8 : 16, left: 0, bottom: 8 }}
+      >
         <defs>
           <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-portfolio-value)" stopOpacity={0.2} />
@@ -54,9 +61,9 @@ export default function PortfolioChart({ chartData, xAxisTickFormatter, yAxisSca
           type="number"
           domain={['dataMin', 'dataMax']}
           tickFormatter={xAxisTickFormatter}
-          tick={{ fill: 'var(--color-text-3)', fontSize: 11 }}
-          tickMargin={10}
-          minTickGap={40}
+          tick={{ fill: 'var(--color-text-3)', fontSize: isNarrow ? 10 : 11 }}
+          tickMargin={8}
+          minTickGap={isNarrow ? 28 : 40}
           axisLine={false}
           tickLine={false}
         />
@@ -64,9 +71,9 @@ export default function PortfolioChart({ chartData, xAxisTickFormatter, yAxisSca
         <YAxis
           ticks={yAxisScale.ticks}
           domain={yAxisScale.domain}
-          tick={{ fill: 'var(--color-text-3)', fontSize: 11 }}
+          tick={{ fill: 'var(--color-text-3)', fontSize: isNarrow ? 10 : 11 }}
           tickFormatter={abbreviateDollar}
-          width={64}
+          width={isNarrow ? 44 : 56}
           axisLine={false}
           tickLine={false}
         />

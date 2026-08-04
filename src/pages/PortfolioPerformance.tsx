@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   CircularProgress,
-  Paper,
   Skeleton,
   Stack,
   Typography,
@@ -24,6 +23,22 @@ import type { ChartInterval } from '../components/stockMarket.types';
 import type { PortfolioChartPoint } from '../components/PortfolioChart';
 
 const PortfolioChart = lazy(() => import('../components/PortfolioChart'));
+
+const FILTER_LABELS: Record<CompositionFilter, string> = {
+  all: 'all assets',
+  stock: 'stocks',
+  crypto: 'crypto',
+  bvb: 'BVB',
+};
+
+const cardSx = {
+  borderRadius: { xs: '16px', sm: '20px' },
+  boxShadow: '0 2px 8px rgba(15, 38, 32, 0.06)',
+  bgcolor: 'background.paper',
+  p: { xs: 2, sm: 2.5, md: 3 },
+  width: '100%',
+  minWidth: 0,
+} as const;
 
 const PortfolioPerformance = () => {
   const [interval, setInterval] = useState<ChartInterval>('1Y');
@@ -64,6 +79,12 @@ const PortfolioPerformance = () => {
   const lastAllPoint = allData.length > 0 ? allData[allData.length - 1] : null;
   const currentValue = lastAllPoint?.value ?? 0;
   const allTimeGain = lastAllPoint ? lastAllPoint.value - lastAllPoint.costBasis : 0;
+  const allTimeGainPercent =
+    lastAllPoint && lastAllPoint.costBasis > 0
+      ? (allTimeGain / lastAllPoint.costBasis) * 100
+      : 0;
+  const gainPositive = allTimeGain >= 0;
+  const currencyPrefix = filter === 'bvb' ? 'RON' : '$';
 
   const xAxisTickFormatter = useMemo(() => {
     const options: Intl.DateTimeFormatOptions =
@@ -108,72 +129,123 @@ const PortfolioPerformance = () => {
     );
   }
 
-  const pillBox = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    borderRadius: '12px',
-    backgroundColor: 'grey.200',
-    padding: '4px',
-    gap: '2px',
-  } as const;
-
-  const statCardSx = {
-    borderRadius: '16px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
-    p: 3,
-    bgcolor: 'background.paper',
-  } as const;
-
-  const statTitleSx = {
-    fontSize: { xs: 16, sm: 18, md: 20 },
-    lineHeight: { xs: '24px', sm: '26px', md: '28px' },
-    color: '#393a36',
-    fontWeight: 600,
-    mb: 1,
-  } as const;
-
-  const statValueSx = {
-    fontSize: { xs: 28, sm: 34, md: 40 },
-    lineHeight: { xs: '32px', sm: '36px', md: '40px' },
-    fontWeight: 700,
-    color: '#393a36',
-  } as const;
-
-  const filtersRow = (
-    <Box
-      sx={{
-        display: 'flex',
-        // column on mobile, row on sm+ — same height naturally via align-items: center
-        flexDirection: { xs: 'column', sm: 'row' },
-        alignItems: { xs: 'flex-start', sm: 'center' },
-        gap: 1.5,
-      }}
-    >
-      {/* Interval pills: scrollable on mobile so they never overflow */}
+  const controls = (
+    <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
       <Box
         sx={{
-          // on mobile take full width so the scroll container is bounded
-          width: { xs: '100%', sm: 'auto' },
+          width: '100%',
           overflowX: 'auto',
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
-          flexShrink: 0,
         }}
       >
-        <Box sx={{ ...pillBox, minWidth: 'max-content' }}>
-          <IntervalSelector interval={interval} onChange={setInterval} />
-        </Box>
+        <IntervalSelector interval={interval} onChange={setInterval} fullWidth />
       </Box>
 
-      {/* Filter control: never overflows, always fits */}
-      <Box sx={{ ...pillBox, flexShrink: 0 }}>
-        <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
-      </Box>
+      <FilterControl value={filter} onChange={setFilter} exclude={['all']} hideName />
+    </Stack>
+  );
+
+  const legend = (
+    <Box
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: { xs: 1.5, sm: 2.5 },
+        mt: { xs: 2, sm: 2.5 },
+        mb: { xs: 1, sm: 1.5 },
+      }}
+    >
+      {[
+        { label: 'Portfolio value', color: 'var(--color-portfolio-value)' },
+        { label: 'Cost basis', color: 'var(--color-portfolio-cost)' },
+      ].map((item) => (
+        <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box
+            sx={{
+              width: 10,
+              height: 10,
+              borderRadius: '3px',
+              bgcolor: item.color,
+              flexShrink: 0,
+            }}
+          />
+          <Typography
+            sx={{
+              fontSize: { xs: 12, sm: 13 },
+              color: 'text.secondary',
+              lineHeight: 1.2,
+            }}
+          >
+            {item.label}
+          </Typography>
+        </Box>
+      ))}
     </Box>
   );
 
+  const chartHeight = { xs: 240, sm: 300, md: 360 };
+
+  const chartArea = (
+    <Box
+      sx={{
+        height: chartHeight,
+        width: '100%',
+        minWidth: 0,
+      }}
+    >
+      {chartData.length > 0 ? (
+        <Suspense
+          fallback={
+            <Box display="flex" alignItems="center" justifyContent="center" height="100%">
+              <CircularProgress size={32} />
+            </Box>
+          }
+        >
+          <PortfolioChart
+            chartData={chartData}
+            xAxisTickFormatter={xAxisTickFormatter}
+            yAxisScale={yAxisScale}
+          />
+        </Suspense>
+      ) : (
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          height="100%"
+          sx={{
+            border: '1px dashed',
+            borderColor: 'divider',
+            borderRadius: 2,
+            bgcolor: 'grey.50',
+            px: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            No data available for the selected period.
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
+  const footer = (
+    <Typography
+      sx={{
+        textAlign: 'center',
+        color: 'text.secondary',
+        fontSize: { xs: 12, sm: 13 },
+        pt: 0.5,
+      }}
+    >
+      Showing {FILTER_LABELS[filter]} · {interval} range
+    </Typography>
+  );
+
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2} sx={{ width: '100%', minWidth: 0 }}>
       {isError && (
         <Alert severity="error">
           {error instanceof Error ? error.message : 'Failed to load portfolio performance.'}
@@ -181,33 +253,25 @@ const PortfolioPerformance = () => {
       )}
 
       {isLoading && (
-        <Paper elevation={1} sx={{ p: 3 }}>
-          <Stack spacing={3}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
-              <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1 }}>
-                <Skeleton width={100} height={20} sx={{ mb: 1.5 }} />
-                <Skeleton width={150} height={40} sx={{ mb: 1 }} />
-              </Box>
-              <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1 }}>
-                <Skeleton width={120} height={20} sx={{ mb: 1.5 }} />
-                <Skeleton width={150} height={40} sx={{ mb: 1 }} />
-              </Box>
-            </Box>
-
-            {filtersRow}
-
-            <Skeleton variant="rectangular" width="100%" height={380} sx={{ borderRadius: 3 }} />
-          </Stack>
-        </Paper>
+        <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
+          {controls}
+          <Box sx={cardSx}>
+            <Skeleton width={90} height={18} sx={{ mb: 1 }} />
+            <Skeleton height={40} sx={{ mb: 1.5, width: { xs: '70%', sm: 200 } }} />
+            <Skeleton height={24} sx={{ mb: 2, width: { xs: '85%', sm: 260 } }} />
+            <Skeleton
+              variant="rectangular"
+              width="100%"
+              sx={{ borderRadius: 2, height: chartHeight }}
+            />
+          </Box>
+          {footer}
+        </Stack>
       )}
 
       {!isLoading && !isError && allData.length === 0 && (
         <>
-          <Paper elevation={1} sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              {filtersRow}
-            </Stack>
-          </Paper>
+          {controls}
           <Alert severity="info">
             No transactions found. Add open or closed positions to see portfolio performance.
           </Alert>
@@ -215,50 +279,78 @@ const PortfolioPerformance = () => {
       )}
 
       {!isLoading && !isError && allData.length > 0 && (
-        <Stack spacing={2}>
-          {filtersRow}
+        <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
+          {controls}
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
-              <Box sx={statCardSx}>
-                <Typography sx={statTitleSx}>Total Value</Typography>
-                <Typography sx={statValueSx}>
-                  {filter === 'bvb' ? 'RON' : '$'}{formatNumber(currentValue)}
-                </Typography>
-              </Box>
-              <Box sx={statCardSx}>
-                <Typography sx={statTitleSx}>All-Time Gain</Typography>
-                <Typography
-                  sx={{
-                    ...statValueSx,
-                    color: allTimeGain > 0 ? '#27a69a' : allTimeGain < 0 ? '#d92673' : '#393a36',
-                  }}
-                >
-                  {allTimeGain >= 0 ? '+' : '-'}{filter === 'bvb' ? 'RON' : '$'}{formatNumber(Math.abs(allTimeGain))}
-                </Typography>
-              </Box>
-            </Box>
+          <Box sx={cardSx}>
+            <Typography
+              sx={{
+                fontSize: { xs: 13, sm: 14 },
+                color: 'text.secondary',
+                fontWeight: 500,
+                mb: 0.5,
+              }}
+            >
+              Total Value
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: { xs: 28, sm: 34, md: 40 },
+                lineHeight: { xs: '34px', sm: '40px', md: '44px' },
+                fontWeight: 700,
+                color: '#1f2937',
+                wordBreak: 'break-word',
+              }}
+            >
+              {currencyPrefix}{formatNumber(currentValue)}
+            </Typography>
 
             <Box
               sx={{
-                height: 380,
-                width: '100%',
-                borderRadius: '16px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
-                bgcolor: 'background.paper',
-                p: 1,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: { xs: 1, sm: 1.25 },
+                mt: 1,
               }}
             >
-              {chartData.length > 0 ? (
-                <Suspense fallback={<Box display="flex" alignItems="center" justifyContent="center" height="100%"><CircularProgress size={32} /></Box>}>
-                  <PortfolioChart chartData={chartData} xAxisTickFormatter={xAxisTickFormatter} yAxisScale={yAxisScale} />
-                </Suspense>
-              ) : (
-                <Box display="flex" alignItems="center" justifyContent="center" height="100%"
-                  sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, bgcolor: 'grey.50' }}>
-                  <Typography variant="body2" color="text.secondary">No data available for the selected period.</Typography>
-                </Box>
-              )}
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  borderRadius: '999px',
+                  px: 1.25,
+                  py: 0.4,
+                  fontSize: { xs: 12, sm: 13 },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  bgcolor: gainPositive ? '#edf9f8' : '#fdf2f7',
+                  color: gainPositive ? '#27a69a' : '#d92673',
+                }}
+              >
+                {gainPositive ? '▲' : '▼'} {Math.abs(allTimeGainPercent).toFixed(2)}%
+              </Box>
+
+              <Typography
+                sx={{
+                  fontSize: { xs: 13, sm: 14 },
+                  color: 'text.secondary',
+                  lineHeight: 1.3,
+                }}
+              >
+                {allTimeGain >= 0 ? '+' : '-'}
+                {currencyPrefix}
+                {formatNumber(Math.abs(allTimeGain))} all-time
+              </Typography>
             </Box>
+
+            {legend}
+            {chartArea}
+          </Box>
+
+          {footer}
         </Stack>
       )}
     </Stack>
