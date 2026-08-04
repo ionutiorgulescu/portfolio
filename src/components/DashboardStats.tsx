@@ -100,7 +100,7 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
     <Box sx={gridSx}>
       <Box sx={statCardSx}>
         <Typography sx={statTitleSx}>
-          Total Portfolio Value
+          Total Value
         </Typography>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.5 }}>
@@ -140,14 +140,6 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
           <Typography sx={statSubTextSx}>
             vs cost basis {formatCurrency(stats.totalCostBasis, currency)}
           </Typography>
-        </Box>
-      </Box>
-
-      <Box sx={statCardSx}>
-        <Typography sx={statTitleSx}>Active Assets</Typography>
-        <Box>
-          <Typography sx={statValueSx}>{stats.activeTickers}</Typography>
-          <Typography sx={statSubTextSx}>{stats.openPositions} buy transactions</Typography>
         </Box>
       </Box>
     </Box>

@@ -36,7 +36,15 @@ function formatQuantity(value: number): string {
         : value.toFixed(4).replace(/\.?0+$/, '');
 }
 
-function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
+function TickerAvatar({
+    ticker,
+    logoUrl,
+    onClick,
+}: {
+    ticker: string;
+    logoUrl?: string | null;
+    onClick?: () => void;
+}) {
     const candidates = buildLogoCandidates(logoUrl);
     const [attempt, setAttempt] = useState(0);
     const [loaded, setLoaded] = useState(false);
@@ -52,6 +60,20 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
 
     return (
         <Box
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onClick={onClick}
+            onKeyDown={
+                onClick
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onClick();
+                        }
+                    }
+                    : undefined
+            }
+            aria-label={onClick ? `Add position for ${ticker}` : undefined}
             sx={{
                 position: 'relative',
                 width: 40,
@@ -68,6 +90,16 @@ function TickerAvatar({ ticker, logoUrl }: { ticker: string; logoUrl?: string | 
                 justifyContent: 'center',
                 flexShrink: 0,
                 overflow: 'hidden',
+                cursor: onClick ? 'pointer' : 'default',
+                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                ...(onClick
+                    ? {
+                        '&:hover': {
+                            borderColor: 'grey.400',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                        },
+                    }
+                    : null),
             }}
         >
             {/* Initials render underneath immediately so a slow network never shows a blank circle. */}
@@ -118,6 +150,7 @@ export function PortfolioCompositionRow({
     currency,
     showPercent,
     onTogglePercent,
+    onLogoClick,
     logoUrl,
 }: {
     row: TickerComposition;
@@ -125,6 +158,7 @@ export function PortfolioCompositionRow({
     currency: 'USD' | 'RON';
     showPercent: boolean;
     onTogglePercent: () => void;
+    onLogoClick?: (row: TickerComposition) => void;
     logoUrl?: string | null;
 }) {
     const gainPositive = row.gainLoss >= 0;
@@ -148,7 +182,11 @@ export function PortfolioCompositionRow({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
                 {/* Ticker avatar */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
-                    <TickerAvatar ticker={row.ticker} logoUrl={logoUrl} />
+                    <TickerAvatar
+                        ticker={row.ticker}
+                        logoUrl={logoUrl}
+                        onClick={onLogoClick ? () => onLogoClick(row) : undefined}
+                    />
 
                     <Typography
                         fontWeight={600}

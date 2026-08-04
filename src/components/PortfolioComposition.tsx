@@ -2,10 +2,17 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { usePortfolioComposition } from '../hooks/usePortfolioComposition';
+import { useCreatePosition } from '../hooks/useCreatePosition';
+import {
+  usePortfolioComposition,
+  type TickerComposition,
+} from '../hooks/usePortfolioComposition';
 import { useStockLogos } from '../hooks/useStockLogos';
+import type { NewPosition } from '../schemas/positionSchema';
 import type { CompositionFilter } from './FilterControl';
+import PositionFormModal from './PositionFormModal';
 import { PortfolioCompositionRow } from './PortfolioCompositionRaw';
 
 function RowSkeleton() {
@@ -47,10 +54,34 @@ const secondaryTextSx = {
 };
 
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
+  const queryClient = useQueryClient();
   const { composition, tickers, loading, error } = usePortfolioComposition(filter, portfolioId);
   const { logosByTicker, loading: logosLoading } = useStockLogos(tickers);
+  const createPositionMutation = useCreatePosition(portfolioId);
   const currency = filter === 'bvb' ? 'RON' : 'USD';
   const [showPercent, setShowPercent] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<TickerComposition | null>(null);
+
+  const handleLogoClick = (row: TickerComposition) => {
+    setSelectedRow(row);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setSelectedRow(null);
+  };
+
+  const handleFormSubmit = async (data: NewPosition) => {
+    await createPositionMutation.mutateAsync(data);
+    handleCloseForm();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['positions', portfolioId] }),
+      queryClient.invalidateQueries({ queryKey: ['compositionQuotes'] }),
+      queryClient.invalidateQueries({ queryKey: ['portfolioQuotes'] }),
+    ]);
+  };
 
   if (error) return <Alert severity="error">{error.message}</Alert>;
 
@@ -222,10 +253,31 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
             currency={currency}
             showPercent={showPercent}
             onTogglePercent={() => setShowPercent(prev => !prev)}
+            onLogoClick={handleLogoClick}
             logoUrl={logosByTicker.get(row.ticker)}
           />
         ))
       )}
+
+      <PositionFormModal
+        open={isFormOpen}
+        portfolioId={portfolioId}
+        defaults={
+          selectedRow
+            ? {
+                ticker_symbol: selectedRow.ticker,
+                asset_name: selectedRow.assetName,
+                price: String(selectedRow.currentPrice),
+                currency: selectedRow.currency,
+                transaction_type: selectedRow.transactionType,
+              }
+            : undefined
+        }
+        hideCurrencyAndType
+        isSubmitting={createPositionMutation.isPending}
+        onSubmit={handleFormSubmit}
+        onClose={handleCloseForm}
+      />
     </Box>
   );
 }
