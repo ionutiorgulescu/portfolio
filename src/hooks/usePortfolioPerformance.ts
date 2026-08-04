@@ -9,6 +9,7 @@ import type {
   UsePortfolioPerformanceResult,
 } from '../types/performance';
 import type { CompositionFilter } from '../components/FilterControl';
+import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { fetchStockHistory } from './useStockData';
 import { runFifoEngine } from '../services/fifoEngine';
 import { buildPriceMatrix } from '../services/priceMatrix';
@@ -31,14 +32,19 @@ const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transa
     throw new Error('You must be signed in to view portfolio performance.');
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('positions')
     .select('*')
     .eq('user_id', user.id)
-    .eq('portfolio_id', portfolioId)
     .in('status', [PositionStatus.Buy, PositionStatus.Sell])
     .order('buy_date', { ascending: true })
     .order('created_at', { ascending: true });
+
+  if (portfolioId !== ALL_PORTFOLIOS_ID) {
+    query = query.eq('portfolio_id', portfolioId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

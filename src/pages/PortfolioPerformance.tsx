@@ -11,7 +11,7 @@ import { IntervalSelector } from '../components/IntervalSelector';
 import { FilterControl } from '../components/FilterControl';
 import type { CompositionFilter } from '../components/FilterControl';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
-import { usePortfolioContext, ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
+import { usePortfolioContext } from '../contexts/PortfolioContext';
 import {
   formatNumber,
   formatTimestamp,
@@ -120,14 +120,6 @@ const PortfolioPerformance = () => {
   }, [chartData]);
 
   if (!selectedPortfolioId) return null;
-
-  if (selectedPortfolioId === ALL_PORTFOLIOS_ID) {
-    return (
-      <Alert severity="info">
-        Select a specific portfolio to view the performance chart.
-      </Alert>
-    );
-  }
 
   const filterControl = (
     <FilterControl value={filter} onChange={setFilter} exclude={['all']} hideName />
