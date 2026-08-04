@@ -50,7 +50,6 @@ const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon /> },
   { label: 'Performance', path: '/performance', icon: <AttachMoneyIcon /> },
-  { label: 'Markets', path: '/markets', icon: <ShowChartIcon /> },
   { label: 'Goal', path: '/goal', icon: <GoalIcon /> },
   { label: 'Plan', path: '/plan', icon: <CallMadeIcon /> },
 ];
