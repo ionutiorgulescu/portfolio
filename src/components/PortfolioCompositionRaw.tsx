@@ -281,7 +281,7 @@ export function PortfolioCompositionRow({
                                 textOverflow: 'ellipsis',
                             }}
                         >
-                            {row.ticker}
+                            {row.assetName}
                         </Typography>
                         <Typography
                             sx={{
