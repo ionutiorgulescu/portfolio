@@ -245,7 +245,7 @@ export function PortfolioCompositionRow({
         <Box
             sx={{
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 columnGap: 1.5,
                 py: 2,
                 borderBottom: '1px solid',
@@ -261,127 +261,133 @@ export function PortfolioCompositionRow({
                 onClick={onLogoClick ? () => onLogoClick(row) : undefined}
             />
 
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box
+                sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    columnGap: 1.5,
+                }}
+            >
                 <Box
                     sx={{
+                        minWidth: 0,
+                        flex: 1,
                         display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        columnGap: 1.5,
+                        flexDirection: 'column',
+                        rowGap: '2px',
                     }}
                 >
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography
-                            fontWeight={700}
+                    <Typography
+                        fontWeight={700}
+                        sx={{
+                            ...primaryTextSx,
+                            fontSize: 15,
+                            lineHeight: '18px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {row.assetName}
+                    </Typography>
+                    <Typography
+                        sx={{
+                            ...secondaryTextSx,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            lineHeight: '18px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {formatCurrency(row.currentPrice, currency)}
+                        {row.priceSession ? (
+                            <SessionBadge
+                                session={row.priceSession}
+                                changePercent={row.sessionChangePercent}
+                            />
+                        ) : null}
+                    </Typography>
+                    <Typography
+                        sx={{
+                            ...mutedTextSx,
+                            fontSize: 12,
+                            lineHeight: '14px',
+                            fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {formatQuantity(row.quantity)} @ {formatCurrency(row.avgCost, currency)}
+                    </Typography>
+                </Box>
+
+                <Box
+                    onClick={onTogglePercent}
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-end',
+                        rowGap: '2px',
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                    }}
+                >
+                    <Typography
+                        fontWeight={600}
+                        sx={{
+                            fontFamily: '"Open Sans", sans-serif',
+                            fontSize: 14,
+                            lineHeight: '18px',
+                            color: gainPositive ? '#27a69a' : '#d92673',
+                            whiteSpace: 'nowrap',
+                            fontVariantNumeric: 'tabular-nums',
+                        }}
+                    >
+                        {gainPositive ? '↑' : '↓'}{' '}
+                        {showPercent
+                            ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
+                            : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
+                        }
+                    </Typography>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            columnGap: 0.5,
+                        }}
+                    >
+                        <Box
+                            component="img"
+                            src={chartPieIcon}
+                            alt=""
+                            aria-hidden
                             sx={{
-                                ...primaryTextSx,
-                                fontSize: 15,
-                                lineHeight: '20px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                                width: 12,
+                                height: 12,
+                                opacity: 0.55,
+                                flexShrink: 0,
                             }}
-                        >
-                            {row.assetName}
-                        </Typography>
+                        />
                         <Typography
                             sx={{
                                 ...secondaryTextSx,
-                                fontSize: 13,
-                                fontWeight: 600,
-                                lineHeight: '18px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                            }}
-                        >
-                            {formatCurrency(row.currentPrice, currency)}
-                            {row.priceSession ? (
-                                <SessionBadge
-                                    session={row.priceSession}
-                                    changePercent={row.sessionChangePercent}
-                                />
-                            ) : null}
-                        </Typography>
-                    </Box>
-
-                    <Box
-                        onClick={onTogglePercent}
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-end',
-                            flexShrink: 0,
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                        }}
-                    >
-                        <Typography
-                            fontWeight={600}
-                            sx={{
-                                fontFamily: '"Open Sans", sans-serif',
-                                fontSize: 14,
-                                lineHeight: '20px',
-                                color: gainPositive ? '#27a69a' : '#d92673',
-                                whiteSpace: 'nowrap',
+                                fontSize: 12,
+                                lineHeight: '14px',
                                 fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
                             }}
                         >
-                            {gainPositive ? '↑' : '↓'}{' '}
-                            {showPercent
-                                ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
-                                : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
-                            }
+                            {formatPercent(row.weight)}
                         </Typography>
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                columnGap: 0.5,
-                            }}
-                        >
-                            <Box
-                                component="img"
-                                src={chartPieIcon}
-                                alt=""
-                                aria-hidden
-                                sx={{
-                                    width: 12,
-                                    height: 12,
-                                    opacity: 0.55,
-                                    flexShrink: 0,
-                                }}
-                            />
-                            <Typography
-                                sx={{
-                                    ...secondaryTextSx,
-                                    fontSize: 12,
-                                    lineHeight: '16px',
-                                    fontVariantNumeric: 'tabular-nums',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {formatPercent(row.weight)}
-                            </Typography>
-
-                        </Box>
                     </Box>
                 </Box>
-
-                <Typography
-                    sx={{
-                        ...mutedTextSx,
-                        fontSize: 12,
-                        lineHeight: '16px',
-                        mt: 0.75,
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                    }}
-                >
-                    {formatQuantity(row.quantity)} @ {formatCurrency(row.avgCost, currency)}
-                </Typography>
             </Box>
         </Box>
     );
