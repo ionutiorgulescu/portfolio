@@ -4,10 +4,18 @@ import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import InputBase from '@mui/material/InputBase';
 import Typography from '@mui/material/Typography';
+import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { useMonthlyGoal, aggregateMonthlyData, type RangeOption } from '../hooks/useMonthlyGoal';
 import { MonthlyGoalChart } from '../components/GoalTracker/MonthlyGoalChart';
 import { GoalMetrics } from '../components/GoalTracker/GoalMetrics';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
+
+const SELECTED_BG = '#E8F7F3';
+const SELECTED_BORDER = '#C5EDE3';
+const SELECTED_TEXT = '#1A5C4A';
+const IDLE_BORDER = '#E0E0E0';
+const IDLE_ICON_COLOR = '#6B7280';
 
 const _currentYear = new Date().getFullYear();
 const RANGES: { label: string; value: RangeOption }[] = Array.from(
@@ -45,23 +53,15 @@ const Goal = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-      {/* Header row */}
-      <Box sx={{
-        display: 'flex',
-        alignItems: { xs: 'flex-start', sm: 'center' },
-        justifyContent: 'space-between',
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: { xs: 2, sm: 0 },
-      }}>
-        {/* Range tabs */}
-        <Box sx={{
-          display: 'inline-flex',
-          borderRadius: '12px',
-          backgroundColor: 'grey.200',
-          padding: '4px',
-          gap: '2px',
-          width: 'fit-content',
-        }}>
+      {/* Year selector + monthly goal */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: { xs: 0.75, sm: 1.25 },
+            width: '100%',
+          }}
+        >
           {RANGES.map(r => {
             const selected = range === r.value;
             return (
@@ -69,21 +69,37 @@ const Goal = () => {
                 key={r.value}
                 onClick={() => setRange(r.value)}
                 sx={{
-                  borderRadius: '8px',
-                  px: 2,
-                  py: 0.5,
-                  backgroundColor: selected ? 'white' : 'transparent',
-                  boxShadow: selected ? 1 : 'none',
-                  transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
-                  '&:hover': { backgroundColor: selected ? 'white' : 'rgba(0,0,0,0.04)' },
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: { xs: 1, sm: 1.5 },
+                  py: { xs: 1.25, sm: 1.5 },
+                  borderRadius: { xs: '12px', sm: '14px' },
+                  backgroundColor: selected ? SELECTED_BG : 'background.paper',
+                  border: '1.5px solid',
+                  borderColor: selected ? SELECTED_BORDER : IDLE_BORDER,
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                  '&:hover': {
+                    backgroundColor: selected ? SELECTED_BG : 'grey.50',
+                  },
                 }}
               >
+                <CalendarTodayOutlinedIcon
+                  sx={{
+                    fontSize: { xs: 18, sm: 20 },
+                    color: selected ? SELECTED_TEXT : IDLE_ICON_COLOR,
+                  }}
+                />
                 <Typography
                   variant="body2"
                   sx={{
-                    fontWeight: selected ? 700 : 400,
-                    color: selected ? 'text.primary' : 'text.secondary',
-                    lineHeight: 1,
+                    fontWeight: selected ? 700 : 500,
+                    fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                    color: selected ? SELECTED_TEXT : 'text.secondary',
+                    lineHeight: 1.2,
                     userSelect: 'none',
                   }}
                 >
@@ -94,35 +110,66 @@ const Goal = () => {
           })}
         </Box>
 
-        {/* Goal input */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, paddingLeft: 1 }}>
-          <Typography
-            component="label"
-            htmlFor={goalInputId}
-            variant="body2"
-            color="text.secondary"
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Monthly goal
-          </Typography>
-          <Box sx={{
+        <Box
+          component="label"
+          htmlFor={goalInputId}
+          sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 0.5,
-            bgcolor: 'grey.100',
-            border: '1px solid',
-            borderColor: 'grey.300',
-            borderRadius: '10px',
-            px: 1.5,
-            py: 0.5,
-          }}>
-            <Typography variant="body2" color="text.secondary" sx={{ userSelect: 'none' }}>$</Typography>
+            justifyContent: 'space-between',
+            gap: 2,
+            width: '100%',
+            px: { xs: 1.75, sm: 2.25 },
+            py: { xs: 1.5, sm: 1.75 },
+            borderRadius: { xs: '12px', sm: '14px' },
+            backgroundColor: 'background.paper',
+            border: '1.5px solid',
+            borderColor: IDLE_BORDER,
+            cursor: 'text',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <GpsFixedIcon sx={{ fontSize: 20, color: IDLE_ICON_COLOR }} />
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+              }}
+            >
+              Monthly goal
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: 'text.secondary', fontWeight: 500, userSelect: 'none' }}
+            >
+              $
+            </Typography>
             <InputBase
               id={goalInputId}
               inputProps={{ type: 'number', min: 0, step: 100 }}
               value={goal}
               onChange={e => setGoal(Math.max(0, Number(e.target.value)))}
-              sx={{ width: 72, fontSize: 14, fontWeight: 500, '& input': { p: 0, textAlign: 'right' } }}
+              sx={{
+                width: 80,
+                fontSize: { xs: 18, sm: 20 },
+                fontWeight: 700,
+                color: 'text.primary',
+                '& input': {
+                  p: 0,
+                  textAlign: 'right',
+                  // Hide number spinners
+                  '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': {
+                    WebkitAppearance: 'none',
+                    margin: 0,
+                  },
+                  MozAppearance: 'textfield',
+                },
+              }}
             />
           </Box>
         </Box>

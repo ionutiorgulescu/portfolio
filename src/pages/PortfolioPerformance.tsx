@@ -41,7 +41,7 @@ const cardSx = {
 } as const;
 
 const PortfolioPerformance = () => {
-  const [interval, setInterval] = useState<ChartInterval>('1Y');
+  const [interval, setInterval] = useState<ChartInterval>('YTD');
   const [filter, setFilter] = useState<CompositionFilter>('stock');
   const { selectedPortfolioId } = usePortfolioContext();
   const { data: allData, isLoading, isError, error } = usePortfolioPerformance(filter, selectedPortfolioId ?? '');
