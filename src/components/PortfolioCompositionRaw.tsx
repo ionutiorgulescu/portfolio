@@ -1,7 +1,9 @@
 import { Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
-import type { TickerComposition } from "../hooks/usePortfolioComposition";
+import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import chartPieIcon from "../assets/chart-pie.svg";
+import sunriseIcon from "../assets/sunrise.svg";
+import sunsetIcon from "../assets/sunset.svg";
 
 const primaryTextSx = {
     color: "#393a36",
@@ -40,6 +42,77 @@ function formatQuantity(value: number): string {
     return value % 1 === 0
         ? String(value)
         : value.toFixed(4).replace(/\.?0+$/, '');
+}
+
+function SessionBadge({
+    session,
+    changePercent,
+}: {
+    session: PriceSession;
+    changePercent: number | null;
+}) {
+    const isPre = session === 'PRE';
+    const label = isPre ? 'Pre-market' : 'Post-market';
+    const hasChange = changePercent != null;
+    const positive = (changePercent ?? 0) >= 0;
+
+    return (
+        <Box
+            component="span"
+            title={label}
+            sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                columnGap: 0.5,
+                ml: 0.75,
+                pl: '3px',
+                pr: 1,
+                py: '2px',
+                borderRadius: '999px',
+                bgcolor: '#e9eef6',
+                verticalAlign: 'middle',
+            }}
+        >
+            <Box
+                sx={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    bgcolor: 'white',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                }}
+            >
+                <Box
+                    component="img"
+                    src={isPre ? sunriseIcon : sunsetIcon}
+                    alt={label}
+                    sx={{
+                        width: 12,
+                        height: 12,
+                        opacity: 0.7,
+                    }}
+                />
+            </Box>
+            {hasChange ? (
+                <Box
+                    component="span"
+                    sx={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        lineHeight: '14px',
+                        fontVariantNumeric: 'tabular-nums',
+                        color: positive ? '#27a69a' : '#d92673',
+                    }}
+                >
+                    {positive ? '+' : ''}
+                    {changePercent.toFixed(2)}%
+                </Box>
+            ) : null}
+        </Box>
+    );
 }
 
 function TickerAvatar({
@@ -179,9 +252,6 @@ export function PortfolioCompositionRow({
                 '&:last-child': { borderBottom: 'none' },
                 '&:hover': { bgcolor: 'grey.50' },
                 transition: 'background-color 0.15s ease',
-                mx: -1,
-                px: 1,
-                borderRadius: '8px',
             }}
         >
             <TickerAvatar
@@ -226,6 +296,12 @@ export function PortfolioCompositionRow({
                             {row.assetName}
                             {' · '}
                             {formatCurrency(row.currentPrice, currency)}
+                            {row.priceSession ? (
+                                <SessionBadge
+                                    session={row.priceSession}
+                                    changePercent={row.sessionChangePercent}
+                                />
+                            ) : null}
                         </Typography>
                     </Box>
 

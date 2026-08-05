@@ -10,6 +10,15 @@ const corsHeaders = {
 interface QuoteResult {
   symbol: string;
   regularMarketPrice: number;
+  marketState: string;
+  postMarketPrice: number | null;
+  postMarketChange: number | null;
+  postMarketChangePercent: number | null;
+  postMarketTime: string | null;
+  preMarketPrice: number | null;
+  preMarketChange: number | null;
+  preMarketChangePercent: number | null;
+  preMarketTime: string | null;
 }
 
 // Local fallback type for editors/linters that are not configured with Deno libs.
@@ -50,6 +59,15 @@ Deno.serve(async (req: Request) => {
     const quotes: QuoteResult[] = results.map((q) => ({
       symbol: q.symbol,
       regularMarketPrice: q.regularMarketPrice ?? 0,
+      marketState: q.marketState ?? 'CLOSED',
+      postMarketPrice: q.postMarketPrice ?? null,
+      postMarketChange: q.postMarketChange ?? null,
+      postMarketChangePercent: q.postMarketChangePercent ?? null,
+      postMarketTime: q.postMarketTime ? new Date(q.postMarketTime).toISOString() : null,
+      preMarketPrice: q.preMarketPrice ?? null,
+      preMarketChange: q.preMarketChange ?? null,
+      preMarketChangePercent: q.preMarketChangePercent ?? null,
+      preMarketTime: q.preMarketTime ? new Date(q.preMarketTime).toISOString() : null,
     }));
 
     return new Response(JSON.stringify(quotes), {

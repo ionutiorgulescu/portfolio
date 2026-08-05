@@ -4,6 +4,8 @@ import { usePositions } from './usePositions';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { CompositionFilter } from '../components/FilterControl';
 
+export type PriceSession = 'PRE' | 'POST';
+
 export interface TickerComposition {
   ticker: string;
   transactionType: TransactionType;
@@ -13,6 +15,9 @@ export interface TickerComposition {
   avgCost: number;
   currentValue: number;
   currentPrice: number;
+  priceSession: PriceSession | null;
+  /** % change of PRE/POST price vs regularMarketPrice; null when not in session pricing. */
+  sessionChangePercent: number | null;
   gainLoss: number;
   weight: number;
   currency: Currency;
@@ -21,9 +26,61 @@ export interface TickerComposition {
 type QuoteResult = {
   symbol: string;
   regularMarketPrice?: number;
+  marketState?: string;
+  preMarketPrice?: number | null;
+  postMarketPrice?: number | null;
+  preMarketChangePercent?: number | null;
+  postMarketChangePercent?: number | null;
 };
 
 const RON_USD_TICKER = 'RONUSD=X';
+
+function sessionChangeVsRegular(
+  sessionPrice: number | null | undefined,
+  regular: number,
+  apiChangePercent?: number | null,
+): number | null {
+  if (sessionPrice == null || regular <= 0) return null;
+  if (apiChangePercent != null) return apiChangePercent;
+  return ((sessionPrice - regular) / regular) * 100;
+}
+
+function resolveQuotePrice(quote?: QuoteResult): {
+  price: number;
+  session: PriceSession | null;
+  sessionChangePercent: number | null;
+} {
+  const regular = quote?.regularMarketPrice ?? 0;
+  const marketState = quote?.marketState;
+
+  if (marketState === 'PRE') {
+    const sessionPrice = quote?.preMarketPrice;
+    return {
+      price: sessionPrice ?? regular,
+      session: 'PRE',
+      sessionChangePercent: sessionChangeVsRegular(
+        sessionPrice,
+        regular,
+        quote?.preMarketChangePercent,
+      ),
+    };
+  }
+
+  if (marketState === 'POST') {
+    const sessionPrice = quote?.postMarketPrice;
+    return {
+      price: sessionPrice ?? regular,
+      session: 'POST',
+      sessionChangePercent: sessionChangeVsRegular(
+        sessionPrice,
+        regular,
+        quote?.postMarketChangePercent,
+      ),
+    };
+  }
+
+  return { price: regular, session: null, sessionChangePercent: null };
+}
 
 function buildFifoHoldings(
   positions: ReturnType<typeof usePositions>['data'],
@@ -150,11 +207,11 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
   const composition: TickerComposition[] = (() => {
     if (!quotes) return [];
 
-    const quoteMap = new Map(quotes.map(q => [q.symbol, q.regularMarketPrice ?? 0]));
-    const ronToUsd = quoteMap.get(RON_USD_TICKER) ?? 0;
+    const quoteMap = new Map(quotes.map(q => [q.symbol, q]));
+    const ronToUsd = resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
 
     const totalPortfolioValue = [...holdings.entries()].reduce((sum, [ticker, holding]) => {
-      const currentPrice = quoteMap.get(ticker) ?? 0;
+      const currentPrice = resolveQuotePrice(quoteMap.get(ticker)).price;
       if (holding.currency === Currency.RON && filter !== 'bvb') {
         return sum + holding.quantity * currentPrice * ronToUsd;
       }
@@ -163,7 +220,11 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
 
     return [...holdings.entries()]
       .map(([ticker, holding]) => {
-        const currentPrice = quoteMap.get(ticker) ?? 0;
+        const {
+          price: currentPrice,
+          session: priceSession,
+          sessionChangePercent,
+        } = resolveQuotePrice(quoteMap.get(ticker));
         let currentValue: number;
         let costBasisUsd: number;
         let displayCurrentPrice: number;
@@ -190,6 +251,8 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           avgCost: holding.avgCost,
           currentValue,
           currentPrice: displayCurrentPrice,
+          priceSession,
+          sessionChangePercent,
           gainLoss,
           weight,
           currency: holding.currency,
