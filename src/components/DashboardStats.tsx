@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { usePortfolioStats } from '../hooks/usePortfolioStats';
 import type { CompositionFilter } from './FilterControl';
 
@@ -75,6 +79,17 @@ const chipSxBase = {
   width: 'fit-content',
 };
 
+const HIDDEN_VALUE = '*****';
+const VALUES_HIDDEN_STORAGE_KEY = 'dashboardStats.valuesHidden';
+
+function maskCurrency(currency: 'USD' | 'RON'): string {
+  return currency === 'RON' ? `${HIDDEN_VALUE} RON` : `$${HIDDEN_VALUE}`;
+}
+
+function readValuesHidden(): boolean {
+  return localStorage.getItem(VALUES_HIDDEN_STORAGE_KEY) === 'true';
+}
+
 type DashboardStatsProps = {
   filter: CompositionFilter;
   portfolioId: string;
@@ -82,6 +97,15 @@ type DashboardStatsProps = {
 
 export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
   const { stats, loading, error } = usePortfolioStats(filter, portfolioId);
+  const [valuesHidden, setValuesHidden] = useState(readValuesHidden);
+
+  const toggleValuesHidden = () => {
+    setValuesHidden((hidden) => {
+      const next = !hidden;
+      localStorage.setItem(VALUES_HIDDEN_STORAGE_KEY, String(next));
+      return next;
+    });
+  };
 
   if (error) return <Alert severity="error">{error.message}</Alert>;
 
@@ -99,13 +123,21 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
   return (
     <Box sx={gridSx}>
       <Box sx={statCardSx}>
-        <Typography sx={statTitleSx}>
-          Total Value
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography sx={statTitleSx}>Total Value</Typography>
+          <IconButton
+            size="small"
+            aria-label={valuesHidden ? 'Show total value and gains' : 'Hide total value and gains'}
+            onClick={toggleValuesHidden}
+            sx={{ color: '#61615e' }}
+          >
+            {valuesHidden ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+          </IconButton>
+        </Box>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.5 }}>
             <Typography sx={statValueSx}>
-              {formatCurrency(stats.totalValue, currency)}
+              {valuesHidden ? maskCurrency(currency) : formatCurrency(stats.totalValue, currency)}
             </Typography>
             <Box
               component="span"
@@ -116,7 +148,9 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
                 color: gainPositive ? '#27a69a' : '#d92673',
               }}
             >
-              {gainPositive ? '▲' : '▼'} {Math.abs(stats.allTimeGainPercent).toFixed(2)}%
+              {valuesHidden
+                ? `${gainPositive ? '▲' : '▼'} ${HIDDEN_VALUE}%`
+                : `${gainPositive ? '▲' : '▼'} ${Math.abs(stats.allTimeGainPercent).toFixed(2)}%`}
             </Box>
           </Box>
           <Typography sx={statSubTextSx}>
@@ -134,11 +168,12 @@ export function DashboardStats({ filter, portfolioId }: DashboardStatsProps) {
               color: gainPositive ? '#27a69a' : '#d92673',
             }}
           >
-            {gainPositive ? '+' : ''}
-            {formatCurrency(stats.allTimeGain, currency)}
+            {valuesHidden
+              ? `${gainPositive ? '+' : ''}${maskCurrency(currency)}`
+              : `${gainPositive ? '+' : ''}${formatCurrency(stats.allTimeGain, currency)}`}
           </Typography>
           <Typography sx={statSubTextSx}>
-            vs cost basis {formatCurrency(stats.totalCostBasis, currency)}
+            vs cost basis {valuesHidden ? maskCurrency(currency) : formatCurrency(stats.totalCostBasis, currency)}
           </Typography>
         </Box>
       </Box>
