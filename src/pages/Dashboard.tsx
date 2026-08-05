@@ -27,7 +27,7 @@ const Dashboard = () => {
   if (!selectedPortfolioId) return null;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{
         display: 'flex',
         alignItems: { xs: 'flex-start', sm: 'center' },
