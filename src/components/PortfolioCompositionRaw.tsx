@@ -74,6 +74,7 @@ function SessionBadge({
             }}
         >
             <Box
+                component="span"
                 sx={{
                     width: 18,
                     height: 18,
