@@ -42,7 +42,7 @@ const gridSx = {
         sm: 'repeat(2, minmax(0, 1fr))',
         lg: 'repeat(3, minmax(0, 1fr))',
     },
-    gap: { xs: 1.5, sm: 2 },
+    gap: 2,
 };
 
 const cardSx = {
