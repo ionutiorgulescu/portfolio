@@ -65,10 +65,10 @@ function SessionBadge({
                 alignItems: 'center',
                 columnGap: 0.5,
                 ml: 0.75,
-                pl: '3px',
-                pr: 1,
-                py: '2px',
-                borderRadius: '999px',
+                pl: '8px',
+                pr: '8px',
+                py: '4px',
+                borderRadius: '4px',
                 bgcolor: '#e9eef6',
                 verticalAlign: 'middle',
             }}
@@ -287,14 +287,13 @@ export function PortfolioCompositionRow({
                             sx={{
                                 ...secondaryTextSx,
                                 fontSize: 13,
+                                fontWeight: 600,
                                 lineHeight: '18px',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                             }}
                         >
-                            {row.assetName}
-                            {' · '}
                             {formatCurrency(row.currentPrice, currency)}
                             {row.priceSession ? (
                                 <SessionBadge
