@@ -1,9 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
   AppBar,
   Box,
-  Button,
   CircularProgress,
   Drawer,
   IconButton,
@@ -15,7 +13,6 @@ import {
   Select,
   Skeleton,
   Toolbar,
-  Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -33,12 +30,6 @@ import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { PullToRefreshProvider } from '../contexts/PullToRefreshContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
-type AppShellProps = {
-  userEmail?: string;
-  signOutError?: string | null;
-  onSignOut: () => void;
-};
-
 type RefreshHandler = () => void | Promise<void>;
 
 const drawerWidthOpen = 240;
@@ -53,7 +44,7 @@ const menuItems = [
   { label: 'Plan', path: '/plan', icon: <CallMadeIcon /> },
 ];
 
-const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
+const AppShell = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [isMenuOpen, setIsMenuOpen] = useState(true);
@@ -150,56 +141,37 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
             <IconButton color="inherit" edge="start" onClick={handleDrawerToggle}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" component="h1" noWrap>
-              Portfolio App
-            </Typography>
-          </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexShrink: 0 }}>
-            {/* Portfolio switcher + manage */}
             {portfoliosLoading ? (
               <Skeleton width={140} height={36} sx={{ borderRadius: 1 }} />
-            ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                {portfolios.length > 1 && (
-                  <Select
-                    size="small"
-                    value={selectedPortfolioId ?? ''}
-                    onChange={(e) => setSelectedPortfolioId(e.target.value)}
-                    sx={{
-                      minWidth: 140,
-                      fontSize: 14,
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
-                    }}
-                  >
-                    <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
-                    {portfolios.map((p) => (
-                      <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                    ))}
-                  </Select>
-                )}
-                <IconButton
-                  size="small"
-                  onClick={() => setManageOpen(true)}
-                  title="Manage portfolios"
-                  color="inherit"
-                >
-                  <SettingsIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            )}
-
-            <Typography
-              variant="body2"
-              noWrap
-              sx={{ display: { xs: 'none', sm: 'block' }, maxWidth: 200 }}
-            >
-              Signed in as {userEmail ?? 'unknown user'}
-            </Typography>
-            <Button variant="outlined" color="inherit" onClick={onSignOut} size="small">
-              Sign out
-            </Button>
+            ) : portfolios.length > 1 ? (
+              <Select
+                size="small"
+                value={selectedPortfolioId ?? ''}
+                onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                sx={{
+                  minWidth: 140,
+                  fontSize: 14,
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                }}
+              >
+                <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
+                {portfolios.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                ))}
+              </Select>
+            ) : null}
           </Box>
+
+          <IconButton
+            size="small"
+            onClick={() => setManageOpen(true)}
+            title="Manage portfolios"
+            color="inherit"
+            edge="end"
+          >
+            <SettingsIcon fontSize="small" />
+          </IconButton>
         </Toolbar>
       </AppBar>
 
@@ -271,10 +243,6 @@ const AppShell = ({ userEmail, signOutError, onSignOut }: AppShellProps) => {
         >
           <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
         </Box>
-
-        {signOutError && (
-          <Alert sx={{ mb: 2 }} severity="error">{signOutError}</Alert>
-        )}
 
         <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
           <Outlet />

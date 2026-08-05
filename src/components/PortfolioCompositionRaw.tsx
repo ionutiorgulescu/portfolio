@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import type { TickerComposition } from "../hooks/usePortfolioComposition";
+import chartPieIcon from "../assets/chart-pie.svg";
 
 const primaryTextSx = {
     color: "#393a36",
@@ -223,6 +224,8 @@ export function PortfolioCompositionRow({
                             }}
                         >
                             {row.assetName}
+                            {' · '}
+                            {formatCurrency(row.currentPrice, currency)}
                         </Typography>
                     </Box>
 
@@ -254,17 +257,38 @@ export function PortfolioCompositionRow({
                                 : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
                             }
                         </Typography>
-                        <Typography
+                        <Box
                             sx={{
-                                ...mutedTextSx,
-                                fontSize: 12,
-                                lineHeight: '16px',
-                                fontVariantNumeric: 'tabular-nums',
-                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                columnGap: 0.5,
                             }}
                         >
-                            {formatPercent(row.weight)} wt
-                        </Typography>
+                            <Box
+                                component="img"
+                                src={chartPieIcon}
+                                alt=""
+                                aria-hidden
+                                sx={{
+                                    width: 12,
+                                    height: 12,
+                                    opacity: 0.55,
+                                    flexShrink: 0,
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    ...secondaryTextSx,
+                                    fontSize: 12,
+                                    lineHeight: '16px',
+                                    fontVariantNumeric: 'tabular-nums',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {formatPercent(row.weight)}
+                            </Typography>
+
+                        </Box>
                     </Box>
                 </Box>
 
@@ -280,9 +304,7 @@ export function PortfolioCompositionRow({
                         textOverflow: 'ellipsis',
                     }}
                 >
-                    {formatCurrency(row.currentPrice, currency)}
-                    {' · '}
-                    {formatQuantity(row.quantity)} sh @ {formatCurrency(row.avgCost, currency)}
+                    {formatQuantity(row.quantity)} @ {formatCurrency(row.avgCost, currency)}
                 </Typography>
             </Box>
         </Box>

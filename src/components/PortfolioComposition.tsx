@@ -55,6 +55,13 @@ const primaryTextSx = {
   fontFamily: '"Open Sans", sans-serif',
 };
 
+const TitleSx = {
+  fontSize: { xs: 16, sm: 18, md: 20 },
+  lineHeight: { xs: '24px', sm: '26px', md: '28px' },
+  color: '#393a36',
+  fontWeight: 600,
+};
+
 const secondaryTextSx = {
   color: '#61615e',
   fontFamily: '"Open Sans", sans-serif',
@@ -100,9 +107,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
       <Typography
         sx={{
           ...primaryTextSx,
-          fontSize: 20,
-          lineHeight: '28px',
-          fontWeight: 600,
+          ...TitleSx,
           mb: 1,
         }}
       >

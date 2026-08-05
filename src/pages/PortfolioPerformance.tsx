@@ -122,7 +122,7 @@ const PortfolioPerformance = () => {
   if (!selectedPortfolioId) return null;
 
   const filterControl = (
-    <FilterControl value={filter} onChange={setFilter} exclude={['all']} hideName />
+    <FilterControl value={filter} onChange={setFilter} exclude={['all']} />
   );
 
   const intervalSelector = (

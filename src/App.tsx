@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Box, CircularProgress, Container, Paper } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { supabase } from './api/supabase';
 import LoginForm from './components/LoginForm';
 import { useAuthSession } from './hooks/useAuthSession';
 import AppShell from './layouts/AppShell';
@@ -15,15 +13,6 @@ import Plan from './pages/Plan';
 
 function App() {
   const { user, loading } = useAuthSession();
-  const [signOutError, setSignOutError] = useState<string | null>(null);
-
-  const handleSignOut = async () => {
-    setSignOutError(null);
-    const { error: logoutError } = await supabase.auth.signOut();
-    if (logoutError) {
-      setSignOutError(logoutError.message);
-    }
-  };
 
   if (loading) {
     return (
@@ -52,7 +41,7 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={<AppShell userEmail={user.email} signOutError={signOutError} onSignOut={handleSignOut} />}
+          element={<AppShell />}
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
