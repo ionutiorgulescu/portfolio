@@ -3,6 +3,7 @@ import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { CompositionFilter } from '../components/FilterControl';
+import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
 export interface PortfolioStats {
   totalValue: number;
@@ -15,30 +16,7 @@ export interface PortfolioStats {
   activeTickers: number;
 }
 
-type QuoteResult = {
-  symbol: string;
-  regularMarketPrice?: number;
-  marketState?: string;
-  preMarketPrice?: number | null;
-  postMarketPrice?: number | null;
-};
-
 const RON_USD_TICKER = 'RONUSD=X';
-
-/** PRE/POST session price when marketState matches; no fallback to regularMarketPrice. */
-function resolveQuotePrice(quote?: QuoteResult): number {
-  const marketState = quote?.marketState;
-
-  if (marketState === 'PRE') {
-    return quote?.preMarketPrice ?? 0;
-  }
-
-  if (marketState === 'POST') {
-    return quote?.postMarketPrice ?? 0;
-  }
-
-  return quote?.regularMarketPrice ?? 0;
-}
 
 export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId: string = '') {
   const { data: positions, isLoading: positionsLoading, error: positionsError } = usePositions(portfolioId);
@@ -118,14 +96,14 @@ export function usePortfolioStats(filter: CompositionFilter = 'all', portfolioId
     if (!positions || !quotes) return null;
 
     const quoteMap = new Map(quotes.map(q => [q.symbol, q]));
-    const ronToUsd = resolveQuotePrice(quoteMap.get(RON_USD_TICKER));
+    const ronToUsd = resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
 
     let totalValue = 0;
     let totalCostBasis = 0;
 
     for (const [ticker, holding] of netHoldings.entries()) {
       if (holding.quantity <= 0) continue;
-      const currentPrice = resolveQuotePrice(quoteMap.get(ticker));
+      const currentPrice = resolveQuotePrice(quoteMap.get(ticker)).price;
 
       if (holding.currency === Currency.RON && filter !== 'bvb') {
         totalValue += holding.quantity * currentPrice * ronToUsd;

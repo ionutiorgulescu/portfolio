@@ -53,8 +53,11 @@ function SessionBadge({
 }) {
     const isPre = session === 'PRE';
     const label = isPre ? 'Pre-market' : 'Post-market';
-    const hasChange = changePercent != null;
-    const positive = (changePercent ?? 0) >= 0;
+    const pct =
+        changePercent != null && Number.isFinite(Number(changePercent))
+            ? Number(changePercent)
+            : null;
+    const positive = (pct ?? 0) >= 0;
 
     return (
         <Box
@@ -97,7 +100,7 @@ function SessionBadge({
                     }}
                 />
             </Box>
-            {hasChange ? (
+            {pct != null ? (
                 <Box
                     component="span"
                     sx={{
@@ -109,7 +112,7 @@ function SessionBadge({
                     }}
                 >
                     {positive ? '+' : ''}
-                    {changePercent.toFixed(2)}%
+                    {pct.toFixed(2)}%
                 </Box>
             ) : null}
         </Box>
@@ -293,25 +296,35 @@ export function PortfolioCompositionRow({
                     >
                         {row.assetName}
                     </Typography>
-                    <Typography
+                    <Box
                         sx={{
-                            ...secondaryTextSx,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            lineHeight: '18px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            columnGap: 0,
+                            rowGap: 0.5,
+                            minWidth: 0,
                         }}
                     >
-                        {formatCurrency(row.currentPrice, currency)}
+                        <Typography
+                            component="span"
+                            sx={{
+                                ...secondaryTextSx,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                lineHeight: '18px',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {formatCurrency(row.currentPrice, currency)}
+                        </Typography>
                         {row.priceSession ? (
                             <SessionBadge
                                 session={row.priceSession}
                                 changePercent={row.sessionChangePercent}
                             />
                         ) : null}
-                    </Typography>
+                    </Box>
                     <Typography
                         sx={{
                             ...mutedTextSx,

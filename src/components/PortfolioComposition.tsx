@@ -94,6 +94,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
       queryClient.invalidateQueries({ queryKey: ['positions', portfolioId] }),
       queryClient.invalidateQueries({ queryKey: ['compositionQuotes'] }),
       queryClient.invalidateQueries({ queryKey: ['portfolioQuotes'] }),
+      queryClient.invalidateQueries({ queryKey: ['performanceQuotes'] }),
     ]);
   };
 

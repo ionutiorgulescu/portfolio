@@ -3,8 +3,13 @@ import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { CompositionFilter } from '../components/FilterControl';
+import {
+  resolveQuotePrice,
+  type PriceSession,
+  type QuoteResult,
+} from '../utils/resolveQuotePrice';
 
-export type PriceSession = 'PRE' | 'POST';
+export type { PriceSession };
 
 export interface TickerComposition {
   ticker: string;
@@ -23,64 +28,7 @@ export interface TickerComposition {
   currency: Currency;
 }
 
-type QuoteResult = {
-  symbol: string;
-  regularMarketPrice?: number;
-  marketState?: string;
-  preMarketPrice?: number | null;
-  postMarketPrice?: number | null;
-  preMarketChangePercent?: number | null;
-  postMarketChangePercent?: number | null;
-};
-
 const RON_USD_TICKER = 'RONUSD=X';
-
-function sessionChangeVsRegular(
-  sessionPrice: number | null | undefined,
-  regular: number,
-  apiChangePercent?: number | null,
-): number | null {
-  if (sessionPrice == null || regular <= 0) return null;
-  if (apiChangePercent != null) return apiChangePercent;
-  return ((sessionPrice - regular) / regular) * 100;
-}
-
-function resolveQuotePrice(quote?: QuoteResult): {
-  price: number;
-  session: PriceSession | null;
-  sessionChangePercent: number | null;
-} {
-  const regular = quote?.regularMarketPrice ?? 0;
-  const marketState = quote?.marketState;
-
-  if (marketState === 'PRE') {
-    const sessionPrice = quote?.preMarketPrice;
-    return {
-      price: sessionPrice ?? regular,
-      session: 'PRE',
-      sessionChangePercent: sessionChangeVsRegular(
-        sessionPrice,
-        regular,
-        quote?.preMarketChangePercent,
-      ),
-    };
-  }
-
-  if (marketState === 'POST') {
-    const sessionPrice = quote?.postMarketPrice;
-    return {
-      price: sessionPrice ?? regular,
-      session: 'POST',
-      sessionChangePercent: sessionChangeVsRegular(
-        sessionPrice,
-        regular,
-        quote?.postMarketChangePercent,
-      ),
-    };
-  }
-
-  return { price: regular, session: null, sessionChangePercent: null };
-}
 
 function buildFifoHoldings(
   positions: ReturnType<typeof usePositions>['data'],

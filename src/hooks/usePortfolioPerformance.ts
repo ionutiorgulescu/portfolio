@@ -14,6 +14,7 @@ import { fetchStockHistory } from './useStockData';
 import { runFifoEngine } from '../services/fifoEngine';
 import { buildPriceMatrix } from '../services/priceMatrix';
 import { computePortfolioValue } from '../services/portfolioValue';
+import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
 const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transaction[]> => {
   const {
@@ -109,10 +110,69 @@ export function usePortfolioPerformance(
     [pricesByTicker, dateRange],
   );
 
+  const latestHoldings = useMemo(() => {
+    if (dailyHoldings.size === 0) return null;
+    const dates = [...dailyHoldings.keys()];
+    const date = dates[dates.length - 1];
+    return { date, holdings: dailyHoldings.get(date)! };
+  }, [dailyHoldings]);
+
+  const heldTickers = useMemo(
+    () => (latestHoldings ? [...latestHoldings.holdings.keys()] : []),
+    [latestHoldings],
+  );
+
+  const { data: quotes } = useQuery<QuoteResult[]>({
+    queryKey: ['performanceQuotes', filter, heldTickers],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('get-quotas', {
+        body: { tickers: heldTickers },
+      });
+      if (error) throw error;
+      return data as QuoteResult[];
+    },
+    enabled: heldTickers.length > 0 && !isLoadingTransactions && !isLoadingPrices,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const data: PortfolioDataPoint[] = useMemo(() => {
     if (isLoadingTransactions || isLoadingPrices) return [];
-    return computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis);
-  }, [dailyHoldings, priceMatrix, dailyCostBasis, isLoadingTransactions, isLoadingPrices]);
+    const series = computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis);
+    if (series.length === 0 || !latestHoldings || !quotes) return series;
+
+    const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+    let liveValue = 0;
+    let usedLivePrice = false;
+
+    for (const [ticker, shares] of latestHoldings.holdings) {
+      const livePrice = resolveQuotePrice(quoteMap.get(ticker)).price;
+      if (livePrice > 0) {
+        liveValue += shares * livePrice;
+        usedLivePrice = true;
+        continue;
+      }
+
+      const historical = priceMatrix.get(ticker)?.get(latestHoldings.date);
+      if (historical !== undefined) {
+        liveValue += shares * historical;
+      }
+    }
+
+    if (!usedLivePrice) return series;
+
+    const patched = [...series];
+    const last = patched[patched.length - 1];
+    patched[patched.length - 1] = { ...last, value: liveValue };
+    return patched;
+  }, [
+    dailyHoldings,
+    priceMatrix,
+    dailyCostBasis,
+    isLoadingTransactions,
+    isLoadingPrices,
+    latestHoldings,
+    quotes,
+  ]);
 
   return {
     data,

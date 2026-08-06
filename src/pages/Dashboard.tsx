@@ -18,6 +18,7 @@ const Dashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['positions'] }),
       queryClient.invalidateQueries({ queryKey: ['portfolioQuotes'] }),
       queryClient.invalidateQueries({ queryKey: ['compositionQuotes'] }),
+      queryClient.invalidateQueries({ queryKey: ['performanceQuotes'] }),
       queryClient.invalidateQueries({ queryKey: ['stock-logos'] }),
       queryClient.invalidateQueries({ queryKey: ['portfolio-performance-transactions'] }),
       queryClient.invalidateQueries({ queryKey: ['stock-history'] }),
