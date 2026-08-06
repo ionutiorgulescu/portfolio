@@ -30,9 +30,6 @@ interface QuoteResult {
 // Local fallback type for editors/linters that are not configured with Deno libs.
 declare const Deno: {
   serve: (handler: (request: Request) => Response | Promise<Response>) => void;
-  env: {
-    get: (key: string) => string | undefined;
-  };
 };
 
 type YahooQuote = Record<string, unknown> & {
@@ -109,7 +106,7 @@ function hasSessionPrice(quote: QuoteResult): boolean {
 /**
  * Yahoo's quote() often omits pre/post fields; quoteSummary.price is richer.
  * Only promote the price that matches the current session — never use leftover
- * overnight postMarket as a PRE price (that made values wrong this morning).
+ * overnight postMarket as a PRE price.
  */
 async function enrichFromQuoteSummary(quote: QuoteResult): Promise<QuoteResult> {
   try {
@@ -121,7 +118,6 @@ async function enrichFromQuoteSummary(quote: QuoteResult): Promise<QuoteResult> 
     const postMarketPrice = toNum(price.postMarketPrice) ?? quote.postMarketPrice;
     const yahooExtended = toNum(price.extendedMarketPrice) ?? quote.extendedMarketPrice;
 
-    // Session-correct extended price only.
     const extendedMarketPrice = isPreSession(marketState)
       ? (yahooExtended ?? preMarketPrice)
       : (yahooExtended ?? postMarketPrice);
@@ -155,178 +151,25 @@ async function enrichFromQuoteSummary(quote: QuoteResult): Promise<QuoteResult> 
   }
 }
 
-type FmpAftermarketQuote = {
-  symbol?: string;
-  bidPrice?: number;
-  askPrice?: number;
-  price?: number;
-  timestamp?: number;
-};
-
-function midFromFmpRow(
-  row: FmpAftermarketQuote | null | undefined,
-): { price: number; time: string | null } | null {
-  if (!row) return null;
-
-  const bid = toNum(row.bidPrice);
-  const ask = toNum(row.askPrice);
-  const direct = toNum(row.price);
-
-  let price: number | null = null;
-  if (bid != null && ask != null && bid > 0 && ask > 0) {
-    price = (bid + ask) / 2;
-  } else {
-    price = direct ?? bid ?? ask;
-  }
-
-  if (price == null || price <= 0) return null;
-
-  const time = row.timestamp != null ? toIso(row.timestamp * 1000) : null;
-  return { price, time };
-}
-
-function isFmpLimitPayload(data: unknown): boolean {
-  if (data == null) return false;
-  const text = typeof data === "string" ? data : JSON.stringify(data);
-  return /limit reach|rate limit|exceeded/i.test(text);
-}
-
-/**
- * Yahoo free quote endpoints frequently return marketState=PRE/POST with null
- * session prices. One FMP batch call covers all missing symbols when configured.
- * Returns null when FMP is rate-limited / errored so callers can skip it fast.
- */
-async function fetchFmpAftermarketMids(
-  symbols: string[],
-  apiKey: string,
-): Promise<Map<string, { price: number; time: string | null }> | null> {
-  const result = new Map<string, { price: number; time: string | null }>();
-  if (symbols.length === 0) return result;
-
-  const url =
-    `https://financialmodelingprep.com/stable/batch-aftermarket-quote` +
-    `?symbols=${encodeURIComponent(symbols.join(","))}` +
-    `&apikey=${encodeURIComponent(apiKey)}`;
-
-  const response = await fetch(url);
-  if (!response.ok) return null;
-
-  const data = await response.json() as FmpAftermarketQuote[] | FmpAftermarketQuote | { message?: string };
-  if (isFmpLimitPayload(data)) return null;
-
-  const rows = Array.isArray(data) ? data : [data as FmpAftermarketQuote];
-
-  for (const row of rows) {
-    const symbol = row.symbol?.toUpperCase();
-    if (!symbol) continue;
-    const mid = midFromFmpRow(row);
-    if (mid) result.set(symbol, mid);
-  }
-
-  return result;
-}
-
-function applyExtendedPrice(
-  quote: QuoteResult,
-  sessionPrice: number,
-  sessionTime: string | null,
-): QuoteResult {
-  const baseline =
-    quote.regularMarketPrice > 0
-      ? quote.regularMarketPrice
-      : (quote.regularMarketPreviousClose ?? 0);
-  const change = baseline > 0 ? sessionPrice - baseline : null;
-  const changePercent = baseline > 0 && change != null ? (change / baseline) * 100 : null;
-
-  if (isPreSession(quote.marketState)) {
-    return {
-      ...quote,
-      preMarketPrice: sessionPrice,
-      preMarketChange: change,
-      preMarketChangePercent: changePercent,
-      preMarketTime: sessionTime,
-      extendedMarketPrice: sessionPrice,
-      extendedMarketChange: change,
-      extendedMarketChangePercent: changePercent,
-      extendedMarketTime: sessionTime,
-    };
-  }
-
-  return {
-    ...quote,
-    postMarketPrice: sessionPrice,
-    postMarketChange: change,
-    postMarketChangePercent: changePercent,
-    postMarketTime: sessionTime,
-    extendedMarketPrice: sessionPrice,
-    extendedMarketChange: change,
-    extendedMarketChangePercent: changePercent,
-    extendedMarketTime: sessionTime,
-  };
-}
-
-async function enrichMissingSessionPrices(
-  quotes: QuoteResult[],
-  fmpApiKey: string | undefined,
-): Promise<QuoteResult[]> {
+async function enrichMissingSessionPrices(quotes: QuoteResult[]): Promise<QuoteResult[]> {
   const needsEnrichment = quotes.filter(
     (q) => isExtendedSession(q.marketState) && !hasSessionPrice(q),
   );
 
   if (needsEnrichment.length === 0) return quotes;
 
-  const bySymbol = new Map<string, QuoteResult>();
-  let fmpUnavailable = false;
+  const enrichedEntries = await Promise.all(
+    needsEnrichment.map(async (quote) => {
+      const next = await enrichFromQuoteSummary(quote);
+      return [quote.symbol, next] as const;
+    }),
+  );
 
-  // Prefer one FMP batch request (live mid) over N Yahoo quoteSummary calls.
-  if (fmpApiKey) {
-    try {
-      const fmpMids = await fetchFmpAftermarketMids(
-        needsEnrichment.map((q) => q.symbol),
-        fmpApiKey,
-      );
-
-      if (fmpMids == null) {
-        // Rate limit / error — keep Yahoo quote() as-is (fast + correct).
-        // Client falls back to regularMarketPrice until a real PRE/POST print exists.
-        fmpUnavailable = true;
-      } else {
-        for (const quote of needsEnrichment) {
-          const fmp = fmpMids.get(quote.symbol.toUpperCase());
-          if (fmp) {
-            bySymbol.set(quote.symbol, applyExtendedPrice(quote, fmp.price, fmp.time));
-          }
-        }
-      }
-    } catch {
-      fmpUnavailable = true;
-    }
-  }
-
-  // Only hit Yahoo quoteSummary when FMP isn't configured, or for symbols FMP missed.
-  // Never do N quoteSummary calls after an FMP rate-limit — that was today's slowness.
-  const stillMissing = fmpUnavailable
-    ? []
-    : needsEnrichment.filter((q) => !bySymbol.has(q.symbol));
-
-  if (stillMissing.length > 0) {
-    const yahooEnriched = await Promise.all(
-      stillMissing.map(async (quote) => {
-        const next = await enrichFromQuoteSummary(quote);
-        return [quote.symbol, next] as const;
-      }),
-    );
-
-    for (const [symbol, next] of yahooEnriched) {
-      bySymbol.set(symbol, next);
-    }
-  }
-
+  const bySymbol = new Map(enrichedEntries);
   return quotes.map((q) => bySymbol.get(q.symbol) ?? q);
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -352,8 +195,7 @@ Deno.serve(async (req: Request) => {
     const raw = await yahooFinance.quote(tickers);
     const results = (Array.isArray(raw) ? raw : [raw]) as YahooQuote[];
     const mapped = results.map(mapYahooQuote);
-    const fmpApiKey = Deno.env.get("FMP_API_KEY");
-    const quotes = await enrichMissingSessionPrices(mapped, fmpApiKey);
+    const quotes = await enrichMissingSessionPrices(mapped);
 
     return new Response(JSON.stringify(quotes), {
       status: 200,

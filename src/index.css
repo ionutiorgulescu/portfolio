@@ -1,3 +1,8 @@
 @import "./config/colors.css";
 @import "tailwindcss";
 
+/* Recharts 3 accessibility layer focuses the chart on click/touch; keep the ring for keyboard only. */
+.portfolio-chart .recharts-wrapper *:focus:not(:focus-visible) {
+  outline: none;
+}
+
