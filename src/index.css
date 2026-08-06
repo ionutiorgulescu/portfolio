@@ -1,6 +1,13 @@
 @import "./config/colors.css";
 @import "tailwindcss";
 
+/* Chart owns the gesture while scrubbing so the page doesn't scroll underneath. */
+.portfolio-chart {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Recharts 3 accessibility layer focuses the chart on click/touch; keep the ring for keyboard only. */
 .portfolio-chart .recharts-wrapper *:focus:not(:focus-visible) {
   outline: none;

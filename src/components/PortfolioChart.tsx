@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   Line,
   LineChart,
@@ -8,7 +8,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { MouseHandlerDataParam } from 'recharts';
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatChartCursorDate } from './stockMarket.types';
@@ -30,6 +29,7 @@ const GAIN_COLOR = '#27a69a';
 const LOSS_COLOR = '#d92673';
 const BASELINE_COLOR = '#d1d5db';
 const CURSOR_COLOR = '#c4c4c4';
+const CHART_MARGIN = { top: 22, right: 4, left: 4, bottom: 4 };
 
 function DateCursorTooltip({ active, label }: TooltipContentProps<ValueType, NameType>) {
   if (!active || label == null) return null;
@@ -51,62 +51,116 @@ function DateCursorTooltip({ active, label }: TooltipContentProps<ValueType, Nam
   );
 }
 
-function resolveActivePoint(
+function findNearestPoint(
   chartData: PortfolioChartPoint[],
-  state: MouseHandlerDataParam,
-): PortfolioChartPoint | null {
-  if (!state.isTooltipActive) return null;
+  clientX: number,
+  container: HTMLElement | null,
+): { point: PortfolioChartPoint; index: number } | null {
+  if (!container || chartData.length === 0) return null;
+
+  const rect = container.getBoundingClientRect();
+  const plotWidth = rect.width - CHART_MARGIN.left - CHART_MARGIN.right;
+  if (plotWidth <= 0) return null;
+
+  const ratio = Math.max(
+    0,
+    Math.min(1, (clientX - rect.left - CHART_MARGIN.left) / plotWidth),
+  );
+  const tMin = chartData[0].t;
+  const tMax = chartData[chartData.length - 1].t;
+  const targetT = tMin + ratio * (tMax - tMin);
+
+  let lo = 0;
+  let hi = chartData.length - 1;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (chartData[mid].t < targetT) lo = mid + 1;
+    else hi = mid;
+  }
 
   const index =
-    typeof state.activeTooltipIndex === 'number'
-      ? state.activeTooltipIndex
-      : typeof state.activeIndex === 'number'
-        ? state.activeIndex
-        : -1;
+    lo > 0 &&
+    Math.abs(chartData[lo - 1].t - targetT) <= Math.abs(chartData[lo].t - targetT)
+      ? lo - 1
+      : lo;
 
-  if (index >= 0 && index < chartData.length) {
-    return chartData[index];
-  }
-
-  if (state.activeLabel != null) {
-    const t = Number(state.activeLabel);
-    return chartData.find((p) => p.t === t) ?? null;
-  }
-
-  return null;
+  return { point: chartData[index], index };
 }
 
 export default function PortfolioChart({ chartData, positive, domain, onScrub }: Props) {
   const stroke = positive ? GAIN_COLOR : LOSS_COLOR;
   const baseline = chartData.length > 0 ? chartData[0].close : 0;
-  // Bumping this remounts the chart so Recharts clears sticky touch tooltip/cursor state.
-  const [interactionKey, setInteractionKey] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const touchScrubbingRef = useRef(false);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const updateScrub = (state: MouseHandlerDataParam) => {
-    onScrub?.(resolveActivePoint(chartData, state));
+  const clearScrub = useCallback(() => {
+    touchScrubbingRef.current = false;
+    setActiveIndex(null);
+    onScrub?.(null);
+  }, [onScrub]);
+
+  const scrubAtClientX = useCallback(
+    (clientX: number) => {
+      const nearest = findNearestPoint(chartData, clientX, containerRef.current);
+      if (!nearest) return;
+
+      setActiveIndex((prev) => (prev === nearest.index ? prev : nearest.index));
+      onScrub?.(nearest.point);
+    },
+    [chartData, onScrub],
+  );
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+
+    touchScrubbingRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrubAtClientX(event.clientX);
   };
 
-  const endScrub = () => {
-    onScrub?.(null);
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch') {
+      if (!touchScrubbingRef.current) return;
+      scrubAtClientX(event.clientX);
+      return;
+    }
+
+    // Mouse: scrub while hovering.
+    scrubAtClientX(event.clientX);
   };
 
-  const endTouchScrub = () => {
-    onScrub?.(null);
-    setInteractionKey((key) => key + 1);
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+    clearScrub();
+  };
+
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+    clearScrub();
+  };
+
+  const handlePointerLeave = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Touch leave is handled by pointer capture + pointerup/cancel.
+    if (event.pointerType === 'touch') return;
+    clearScrub();
   };
 
   return (
-    <div className="portfolio-chart" style={{ width: '100%', height: '100%' }}>
+    <div
+      ref={containerRef}
+      className="portfolio-chart"
+      style={{ width: '100%', height: '100%' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          key={interactionKey}
           data={chartData}
-          margin={{ top: 22, right: 4, left: 4, bottom: 4 }}
-          onMouseMove={updateScrub}
-          onMouseLeave={endScrub}
-          onTouchStart={updateScrub}
-          onTouchMove={updateScrub}
-          onTouchEnd={endTouchScrub}
+          margin={CHART_MARGIN}
         >
           <XAxis
             dataKey="t"
@@ -130,6 +184,8 @@ export default function PortfolioChart({ chartData, positive, domain, onScrub }:
             allowEscapeViewBox={{ x: true, y: true }}
             position={{ y: 0 }}
             isAnimationActive={false}
+            active={activeIndex != null}
+            defaultIndex={activeIndex ?? undefined}
             wrapperStyle={{ outline: 'none' }}
           />
 
