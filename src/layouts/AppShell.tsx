@@ -20,7 +20,6 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import MenuIcon from '@mui/icons-material/Menu';
 import GoalIcon from '@mui/icons-material/PieChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CallMadeIcon from '@mui/icons-material/CallMade';
 import { NavLink, Outlet } from 'react-router-dom';
@@ -39,7 +38,6 @@ const PULL_THRESHOLD = 72;
 const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon /> },
-  { label: 'Performance', path: '/performance', icon: <AttachMoneyIcon /> },
   { label: 'Goal', path: '/goal', icon: <GoalIcon /> },
   { label: 'Plan', path: '/plan', icon: <CallMadeIcon /> },
 ];
