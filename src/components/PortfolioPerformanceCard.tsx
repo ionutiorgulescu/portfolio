@@ -320,11 +320,14 @@ export function PortfolioPerformanceCard({
         </Box>
 
         <Box
+          data-no-pull-refresh
           sx={{
             height: chartHeight,
             width: '100%',
             minWidth: 0,
             mt: { xs: 1.5, sm: 2 },
+            // Keep the chart area from scrolling/pulling even while Suspense loads.
+            touchAction: 'none',
           }}
         >
           {chartData.length > 0 ? (

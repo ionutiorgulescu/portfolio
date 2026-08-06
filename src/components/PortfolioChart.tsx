@@ -178,6 +178,7 @@ export default function PortfolioChart({ chartData, positive, domain, onScrub }:
     <div
       ref={containerRef}
       className="portfolio-chart"
+      data-no-pull-refresh
       style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

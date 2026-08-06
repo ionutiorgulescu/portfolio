@@ -15,6 +15,13 @@ type UsePullToRefreshResult = {
   isPulling: boolean;
 };
 
+/** Elements that own horizontal gestures (charts) must opt out of pull-to-refresh. */
+const IGNORE_PULL_SELECTOR = '.portfolio-chart, [data-no-pull-refresh]';
+
+function shouldIgnorePullTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(IGNORE_PULL_SELECTOR));
+}
+
 /**
  * Touch pull-to-refresh when `scrollElement` is scrolled to the top.
  * Pass the dedicated scroll root element (not window/document).
@@ -60,6 +67,11 @@ export function usePullToRefresh(
 
     const onTouchStart = (event: TouchEvent) => {
       if (isRefreshingRef.current) return;
+      // Chart scrub starts at scrollTop 0 after load; don't steal that gesture.
+      if (shouldIgnorePullTarget(event.target)) {
+        startYRef.current = null;
+        return;
+      }
       if (getScrollTop() > 0) {
         startYRef.current = null;
         return;
