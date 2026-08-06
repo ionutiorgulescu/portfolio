@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import { useQueryClient } from '@tanstack/react-query';
-import { DashboardStats } from '../components/DashboardStats';
+import { PortfolioPerformanceCard } from '../components/PortfolioPerformanceCard';
 import { PortfolioComposition } from '../components/PortfolioComposition';
 import { FilterControl } from '../components/FilterControl';
 import type { CompositionFilter } from '../components/FilterControl';
@@ -19,6 +19,8 @@ const Dashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['portfolioQuotes'] }),
       queryClient.invalidateQueries({ queryKey: ['compositionQuotes'] }),
       queryClient.invalidateQueries({ queryKey: ['stock-logos'] }),
+      queryClient.invalidateQueries({ queryKey: ['portfolio-performance-transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['stock-history'] }),
     ]);
   }, [queryClient]);
 
@@ -37,7 +39,11 @@ const Dashboard = () => {
       }}>
         <FilterControl value={filter} onChange={setFilter} />
       </Box>
-      <DashboardStats filter={filter} portfolioId={selectedPortfolioId} />
+      <PortfolioPerformanceCard
+        filter={filter}
+        portfolioId={selectedPortfolioId}
+        showFooter={false}
+      />
       <PortfolioComposition filter={filter} portfolioId={selectedPortfolioId} />
     </Box>
   );

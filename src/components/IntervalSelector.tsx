@@ -79,13 +79,12 @@ export function IntervalSelector({
   return (
     <Box
       sx={{
-        display: 'inline-flex',
+        display: 'flex',
         minWidth: 'max-content',
         width: fullWidth ? '100%' : 'auto',
-        borderRadius: '12px',
-        backgroundColor: 'grey.200',
-        padding: '4px',
-        gap: '2px',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: { xs: 0.25, sm: 0.5 },
       }}
     >
       {intervalOptions.map((option) => {
@@ -95,23 +94,24 @@ export function IntervalSelector({
             key={option.key}
             onClick={() => onChange(option.key)}
             sx={{
-              flex: fullWidth ? '1 0 auto' : '0 0 auto',
-              borderRadius: '8px',
-              padding: { xs: '6px 10px', sm: '6px 12px' },
-              backgroundColor: selected ? 'white' : 'transparent',
-              boxShadow: selected ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-              transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+              flex: fullWidth ? 1 : '0 0 auto',
+              borderRadius: '10px',
+              px: { xs: 1, sm: 1.25 },
+              py: { xs: 0.75, sm: 0.85 },
+              minWidth: 0,
+              backgroundColor: selected ? '#eceff1' : 'transparent',
+              transition: 'background-color 0.15s ease',
               '&:hover': {
-                backgroundColor: selected ? 'white' : 'rgba(0,0,0,0.04)',
+                backgroundColor: selected ? '#eceff1' : 'rgba(0,0,0,0.04)',
               },
             }}
           >
             <Typography
               variant="body2"
               sx={{
-                fontWeight: selected ? 700 : 400,
+                fontWeight: selected ? 700 : 500,
                 fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                color: selected ? 'text.primary' : 'text.secondary',
+                color: selected ? '#111827' : '#6b7280',
                 lineHeight: 1,
                 userSelect: 'none',
                 whiteSpace: 'nowrap',

@@ -36,6 +36,10 @@ const Market = () => {
 
     let startDate: Date | null = null;
 
+    if (interval === 'MAX') {
+      return sortedData;
+    }
+
     if (interval === 'YTD') {
       startDate = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
     } else {
@@ -86,7 +90,7 @@ const Market = () => {
     const options: Intl.DateTimeFormatOptions =
       interval === '1W' || interval === '1M' || interval === '3M'
         ? { month: 'short', day: 'numeric' }
-        : interval === '5Y' || interval === '10Y'
+        : interval === 'MAX'
           ? { month: 'short', year: '2-digit' }
           : { month: 'short', day: 'numeric', year: '2-digit' };
 

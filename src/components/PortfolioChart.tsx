@@ -1,15 +1,16 @@
-import { useMediaQuery, useTheme } from '@mui/material';
 import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
   Line,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumber, formatTimestamp } from './stockMarket.types';
+import type { MouseHandlerDataParam } from 'recharts';
+import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
+import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { formatChartCursorDate } from './stockMarket.types';
 
 export type PortfolioChartPoint = {
   t: number;
@@ -19,106 +20,123 @@ export type PortfolioChartPoint = {
 
 type Props = {
   chartData: PortfolioChartPoint[];
-  xAxisTickFormatter: (value: number) => string;
-  yAxisScale: { ticks: number[]; domain: [number, number] };
+  positive: boolean;
+  domain: [number, number];
+  onScrub?: (point: PortfolioChartPoint | null) => void;
 };
 
-function abbreviateDollar(value: number): string {
-  if (Math.abs(value) >= 1_000_000) {
-    return `$${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
-  }
-  if (Math.abs(value) >= 1_000) {
-    return `$${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
-  }
-  return `$${value.toFixed(0)}`;
+const GAIN_COLOR = '#27a69a';
+const LOSS_COLOR = '#d92673';
+const BASELINE_COLOR = '#d1d5db';
+const CURSOR_COLOR = '#c4c4c4';
+
+function DateCursorTooltip({ active, label }: TooltipContentProps<ValueType, NameType>) {
+  if (!active || label == null) return null;
+
+  return (
+    <div
+      style={{
+        color: '#9ca3af',
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: 1.2,
+        whiteSpace: 'nowrap',
+        letterSpacing: '0.01em',
+        pointerEvents: 'none',
+      }}
+    >
+      {formatChartCursorDate(Number(label))}
+    </div>
+  );
 }
 
-export default function PortfolioChart({ chartData, xAxisTickFormatter, yAxisScale }: Props) {
-  const theme = useTheme();
-  const isNarrow = useMediaQuery(theme.breakpoints.down('sm'));
+function resolveActivePoint(
+  chartData: PortfolioChartPoint[],
+  state: MouseHandlerDataParam,
+): PortfolioChartPoint | null {
+  if (!state.isTooltipActive) return null;
+
+  const index =
+    typeof state.activeTooltipIndex === 'number'
+      ? state.activeTooltipIndex
+      : typeof state.activeIndex === 'number'
+        ? state.activeIndex
+        : -1;
+
+  if (index >= 0 && index < chartData.length) {
+    return chartData[index];
+  }
+
+  if (state.activeLabel != null) {
+    const t = Number(state.activeLabel);
+    return chartData.find((p) => p.t === t) ?? null;
+  }
+
+  return null;
+}
+
+export default function PortfolioChart({ chartData, positive, domain, onScrub }: Props) {
+  const stroke = positive ? GAIN_COLOR : LOSS_COLOR;
+  const baseline = chartData.length > 0 ? chartData[0].close : 0;
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart
+      <LineChart
         data={chartData}
-        margin={{ top: 8, right: isNarrow ? 8 : 16, left: 0, bottom: 8 }}
+        margin={{ top: 22, right: 4, left: 4, bottom: 4 }}
+        onMouseMove={(state) => {
+          onScrub?.(resolveActivePoint(chartData, state));
+        }}
+        onMouseLeave={() => {
+          onScrub?.(null);
+        }}
+        onTouchStart={(state) => {
+          onScrub?.(resolveActivePoint(chartData, state));
+        }}
+        onTouchMove={(state) => {
+          onScrub?.(resolveActivePoint(chartData, state));
+        }}
       >
-        <defs>
-          <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-portfolio-value)" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="var(--color-portfolio-value)" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-
-        <CartesianGrid
-          stroke="var(--color-border-3)"
-          horizontal={true}
-          vertical={false}
-        />
-
         <XAxis
           dataKey="t"
           type="number"
           domain={['dataMin', 'dataMax']}
-          tickFormatter={xAxisTickFormatter}
-          tick={{ fill: 'var(--color-text-3)', fontSize: isNarrow ? 10 : 11 }}
-          tickMargin={8}
-          minTickGap={isNarrow ? 28 : 40}
-          axisLine={false}
-          tickLine={false}
+          hide
         />
+        <YAxis domain={domain} hide />
 
-        <YAxis
-          ticks={yAxisScale.ticks}
-          domain={yAxisScale.domain}
-          tick={{ fill: 'var(--color-text-3)', fontSize: isNarrow ? 10 : 11 }}
-          tickFormatter={abbreviateDollar}
-          width={isNarrow ? 44 : 56}
-          axisLine={false}
-          tickLine={false}
+        <ReferenceLine
+          y={baseline}
+          stroke={BASELINE_COLOR}
+          strokeDasharray="3 4"
+          strokeWidth={1}
+          ifOverflow="extendDomain"
         />
 
         <Tooltip
-          formatter={(value, name) => [
-            `$${formatNumber(Number(value ?? 0))}`,
-            name === 'close' ? 'Portfolio Value' : 'Cost Basis',
-          ]}
-          labelFormatter={(label) =>
-            formatTimestamp(Number(label ?? 0), {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          }
-          contentStyle={{
-            borderRadius: '10px',
-            border: '1px solid var(--color-border-3)',
-            boxShadow: `0 2px 8px var(--color-shadow)`,
-            background: 'var(--color-surface-raised)',
-          }}
-          cursor={{ stroke: 'var(--color-border-2)', strokeWidth: 1 }}
-        />
-
-        <Area
-          type="monotone"
-          dataKey="close"
-          stroke="var(--color-portfolio-value)"
-          strokeWidth={2}
-          fill="url(#portfolioFill)"
-          dot={false}
+          content={DateCursorTooltip}
+          cursor={{ stroke: CURSOR_COLOR, strokeWidth: 1 }}
+          allowEscapeViewBox={{ x: true, y: true }}
+          position={{ y: 0 }}
           isAnimationActive={false}
+          wrapperStyle={{ outline: 'none' }}
         />
 
         <Line
           type="monotone"
-          dataKey="costBasis"
-          stroke="var(--color-portfolio-cost)"
-          strokeWidth={2}
+          dataKey="close"
+          stroke={stroke}
+          strokeWidth={2.25}
           dot={false}
+          activeDot={{
+            r: 4,
+            fill: stroke,
+            stroke: '#fff',
+            strokeWidth: 2,
+          }}
           isAnimationActive={false}
         />
-      </ComposedChart>
+      </LineChart>
     </ResponsiveContainer>
   );
 }

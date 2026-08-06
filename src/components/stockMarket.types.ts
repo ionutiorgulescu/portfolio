@@ -1,4 +1,4 @@
-export type ChartInterval = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | '10Y';
+export type ChartInterval = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'MAX';
 
 export type IntervalOption = {
   key: ChartInterval;
@@ -18,8 +18,7 @@ export const intervalOptions: IntervalOption[] = [
   { key: '6M', label: '6 Months', days: 180 },
   { key: 'YTD', label: 'YTD' },
   { key: '1Y', label: '1 Year', days: 365 },
-  { key: '5Y', label: '5 Years', days: 365 * 5 },
-  { key: '10Y', label: '10 Years', days: 365 * 10 },
+  { key: 'MAX', label: 'Max' },
 ];
 
 export const formatNumber = (value: number): string =>
@@ -37,6 +36,19 @@ export const formatTimestamp = (timestamp: number, options: Intl.DateTimeFormatO
   }
 
   return date.toLocaleDateString('en-US', options);
+};
+
+/** getquin-style cursor date, e.g. "30. Mar 2026" */
+export const formatChartCursorDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const year = date.getUTCFullYear();
+  return `${day}. ${month} ${year}`;
 };
 
 export const getNiceTickStep = (value: number): number => {
