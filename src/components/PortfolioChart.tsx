@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import {
   Line,
   LineChart,
@@ -93,6 +99,28 @@ export default function PortfolioChart({ chartData, positive, domain, onScrub }:
   const containerRef = useRef<HTMLDivElement>(null);
   const touchScrubbingRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // Avoid mounting ResponsiveContainer at the default -1/-1 size (console warnings).
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width <= 0 || height <= 0) return;
+
+      const next = { width: Math.round(width), height: Math.round(height) };
+      setContainerSize((prev) =>
+        prev?.width === next.width && prev?.height === next.height ? prev : next,
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const clearScrub = useCallback(() => {
     touchScrubbingRef.current = false;
@@ -150,14 +178,20 @@ export default function PortfolioChart({ chartData, positive, domain, onScrub }:
     <div
       ref={containerRef}
       className="portfolio-chart"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerLeave}
     >
-      <ResponsiveContainer width="100%" height="100%">
+      {containerSize ? (
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        initialDimension={containerSize}
+      >
         <LineChart
           data={chartData}
           margin={CHART_MARGIN}
@@ -195,16 +229,23 @@ export default function PortfolioChart({ chartData, positive, domain, onScrub }:
             stroke={stroke}
             strokeWidth={2.25}
             dot={false}
-            activeDot={{
-              r: 4,
-              fill: stroke,
-              stroke: '#fff',
-              strokeWidth: 2,
-            }}
+            // Recharts can keep an internal active index after touch-up; only render
+            // the scrubber dot while we are actively scrubbing.
+            activeDot={
+              activeIndex != null
+                ? {
+                    r: 4,
+                    fill: stroke,
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }
+                : false
+            }
             isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
+      ) : null}
     </div>
   );
 }
