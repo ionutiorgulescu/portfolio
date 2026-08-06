@@ -1,4 +1,4 @@
-export type ChartInterval = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'MAX';
+export type ChartInterval = '1W' | '1M' | 'YTD' | '1Y' | 'MAX';
 
 export type IntervalOption = {
   key: ChartInterval;
@@ -14,8 +14,6 @@ export type ChartPoint = {
 export const intervalOptions: IntervalOption[] = [
   { key: '1W', label: '1 Week', days: 7 },
   { key: '1M', label: '1 Month', days: 30 },
-  { key: '3M', label: '3 Months', days: 90 },
-  { key: '6M', label: '6 Months', days: 180 },
   { key: 'YTD', label: 'YTD' },
   { key: '1Y', label: '1 Year', days: 365 },
   { key: 'MAX', label: 'Max' },

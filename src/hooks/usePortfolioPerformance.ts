@@ -122,7 +122,10 @@ export function usePortfolioPerformance(
     [latestHoldings],
   );
 
-  const { data: quotes } = useQuery<QuoteResult[]>({
+  const {
+    data: quotes,
+    isLoading: isLoadingQuotes,
+  } = useQuery<QuoteResult[]>({
     queryKey: ['performanceQuotes', filter, heldTickers],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-quotas', {
@@ -135,8 +138,10 @@ export function usePortfolioPerformance(
     staleTime: 5 * 60 * 1000,
   });
 
+  const waitingForLivePrices = heldTickers.length > 0 && isLoadingQuotes;
+
   const data: PortfolioDataPoint[] = useMemo(() => {
-    if (isLoadingTransactions || isLoadingPrices) return [];
+    if (isLoadingTransactions || isLoadingPrices || waitingForLivePrices) return [];
     const series = computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis);
     if (series.length === 0 || !latestHoldings || !quotes) return series;
 
@@ -170,13 +175,14 @@ export function usePortfolioPerformance(
     dailyCostBasis,
     isLoadingTransactions,
     isLoadingPrices,
+    waitingForLivePrices,
     latestHoldings,
     quotes,
   ]);
 
   return {
     data,
-    isLoading: isLoadingTransactions || isLoadingPrices,
+    isLoading: isLoadingTransactions || isLoadingPrices || waitingForLivePrices,
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? pricesError,
   };

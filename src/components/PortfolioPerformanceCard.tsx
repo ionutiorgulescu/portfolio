@@ -7,6 +7,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import NorthEastIcon from '@mui/icons-material/NorthEast';
+import SouthEastIcon from '@mui/icons-material/SouthEast';
 import { IntervalSelector } from './IntervalSelector';
 import type { CompositionFilter } from './FilterControl';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
@@ -284,14 +286,22 @@ export function PortfolioPerformanceCard({
             }}
           >
             <Typography
+              component="span"
               sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.25,
                 fontSize: { xs: 15, sm: 17 },
                 fontWeight: 700,
                 lineHeight: 1.25,
                 color: performanceColor,
               }}
             >
-              {displayPerformance.positive ? '↗' : '↘'}{' '}
+              {displayPerformance.positive ? (
+                <NorthEastIcon sx={{ fontSize: '1em' }} />
+              ) : (
+                <SouthEastIcon sx={{ fontSize: '1em' }} />
+              )}
               {Math.abs(displayPerformance.gainPercent).toFixed(2)}%
             </Typography>
             <Typography

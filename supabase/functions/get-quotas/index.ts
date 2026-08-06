@@ -106,23 +106,29 @@ function hasSessionPrice(quote: QuoteResult): boolean {
   return quote.postMarketPrice != null || quote.extendedMarketPrice != null;
 }
 
-/** Yahoo's quote() often omits pre/post fields; quoteSummary.price is richer. */
+/**
+ * Yahoo's quote() often omits pre/post fields; quoteSummary.price is richer.
+ * Only promote the price that matches the current session — never use leftover
+ * overnight postMarket as a PRE price (that made values wrong this morning).
+ */
 async function enrichFromQuoteSummary(quote: QuoteResult): Promise<QuoteResult> {
   try {
     const summary = await yahooFinance.quoteSummary(quote.symbol, { modules: ["price"] });
     const price = (summary?.price ?? {}) as YahooQuote;
+    const marketState = String(price.marketState ?? quote.marketState);
 
     const preMarketPrice = toNum(price.preMarketPrice) ?? quote.preMarketPrice;
     const postMarketPrice = toNum(price.postMarketPrice) ?? quote.postMarketPrice;
-    const extendedMarketPrice =
-      toNum(price.extendedMarketPrice) ??
-      quote.extendedMarketPrice ??
-      preMarketPrice ??
-      postMarketPrice;
+    const yahooExtended = toNum(price.extendedMarketPrice) ?? quote.extendedMarketPrice;
+
+    // Session-correct extended price only.
+    const extendedMarketPrice = isPreSession(marketState)
+      ? (yahooExtended ?? preMarketPrice)
+      : (yahooExtended ?? postMarketPrice);
 
     return {
       ...quote,
-      marketState: String(price.marketState ?? quote.marketState),
+      marketState,
       regularMarketPrice: toNum(price.regularMarketPrice) ?? quote.regularMarketPrice,
       regularMarketPreviousClose:
         toNum(price.regularMarketPreviousClose) ?? quote.regularMarketPreviousClose,
@@ -157,24 +163,9 @@ type FmpAftermarketQuote = {
   timestamp?: number;
 };
 
-/**
- * Yahoo free quote endpoints frequently return marketState=PRE/POST with null
- * session prices. FMP aftermarket bid/ask is a live fallback when configured.
- */
-async function fetchFmpAftermarketMid(
-  symbol: string,
-  apiKey: string,
-): Promise<{ price: number; time: string | null } | null> {
-  const url =
-    `https://financialmodelingprep.com/stable/aftermarket-quote` +
-    `?symbol=${encodeURIComponent(symbol)}` +
-    `&apikey=${encodeURIComponent(apiKey)}`;
-
-  const response = await fetch(url);
-  if (!response.ok) return null;
-
-  const data = await response.json() as FmpAftermarketQuote[] | FmpAftermarketQuote;
-  const row = Array.isArray(data) ? data[0] : data;
+function midFromFmpRow(
+  row: FmpAftermarketQuote | null | undefined,
+): { price: number; time: string | null } | null {
   if (!row) return null;
 
   const bid = toNum(row.bidPrice);
@@ -192,6 +183,47 @@ async function fetchFmpAftermarketMid(
 
   const time = row.timestamp != null ? toIso(row.timestamp * 1000) : null;
   return { price, time };
+}
+
+function isFmpLimitPayload(data: unknown): boolean {
+  if (data == null) return false;
+  const text = typeof data === "string" ? data : JSON.stringify(data);
+  return /limit reach|rate limit|exceeded/i.test(text);
+}
+
+/**
+ * Yahoo free quote endpoints frequently return marketState=PRE/POST with null
+ * session prices. One FMP batch call covers all missing symbols when configured.
+ * Returns null when FMP is rate-limited / errored so callers can skip it fast.
+ */
+async function fetchFmpAftermarketMids(
+  symbols: string[],
+  apiKey: string,
+): Promise<Map<string, { price: number; time: string | null }> | null> {
+  const result = new Map<string, { price: number; time: string | null }>();
+  if (symbols.length === 0) return result;
+
+  const url =
+    `https://financialmodelingprep.com/stable/batch-aftermarket-quote` +
+    `?symbols=${encodeURIComponent(symbols.join(","))}` +
+    `&apikey=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(url);
+  if (!response.ok) return null;
+
+  const data = await response.json() as FmpAftermarketQuote[] | FmpAftermarketQuote | { message?: string };
+  if (isFmpLimitPayload(data)) return null;
+
+  const rows = Array.isArray(data) ? data : [data as FmpAftermarketQuote];
+
+  for (const row of rows) {
+    const symbol = row.symbol?.toUpperCase();
+    if (!symbol) continue;
+    const mid = midFromFmpRow(row);
+    if (mid) result.set(symbol, mid);
+  }
+
+  return result;
 }
 
 function applyExtendedPrice(
@@ -243,40 +275,53 @@ async function enrichMissingSessionPrices(
 
   if (needsEnrichment.length === 0) return quotes;
 
-  const enrichedEntries = await Promise.all(
-    needsEnrichment.map(async (quote) => {
-      let next = await enrichFromQuoteSummary(quote);
+  const bySymbol = new Map<string, QuoteResult>();
+  let fmpUnavailable = false;
 
-      // quoteSummary often still only has yesterday's postMarket during PRE.
-      // Prefer a live FMP aftermarket mid when available.
-      if (fmpApiKey && isExtendedSession(next.marketState)) {
-        try {
-          const fmp = await fetchFmpAftermarketMid(next.symbol, fmpApiKey);
+  // Prefer one FMP batch request (live mid) over N Yahoo quoteSummary calls.
+  if (fmpApiKey) {
+    try {
+      const fmpMids = await fetchFmpAftermarketMids(
+        needsEnrichment.map((q) => q.symbol),
+        fmpApiKey,
+      );
+
+      if (fmpMids == null) {
+        // Rate limit / error — keep Yahoo quote() as-is (fast + correct).
+        // Client falls back to regularMarketPrice until a real PRE/POST print exists.
+        fmpUnavailable = true;
+      } else {
+        for (const quote of needsEnrichment) {
+          const fmp = fmpMids.get(quote.symbol.toUpperCase());
           if (fmp) {
-            next = applyExtendedPrice(next, fmp.price, fmp.time);
-            return [quote.symbol, next] as const;
+            bySymbol.set(quote.symbol, applyExtendedPrice(quote, fmp.price, fmp.time));
           }
-        } catch {
-          // keep Yahoo enrichment
         }
       }
+    } catch {
+      fmpUnavailable = true;
+    }
+  }
 
-      // Last resort during PRE: reuse overnight postMarket as extended price so
-      // portfolio value at least reflects the last extended print vs regular close.
-      if (
-        isPreSession(next.marketState) &&
-        next.preMarketPrice == null &&
-        next.extendedMarketPrice == null &&
-        next.postMarketPrice != null
-      ) {
-        next = applyExtendedPrice(next, next.postMarketPrice, next.postMarketTime);
-      }
+  // Only hit Yahoo quoteSummary when FMP isn't configured, or for symbols FMP missed.
+  // Never do N quoteSummary calls after an FMP rate-limit — that was today's slowness.
+  const stillMissing = fmpUnavailable
+    ? []
+    : needsEnrichment.filter((q) => !bySymbol.has(q.symbol));
 
-      return [quote.symbol, next] as const;
-    }),
-  );
+  if (stillMissing.length > 0) {
+    const yahooEnriched = await Promise.all(
+      stillMissing.map(async (quote) => {
+        const next = await enrichFromQuoteSummary(quote);
+        return [quote.symbol, next] as const;
+      }),
+    );
 
-  const bySymbol = new Map(enrichedEntries);
+    for (const [symbol, next] of yahooEnriched) {
+      bySymbol.set(symbol, next);
+    }
+  }
+
   return quotes.map((q) => bySymbol.get(q.symbol) ?? q);
 }
 
