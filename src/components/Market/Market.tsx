@@ -88,7 +88,7 @@ const Market = () => {
 
   const xAxisTickFormatter = useMemo(() => {
     const options: Intl.DateTimeFormatOptions =
-      interval === '1W' || interval === '1M' || interval === '3M'
+      interval === '1W' || interval === '1M'
         ? { month: 'short', day: 'numeric' }
         : interval === 'MAX'
           ? { month: 'short', year: '2-digit' }
