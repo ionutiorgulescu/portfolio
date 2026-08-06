@@ -152,7 +152,18 @@ const AppShell = () => {
                 sx={{
                   minWidth: 140,
                   fontSize: 14,
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                    borderWidth: 1,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                    borderWidth: 1,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                    borderWidth: 1,
+                  },
                 }}
               >
                 <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
