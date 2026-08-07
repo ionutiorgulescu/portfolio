@@ -21,9 +21,12 @@ import MenuIcon from '@mui/icons-material/Menu';
 import GoalIcon from '@mui/icons-material/PieChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CallMadeIcon from '@mui/icons-material/CallMade';
 import { NavLink, Outlet } from 'react-router-dom';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
+import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { PullToRefreshProvider } from '../contexts/PullToRefreshContext';
@@ -49,6 +52,7 @@ const AppShell = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
+  const { valuesHidden, toggleValuesHidden } = useValuesVisibility();
 
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const refreshHandlerRef = useRef<RefreshHandler | null>(null);
@@ -172,15 +176,30 @@ const AppShell = () => {
             ) : null}
           </Box>
 
-          <IconButton
-            size="small"
-            onClick={() => setManageOpen(true)}
-            title="Manage portfolios"
-            color="inherit"
-            edge="end"
-          >
-            <SettingsIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton
+              size="small"
+              onClick={toggleValuesHidden}
+              title={valuesHidden ? 'Show total value' : 'Hide total value'}
+              aria-label={valuesHidden ? 'Show total value' : 'Hide total value'}
+              color="inherit"
+            >
+              {valuesHidden ? (
+                <VisibilityOffIcon fontSize="small" />
+              ) : (
+                <VisibilityIcon fontSize="small" />
+              )}
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setManageOpen(true)}
+              title="Manage portfolios"
+              color="inherit"
+              edge="end"
+            >
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
 

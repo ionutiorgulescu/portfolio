@@ -9,6 +9,7 @@ import Goal from './pages/Goal';
 import PortfolioPerformance from './pages/PortfolioPerformance';
 import Transactions from './pages/Transactions';
 import { PortfolioProvider } from './contexts/PortfolioContext';
+import { ValuesVisibilityProvider } from './contexts/ValuesVisibilityContext';
 import Plan from './pages/Plan';
 
 function App() {
@@ -38,21 +39,23 @@ function App() {
 
   return (
     <PortfolioProvider>
-      <Routes>
-        <Route
-          path="/"
-          element={<AppShell />}
-        >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="performance" element={<PortfolioPerformance />} />
-          <Route path="markets" element={<Markets />} />
-          <Route path="goal" element={<Goal />} />
-          <Route path="plan" element={<Plan />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+      <ValuesVisibilityProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={<AppShell />}
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="performance" element={<PortfolioPerformance />} />
+            <Route path="markets" element={<Markets />} />
+            <Route path="goal" element={<Goal />} />
+            <Route path="plan" element={<Plan />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </ValuesVisibilityProvider>
     </PortfolioProvider>
   );
 }

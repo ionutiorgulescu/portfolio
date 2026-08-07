@@ -1,9 +1,12 @@
 import { Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
+import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
 import chartPieIcon from "../assets/chart-pie.svg";
 import sunriseIcon from "../assets/sunrise.svg";
 import sunsetIcon from "../assets/sunset.svg";
+
+const HIDDEN_VALUE = '*****';
 
 const primaryTextSx = {
     color: "#393a36",
@@ -32,6 +35,10 @@ function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string 
         style: 'currency',
         currency,
     }).format(value);
+}
+
+function maskCurrency(currency: 'USD' | 'RON'): string {
+    return currency === 'RON' ? `${HIDDEN_VALUE} RON` : `$${HIDDEN_VALUE}`;
 }
 
 function formatPercent(value: number): string {
@@ -241,6 +248,7 @@ export function PortfolioCompositionRow({
     onLogoClick?: (row: TickerComposition) => void;
     logoUrl?: string | null;
 }) {
+    const { valuesHidden } = useValuesVisibility();
     const gainPositive = row.gainLoss >= 0;
     const gainLossPercent = row.costBasis !== 0 ? (row.gainLoss / row.costBasis) * 100 : 0;
 
@@ -321,7 +329,7 @@ export function PortfolioCompositionRow({
                         {row.priceSession ? (
                             <SessionBadge
                                 session={row.priceSession}
-                                changePercent={row.sessionChangePercent}
+                                changePercent={valuesHidden ? null : row.sessionChangePercent}
                             />
                         ) : null}
                     </Box>
@@ -364,10 +372,11 @@ export function PortfolioCompositionRow({
                         }}
                     >
                         {gainPositive ? '↑' : '↓'}{' '}
-                        {showPercent
-                            ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
-                            : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`
-                        }
+                        {valuesHidden
+                            ? (showPercent ? `${HIDDEN_VALUE}%` : maskCurrency(currency))
+                            : showPercent
+                                ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
+                                : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`}
                     </Typography>
                     <Box
                         sx={{
@@ -397,7 +406,7 @@ export function PortfolioCompositionRow({
                                 whiteSpace: 'nowrap',
                             }}
                         >
-                            {formatPercent(row.weight)}
+                            {valuesHidden ? `${HIDDEN_VALUE}%` : formatPercent(row.weight)}
                         </Typography>
                     </Box>
                 </Box>

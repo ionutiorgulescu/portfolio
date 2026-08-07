@@ -12,6 +12,7 @@ import SouthEastIcon from '@mui/icons-material/SouthEast';
 import { IntervalSelector } from './IntervalSelector';
 import type { CompositionFilter } from './FilterControl';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
+import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import {
   formatNumber,
   intervalOptions,
@@ -31,6 +32,7 @@ const FILTER_LABELS: Record<CompositionFilter, string> = {
 
 const GAIN_COLOR = '#27a69a';
 const LOSS_COLOR = '#d92673';
+const HIDDEN_VALUE = '*****';
 
 const cardSx = {
   borderRadius: { xs: '16px', sm: '20px' },
@@ -67,6 +69,7 @@ export function PortfolioPerformanceCard({
   const [interval, setInterval] = useState<ChartInterval>('YTD');
   const [scrubbedPoint, setScrubbedPoint] = useState<PortfolioChartPoint | null>(null);
   const { data: allData, isLoading, isError, error } = usePortfolioPerformance(filter, portfolioId);
+  const { valuesHidden } = useValuesVisibility();
 
   const filteredData = useMemo(() => {
     if (allData.length === 0) return [];
@@ -272,7 +275,9 @@ export function PortfolioPerformanceCard({
                 wordBreak: 'break-word',
               }}
             >
-              {currencyPrefix}{formatNumber(displayValue)}
+              {valuesHidden
+                ? `${currencyPrefix}${HIDDEN_VALUE}`
+                : `${currencyPrefix}${formatNumber(displayValue)}`}
             </Typography>
           </Box>
 
@@ -302,7 +307,9 @@ export function PortfolioPerformanceCard({
               ) : (
                 <SouthEastIcon sx={{ fontSize: '1em' }} />
               )}
-              {Math.abs(displayPerformance.gainPercent).toFixed(2)}%
+              {valuesHidden
+                ? `${HIDDEN_VALUE}%`
+                : `${Math.abs(displayPerformance.gainPercent).toFixed(2)}%`}
             </Typography>
             <Typography
               sx={{
@@ -312,9 +319,9 @@ export function PortfolioPerformanceCard({
                 color: performanceColor,
               }}
             >
-              {displayPerformance.gain >= 0 ? '' : '-'}
-              {currencyPrefix}
-              {formatNumber(Math.abs(displayPerformance.gain))}
+              {valuesHidden
+                ? `${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${HIDDEN_VALUE}`
+                : `${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${formatNumber(Math.abs(displayPerformance.gain))}`}
             </Typography>
           </Box>
         </Box>
