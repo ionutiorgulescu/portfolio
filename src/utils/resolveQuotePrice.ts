@@ -40,8 +40,9 @@ export function resolveQuotePrice(quote?: QuoteResult): {
   const previousClose = toNum(quote?.regularMarketPreviousClose);
   const regularChangePercent = toNum(quote?.regularMarketChangePercent);
   const marketState = String(quote?.marketState ?? '').toUpperCase();
-  const isPre = marketState === 'PRE' || marketState === 'PREPRE';
-  const isPost = marketState === 'POST' || marketState === 'POSTPOST';
+  // PREPRE/POSTPOST are outside live extended hours — no session badge.
+  const isPre = marketState === 'PRE';
+  const isPost = marketState === 'POST';
 
   if (isPre) {
     const sessionPrice =

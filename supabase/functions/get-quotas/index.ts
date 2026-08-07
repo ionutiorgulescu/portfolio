@@ -64,14 +64,14 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** True only during live extended-hours trading (not PREPRE/POSTPOST/CLOSED). */
 function isExtendedSession(marketState: string): boolean {
   const state = marketState.toUpperCase();
-  return state === "PRE" || state === "PREPRE" || state === "POST" || state === "POSTPOST";
+  return state === "PRE" || state === "POST";
 }
 
 function isPreSession(marketState: string): boolean {
-  const state = marketState.toUpperCase();
-  return state === "PRE" || state === "PREPRE";
+  return marketState.toUpperCase() === "PRE";
 }
 
 function mapYahooQuote(q: YahooQuote): QuoteResult {
