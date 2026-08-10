@@ -1,5 +1,5 @@
 import type { DailyCostBasis, DailyHoldings, FifoEngineResult, Lot, LotQueues, Transaction } from '../types/performance';
-import { PositionStatus } from '../types/positions';
+import { Currency, PositionStatus } from '../types/positions';
 
 function toUtcDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00Z`);
@@ -111,6 +111,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
           openDate: tx.buy_date,
           remainingQty: tx.quantity,
           buyPrice: tx.price,
+          currency: (tx.currency as Currency) ?? Currency.USD,
         };
         const queue = lotQueues.get(tx.ticker_symbol) ?? [];
         queue.push(lot);
@@ -127,21 +128,26 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
 
     // End-of-day snapshot: record remaining shares and cost basis for every active ticker
     const snapshot = new Map<string, number>();
-    let totalCostBasis = 0;
+    let usdCostBasis = 0;
+    let ronCostBasis = 0;
     for (const [ticker, lots] of lotQueues) {
       const total = lots.reduce((sum, lot) => sum + lot.remainingQty, 0);
       if (total > 0) {
         snapshot.set(ticker, total);
       }
       for (const lot of lots) {
-        if (lot.remainingQty > 1e-10) {  // ← add this guard
-          totalCostBasis += lot.remainingQty * lot.buyPrice;
+        if (lot.remainingQty > 1e-10) {
+          const lotCost = lot.remainingQty * lot.buyPrice;
+          if (lot.currency === Currency.RON) {
+            ronCostBasis += lotCost;
+          } else {
+            usdCostBasis += lotCost;
+          }
         }
       }
-      
     }
     dailyHoldings.set(date, snapshot);
-    dailyCostBasis.set(date, totalCostBasis);
+    dailyCostBasis.set(date, { usd: usdCostBasis, ron: ronCostBasis });
   }
 
   return { dailyHoldings, dailyCostBasis };

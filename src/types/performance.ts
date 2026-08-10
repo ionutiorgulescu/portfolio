@@ -1,4 +1,4 @@
-import type { Position } from './positions';
+import type { Currency, Position } from './positions';
 
 /**
  * A single row from the `positions` table that has been filtered to
@@ -17,6 +17,7 @@ export interface Lot {
   openDate: string;     // 'YYYY-MM-DD'
   remainingQty: number; // shares not yet consumed by sells
   buyPrice: number;
+  currency: Currency;
 }
 
 /** Per-ticker FIFO queue: ticker → ordered list of open lots (oldest first). */
@@ -29,11 +30,14 @@ export type LotQueues = Map<string, Lot[]>;
  */
 export type DailyHoldings = Map<string, Map<string, number>>;
 
+/** Cost basis split by currency so RON can be converted to USD later. */
+export type CostBasisParts = { usd: number; ron: number };
+
 /**
  * Daily cost basis series produced by the FIFO engine.
- * Maps 'YYYY-MM-DD' → total cost basis (Σ remainingQty × buyPrice across all open lots).
+ * Maps 'YYYY-MM-DD' → cost basis parts by currency.
  */
-export type DailyCostBasis = Map<string, number>;
+export type DailyCostBasis = Map<string, CostBasisParts>;
 
 /** Combined output of the FIFO engine. */
 export interface FifoEngineResult {

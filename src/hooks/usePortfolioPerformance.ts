@@ -16,6 +16,8 @@ import { buildPriceMatrix } from '../services/priceMatrix';
 import { computePortfolioValue } from '../services/portfolioValue';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
+const RON_USD_TICKER = 'RONUSD=X';
+
 const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transaction[]> => {
   const {
     data: { user },
@@ -75,6 +77,21 @@ export function usePortfolioPerformance(
     return rawTransactions;
   }, [rawTransactions, filter]);
 
+  const tickerCurrency = useMemo(() => {
+    const map = new Map<string, Currency>();
+    for (const tx of transactions) {
+      if (!map.has(tx.ticker_symbol)) {
+        map.set(tx.ticker_symbol, tx.currency as Currency);
+      }
+    }
+    return map;
+  }, [transactions]);
+
+  const needsRonConversion = useMemo(
+    () => filter !== 'bvb' && [...tickerCurrency.values()].some((c) => c === Currency.RON),
+    [filter, tickerCurrency],
+  );
+
   const uniqueTickers = useMemo(
     () => [...new Set(transactions.map((tx) => tx.ticker_symbol))],
     [transactions],
@@ -122,44 +139,65 @@ export function usePortfolioPerformance(
     [latestHoldings],
   );
 
+  const quoteTickers = useMemo(
+    () => (needsRonConversion ? [...heldTickers, RON_USD_TICKER] : heldTickers),
+    [heldTickers, needsRonConversion],
+  );
+
+  const needsQuotes = heldTickers.length > 0 || needsRonConversion;
+
   const {
     data: quotes,
     isLoading: isLoadingQuotes,
   } = useQuery<QuoteResult[]>({
-    queryKey: ['performanceQuotes', filter, heldTickers],
+    queryKey: ['performanceQuotes', filter, quoteTickers],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-quotas', {
-        body: { tickers: heldTickers },
+        body: { tickers: quoteTickers },
       });
       if (error) throw error;
       return data as QuoteResult[];
     },
-    enabled: heldTickers.length > 0 && !isLoadingTransactions && !isLoadingPrices,
+    enabled: needsQuotes && !isLoadingTransactions && !isLoadingPrices,
     staleTime: 5 * 60 * 1000,
   });
 
-  const waitingForLivePrices = heldTickers.length > 0 && isLoadingQuotes;
+  const waitingForQuotes = needsQuotes && isLoadingQuotes;
 
   const data: PortfolioDataPoint[] = useMemo(() => {
-    if (isLoadingTransactions || isLoadingPrices || waitingForLivePrices) return [];
-    const series = computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis);
-    if (series.length === 0 || !latestHoldings || !quotes) return series;
+    if (isLoadingTransactions || isLoadingPrices || waitingForQuotes) return [];
 
-    const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+    const quoteMap = new Map((quotes ?? []).map((q) => [q.symbol, q]));
+    const ronToUsd = needsRonConversion
+      ? resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price
+      : 0;
+
+    const series = computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis, {
+      tickerCurrency,
+      ronToUsd,
+      convertRon: needsRonConversion,
+    });
+
+    if (series.length === 0 || !latestHoldings) return series;
+    if (heldTickers.length > 0 && !quotes) return series;
+
     let liveValue = 0;
     let usedLivePrice = false;
 
     for (const [ticker, shares] of latestHoldings.holdings) {
       const livePrice = resolveQuotePrice(quoteMap.get(ticker)).price;
+      const currency = tickerCurrency.get(ticker);
+      const fx = needsRonConversion && currency === Currency.RON ? ronToUsd : 1;
+
       if (livePrice > 0) {
-        liveValue += shares * livePrice;
+        liveValue += shares * livePrice * fx;
         usedLivePrice = true;
         continue;
       }
 
       const historical = priceMatrix.get(ticker)?.get(latestHoldings.date);
       if (historical !== undefined) {
-        liveValue += shares * historical;
+        liveValue += shares * historical * fx;
       }
     }
 
@@ -175,14 +213,17 @@ export function usePortfolioPerformance(
     dailyCostBasis,
     isLoadingTransactions,
     isLoadingPrices,
-    waitingForLivePrices,
+    waitingForQuotes,
     latestHoldings,
     quotes,
+    heldTickers.length,
+    tickerCurrency,
+    needsRonConversion,
   ]);
 
   return {
     data,
-    isLoading: isLoadingTransactions || isLoadingPrices || waitingForLivePrices,
+    isLoading: isLoadingTransactions || isLoadingPrices || waitingForQuotes,
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? pricesError,
   };
