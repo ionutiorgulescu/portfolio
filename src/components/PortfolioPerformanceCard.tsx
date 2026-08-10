@@ -47,9 +47,12 @@ function computePerformance(
   start: { value: number; costBasis: number },
   end: { value: number; costBasis: number },
 ) {
+  // Dollar gain is cash-flow adjusted via cost-basis delta (deposits/withdrawals).
+  // Percent uses starting market value (plus new net capital), matching period return
+  // apps like Getquin — not return-on-cost, which inflates % when basis << market value.
   const netInvested = end.costBasis - start.costBasis;
   const gain = end.value - start.value - netInvested;
-  const capitalBase = start.costBasis + Math.max(netInvested, 0);
+  const capitalBase = start.value + Math.max(netInvested, 0);
   const gainPercent = capitalBase > 0 ? (gain / capitalBase) * 100 : 0;
 
   return { gain, gainPercent, positive: gain >= 0 };
