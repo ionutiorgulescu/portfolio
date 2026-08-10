@@ -20,6 +20,11 @@ import {
 } from './stockMarket.types';
 import type { ChartInterval } from './stockMarket.types';
 import type { PortfolioChartPoint } from './PortfolioChart';
+import {
+  buildTimeWeightedSeries,
+  returnOnCostPercent,
+  toCumulativeReturnPercent,
+} from '../services/performanceSeries';
 
 const PortfolioChart = lazy(() => import('./PortfolioChart'));
 
@@ -43,13 +48,11 @@ const cardSx = {
   minWidth: 0,
 } as const;
 
+/** Cash-flow-adjusted period P&L on starting market value (header % / $). */
 function computePerformance(
   start: { value: number; costBasis: number },
   end: { value: number; costBasis: number },
 ) {
-  // Dollar gain is cash-flow adjusted via cost-basis delta (deposits/withdrawals).
-  // Percent uses starting market value (plus new net capital), matching period return
-  // apps like Getquin — not return-on-cost, which inflates % when basis << market value.
   const netInvested = end.costBasis - start.costBasis;
   const gain = end.value - start.value - netInvested;
   const capitalBase = start.value + Math.max(netInvested, 0);
@@ -99,14 +102,26 @@ export function PortfolioPerformanceCard({
     return sliced.length > 0 ? sliced : allData;
   }, [allData, interval]);
 
-  const chartData = useMemo<PortfolioChartPoint[]>(
-    () => filteredData.map((p) => ({
+  const chartData = useMemo<PortfolioChartPoint[]>(() => {
+    // MAX: return on cost (0% = money invested).
+    // YTD/1W/1M/1Y: period TWR % (0% = interval start) so the chart matches header P&L.
+    if (interval === 'MAX') {
+      return filteredData.map((p) => ({
+        t: parseIsoDate(p.date).getTime(),
+        close: returnOnCostPercent(p.value, p.costBasis),
+        rawValue: p.value,
+        costBasis: p.costBasis,
+      }));
+    }
+
+    const twr = toCumulativeReturnPercent(buildTimeWeightedSeries(filteredData));
+    return twr.map((p) => ({
       t: parseIsoDate(p.date).getTime(),
-      close: p.value,
+      close: p.returnPercent,
+      rawValue: p.value,
       costBasis: p.costBasis,
-    })),
-    [filteredData],
-  );
+    }));
+  }, [filteredData, interval]);
 
   useEffect(() => {
     setScrubbedPoint(null);
@@ -125,15 +140,16 @@ export function PortfolioPerformanceCard({
   const startPoint = chartData.length > 0 ? chartData[0] : null;
   const activePoint = scrubbedPoint ?? latestPoint;
 
-  const displayValue = activePoint?.close ?? 0;
+  // Header: market value + interval P&L. Chart: ROC on MAX, period TWR % otherwise.
+  const displayValue = activePoint?.rawValue ?? 0;
 
   const periodEndPerformance = useMemo(() => {
     if (!startPoint || !latestPoint) {
       return { gain: 0, gainPercent: 0, positive: true };
     }
     return computePerformance(
-      { value: startPoint.close, costBasis: startPoint.costBasis },
-      { value: latestPoint.close, costBasis: latestPoint.costBasis },
+      { value: startPoint.rawValue, costBasis: startPoint.costBasis },
+      { value: latestPoint.rawValue, costBasis: latestPoint.costBasis },
     );
   }, [startPoint, latestPoint]);
 
@@ -142,20 +158,20 @@ export function PortfolioPerformanceCard({
       return { gain: 0, gainPercent: 0, positive: true };
     }
     return computePerformance(
-      { value: startPoint.close, costBasis: startPoint.costBasis },
-      { value: activePoint.close, costBasis: activePoint.costBasis },
+      { value: startPoint.rawValue, costBasis: startPoint.costBasis },
+      { value: activePoint.rawValue, costBasis: activePoint.costBasis },
     );
   }, [startPoint, activePoint]);
 
   const chartDomain = useMemo((): [number, number] => {
-    if (chartData.length === 0) return [0, 1];
+    if (chartData.length === 0) return [-1, 1];
 
     const values = chartData.map((p) => p.close);
-    const baseline = values[0];
-    const minVal = Math.min(...values, baseline);
-    const maxVal = Math.max(...values, baseline);
+    // Always include 0% so the invested / break-even line stays in view.
+    const minVal = Math.min(...values, 0);
+    const maxVal = Math.max(...values, 0);
     const spread = maxVal - minVal;
-    const padding = Math.max(spread * 0.12, maxVal * 0.02, 1);
+    const padding = Math.max(spread * 0.12, 0.5);
 
     return [minVal - padding, maxVal + padding];
   }, [chartData]);

@@ -20,7 +20,10 @@ import { formatChartCursorDate } from './stockMarket.types';
 
 export type PortfolioChartPoint = {
   t: number;
+  /** Chart Y: return on cost % (MAX) or period TWR % (other intervals). 0 = baseline. */
   close: number;
+  /** Actual portfolio market value (Total Value display). */
+  rawValue: number;
   costBasis: number;
 };
 
@@ -28,6 +31,8 @@ type Props = {
   chartData: PortfolioChartPoint[];
   positive: boolean;
   domain: [number, number];
+  /** Break-even reference (0% for return charts). */
+  baseline?: number;
   onScrub?: (point: PortfolioChartPoint | null) => void;
 };
 
@@ -93,9 +98,14 @@ function findNearestPoint(
   return { point: chartData[index], index };
 }
 
-export default function PortfolioChart({ chartData, positive, domain, onScrub }: Props) {
+export default function PortfolioChart({
+  chartData,
+  positive,
+  domain,
+  baseline = 0,
+  onScrub,
+}: Props) {
   const stroke = positive ? GAIN_COLOR : LOSS_COLOR;
-  const baseline = chartData.length > 0 ? chartData[0].close : 0;
   const containerRef = useRef<HTMLDivElement>(null);
   const touchScrubbingRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
