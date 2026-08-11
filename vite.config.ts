@@ -10,7 +10,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // Registered manually in main.tsx so we can check for updates immediately.
+      injectRegister: null,
       includeAssets: [
         'favicon.svg',
         'apple-touch-icon.png',
@@ -20,7 +21,13 @@ export default defineConfig({
       // Use public/manifest.webmanifest instead of generating one
       manifest: false,
       workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        navigateFallback: 'index.html',
+        // Never treat hashed asset requests as SPA navigations.
+        navigateFallbackDenylist: [/^\/assets\//],
       },
       devOptions: {
         enabled: false,

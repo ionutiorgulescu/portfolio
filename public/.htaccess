@@ -1,0 +1,21 @@
+<IfModule mod_headers.c>
+  # Always revalidate the app shell so deploys are picked up quickly.
+  <FilesMatch "^(index\.html|sw\.js|workbox-.*\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Never SPA-fallback missing hashed assets to index.html (that causes MIME
+  # "text/html" errors for module scripts after a deploy).
+  RewriteRule ^assets/ - [L]
+
+  # SPA fallback for client routes only when the file does not exist.
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
