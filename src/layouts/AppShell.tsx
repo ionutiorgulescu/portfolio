@@ -13,6 +13,7 @@ import {
   Select,
   Skeleton,
   Toolbar,
+  Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -20,6 +21,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import MenuIcon from '@mui/icons-material/Menu';
 import GoalIcon from '@mui/icons-material/PieChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -37,19 +39,20 @@ type RefreshHandler = () => void | Promise<void>;
 const drawerWidthOpen = 240;
 const drawerWidthClosed = 72;
 const PULL_THRESHOLD = 72;
+const MOBILE_BOTTOM_NAV_HEIGHT = 72;
 
 const menuItems = [
-  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon /> },
-  { label: 'Goal', path: '/goal', icon: <GoalIcon /> },
-  { label: 'Plan', path: '/plan', icon: <CallMadeIcon /> },
+  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
+  { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon fontSize="small" /> },
+  { label: 'Performance', path: '/performance', icon: <ShowChartIcon fontSize="small" /> },
+  { label: 'Goal', path: '/goal', icon: <GoalIcon fontSize="small" /> },
+  { label: 'Plan', path: '/plan', icon: <CallMadeIcon fontSize="small" /> },
 ];
 
 const AppShell = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
   const { valuesHidden, toggleValuesHidden } = useValuesVisibility();
@@ -76,33 +79,24 @@ const AppShell = () => {
   const showIndicator = hasRefreshHandler && (isPulling || isRefreshing || pullDistance > 0);
   const drawerWidth = isMenuOpen ? drawerWidthOpen : drawerWidthClosed;
 
-  const handleDrawerToggle = () => {
-    if (isMobile) {
-      setMobileOpen(prev => !prev);
-    } else {
-      setIsMenuOpen(prev => !prev);
-    }
-  };
-
-  const drawerContent = (mobile: boolean) => (
+  const drawerContent = (
     <List>
       {menuItems.map((item) => (
         <ListItemButton
           key={item.path}
           component={NavLink}
           to={item.path}
-          onClick={mobile ? () => setMobileOpen(false) : undefined}
           sx={{
             minHeight: 48,
             px: 2.5,
-            justifyContent: (!mobile && !isMenuOpen) ? 'center' : 'initial',
+            justifyContent: !isMenuOpen ? 'center' : 'initial',
             '&.active': { bgcolor: 'action.selected' },
           }}
         >
           <ListItemIcon
             sx={{
               minWidth: 0,
-              mr: (!mobile && !isMenuOpen) ? 0 : 2,
+              mr: !isMenuOpen ? 0 : 2,
               justifyContent: 'center',
               color: 'text.primary',
             }}
@@ -111,7 +105,7 @@ const AppShell = () => {
           </ListItemIcon>
           <ListItemText
             primary={item.label}
-            sx={{ opacity: (!mobile && !isMenuOpen) ? 0 : 1 }}
+            sx={{ opacity: !isMenuOpen ? 0 : 1 }}
             primaryTypographyProps={{ color: 'text.primary' }}
           />
         </ListItemButton>
@@ -140,9 +134,11 @@ const AppShell = () => {
       >
         <Toolbar sx={{ justifyContent: 'space-between', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle}>
-              <MenuIcon />
-            </IconButton>
+            {!isMobile && (
+              <IconButton color="inherit" edge="start" onClick={() => setIsMenuOpen((prev) => !prev)}>
+                <MenuIcon />
+              </IconButton>
+            )}
 
             {portfoliosLoading ? (
               <Skeleton width={140} height={36} sx={{ borderRadius: 1 }} />
@@ -203,19 +199,6 @@ const AppShell = () => {
         </Toolbar>
       </AppBar>
 
-      {isMobile && (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{ '& .MuiDrawer-paper': { width: drawerWidthOpen, boxSizing: 'border-box' } }}
-        >
-          <Toolbar />
-          {drawerContent(true)}
-        </Drawer>
-      )}
-
       {!isMobile && (
         <Drawer
           variant="permanent"
@@ -233,7 +216,7 @@ const AppShell = () => {
           })}
         >
           <Toolbar />
-          {drawerContent(false)}
+          {drawerContent}
         </Drawer>
       )}
 
@@ -249,6 +232,10 @@ const AppShell = () => {
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-y',
           p: { xs: 2, sm: 3 },
+          pb: {
+            xs: `calc(${MOBILE_BOTTOM_NAV_HEIGHT + 24}px + env(safe-area-inset-bottom, 0px))`,
+            md: 3,
+          },
           backgroundColor: 'grey.100',
         }}
       >
@@ -276,6 +263,76 @@ const AppShell = () => {
           <Outlet />
         </PullToRefreshProvider>
       </Box>
+
+      {isMobile && (
+        <Box
+          component="nav"
+          aria-label="Primary"
+          sx={{
+            position: 'fixed',
+            left: 12,
+            right: 12,
+            bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+            zIndex: (t) => t.zIndex.appBar,
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'space-between',
+            gap: 0.25,
+            minHeight: MOBILE_BOTTOM_NAV_HEIGHT,
+            px: 0.75,
+            py: 0.75,
+            bgcolor: 'background.paper',
+            borderRadius: 999,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 8px 28px rgba(15, 23, 42, 0.12)',
+          }}
+        >
+          {menuItems.map((item) => (
+            <Box
+              key={item.path}
+              component={NavLink}
+              to={item.path}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.25,
+                px: 0.5,
+                py: 0.75,
+                borderRadius: 999,
+                textDecoration: 'none',
+                color: 'text.secondary',
+                transition: 'background-color 0.15s ease, color 0.15s ease',
+                '&.active': {
+                  color: 'text.primary',
+                  bgcolor: 'grey.100',
+                },
+              }}
+            >
+              {item.icon}
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 10,
+                  lineHeight: 1.2,
+                  fontWeight: 500,
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '100%',
+                }}
+              >
+                {item.label}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
 
       <PortfolioManagerModal open={manageOpen} onClose={() => setManageOpen(false)} />
     </Box>

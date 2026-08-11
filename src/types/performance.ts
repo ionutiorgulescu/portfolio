@@ -39,10 +39,33 @@ export type CostBasisParts = { usd: number; ron: number };
  */
 export type DailyCostBasis = Map<string, CostBasisParts>;
 
+/**
+ * Per-ticker cost basis for a day (native lot currency).
+ * Maps 'YYYY-MM-DD' → (ticker → remaining cost).
+ * Used to value holdings at cost when market prices are missing.
+ */
+export type DailyTickerCost = Map<string, Map<string, number>>;
+
+/**
+ * One sell matched against FIFO buy lots.
+ * `gain` / `cost` / `proceeds` are in the lot's native currency.
+ */
+export interface RealizedGainEvent {
+  date: string; // sell date 'YYYY-MM-DD'
+  ticker: string;
+  quantity: number;
+  proceeds: number;
+  cost: number;
+  gain: number;
+  currency: Currency;
+}
+
 /** Combined output of the FIFO engine. */
 export interface FifoEngineResult {
   dailyHoldings: DailyHoldings;
   dailyCostBasis: DailyCostBasis;
+  dailyTickerCost: DailyTickerCost;
+  realizedGains: RealizedGainEvent[];
 }
 
 /**
@@ -61,9 +84,29 @@ export interface PortfolioDataPoint {
   costBasis: number; // Σ (remainingQty × buyPrice) across all open lots on this date
 }
 
+/** Realized P&L for a sell, converted to display currency (USD when mixed). */
+export interface RealizedGainPoint {
+  date: string;
+  gain: number;
+  cost: number;
+}
+
+/**
+ * External cash flow for money-weighted return (XIRR).
+ * Negative = deposit / buy; positive = withdrawal / sell proceeds.
+ */
+export interface CashFlowPoint {
+  date: string;
+  amount: number;
+}
+
 /** Shape returned by the `usePortfolioPerformance` hook. */
 export interface UsePortfolioPerformanceResult {
   data: PortfolioDataPoint[];
+  realizedGains: RealizedGainPoint[];
+  cashFlows: CashFlowPoint[];
+  /** Calendar years from first buy through current year, newest first. */
+  years: number[];
   isLoading: boolean;
   isError: boolean;
   error: Error | null;

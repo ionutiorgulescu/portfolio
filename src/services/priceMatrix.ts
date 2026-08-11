@@ -1,48 +1,105 @@
 import type { StockBarWithDate } from '../hooks/useStockData';
 import type { PriceMatrix } from '../types/performance';
 
+/** Buy-price seeds used on purchase dates and when a ticker has no market history. */
+export type PriceSeed = { date: string; price: number };
+
 /**
  * Builds a `PriceMatrix` from a map of per-ticker historical bar arrays.
  *
- * For each ticker the function iterates every date in `dateRange` in order and
- * applies a last-known-price carry-forward: if a date has no market data
- * (weekend, public holiday, or pre-first-trade-date) the most recent closing
- * price is reused so that value computation never encounters a missing entry
- * for a ticker that has already started trading.
+ * For each ticker:
+ * 1. Place raw closing prices on trade dates (forward-filled for gaps)
+ * 2. Backward-fill before the first trade with that first close
+ * 3. On purchase dates, prefer the transaction buy price over the market close
  *
- * Dates before the ticker's first available bar produce no entry (value
- * contribution for that ticker is treated as 0 by the value combinator).
+ * Step 3 matters for TTWROR: if the series starts on a buy date valued at a
+ * distressed EOD close while cost is much higher, the same-day mark-to-market
+ * loss is never counted (no prior point) but the later recovery is — which
+ * massively overstates all-time TWR. Valuing buys at trade price keeps the
+ * opening capital aligned with cash deployed.
  *
- * @param pricesByTicker  Map of ticker → bars returned by the Edge Function
- * @param dateRange       Ordered array of 'YYYY-MM-DD' strings (from FIFO engine)
+ * Buy seeds also cover tickers with no market bars at all.
  */
 export function buildPriceMatrix(
   pricesByTicker: Map<string, StockBarWithDate[]>,
   dateRange: string[],
+  buySeeds?: Map<string, PriceSeed[]>,
 ): PriceMatrix {
   const matrix: PriceMatrix = new Map();
 
-  for (const [ticker, bars] of pricesByTicker) {
-    // Index raw closing prices by date string for O(1) lookup
+  const tickers = new Set<string>([
+    ...pricesByTicker.keys(),
+    ...(buySeeds?.keys() ?? []),
+  ]);
+
+  for (const ticker of tickers) {
+    const bars = pricesByTicker.get(ticker) ?? [];
     const rawPrices = new Map<string, number>();
     for (const bar of bars) {
-      rawPrices.set(bar.date, bar.c);
+      if (Number.isFinite(bar.c) && bar.c > 0) {
+        rawPrices.set(bar.date, bar.c);
+      }
+    }
+
+    const seeds = [...(buySeeds?.get(ticker) ?? [])].sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+    );
+    const buyPriceByDate = new Map<string, number>();
+    for (const seed of seeds) {
+      if (seed.price > 0) {
+        // Last buy on that date wins (adequate for same-day multiples).
+        buyPriceByDate.set(seed.date, seed.price);
+      }
     }
 
     const tickerPrices = new Map<string, number>();
-    let lastKnownPrice: number | null = null;
 
-    for (const date of dateRange) {
-      const price = rawPrices.get(date);
+    if (rawPrices.size > 0) {
+      let lastKnownPrice: number | null = null;
+      for (const date of dateRange) {
+        const marketPrice = rawPrices.get(date);
+        if (marketPrice !== undefined) {
+          lastKnownPrice = marketPrice;
+        }
 
-      if (price !== undefined) {
-        lastKnownPrice = price;
-        tickerPrices.set(date, price);
-      } else if (lastKnownPrice !== null) {
-        // Weekend or market holiday: carry forward the last closing price
-        tickerPrices.set(date, lastKnownPrice);
+        const buyPrice = buyPriceByDate.get(date);
+        if (buyPrice !== undefined) {
+          // Purchase day: value at trade price (matches cash deployed / cost).
+          tickerPrices.set(date, buyPrice);
+          if (lastKnownPrice === null) lastKnownPrice = buyPrice;
+        } else if (marketPrice !== undefined) {
+          tickerPrices.set(date, marketPrice);
+        } else if (lastKnownPrice !== null) {
+          tickerPrices.set(date, lastKnownPrice);
+        }
       }
-      // Before the first traded date: leave unset (no value contribution yet)
+
+      // Backward-fill only dates still empty before first known price
+      let nextKnownPrice: number | null = null;
+      for (let i = dateRange.length - 1; i >= 0; i--) {
+        const date = dateRange[i];
+        const existing = tickerPrices.get(date);
+        if (existing !== undefined) {
+          nextKnownPrice = existing;
+        } else if (nextKnownPrice !== null) {
+          tickerPrices.set(date, nextKnownPrice);
+        }
+      }
+    } else {
+      let latestSeedPrice: number | null = null;
+      let seedIdx = 0;
+
+      for (const date of dateRange) {
+        while (seedIdx < seeds.length && seeds[seedIdx].date <= date) {
+          if (seeds[seedIdx].price > 0) {
+            latestSeedPrice = seeds[seedIdx].price;
+          }
+          seedIdx++;
+        }
+        if (latestSeedPrice !== null) {
+          tickerPrices.set(date, latestSeedPrice);
+        }
+      }
     }
 
     matrix.set(ticker, tickerPrices);

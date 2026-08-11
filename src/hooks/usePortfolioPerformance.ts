@@ -3,8 +3,10 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type {
+  CashFlowPoint,
   PortfolioDataPoint,
   PriceMatrix,
+  RealizedGainPoint,
   Transaction,
   UsePortfolioPerformanceResult,
 } from '../types/performance';
@@ -12,8 +14,9 @@ import type { CompositionFilter } from '../components/FilterControl';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { fetchStockHistory } from './useStockData';
 import { runFifoEngine } from '../services/fifoEngine';
-import { buildPriceMatrix } from '../services/priceMatrix';
+import { buildPriceMatrix, type PriceSeed } from '../services/priceMatrix';
 import { computePortfolioValue } from '../services/portfolioValue';
+import { buildRonUsdSeries, ronUsdOnDate } from '../services/ronUsd';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
 const RON_USD_TICKER = 'RONUSD=X';
@@ -77,6 +80,27 @@ export function usePortfolioPerformance(
     return rawTransactions;
   }, [rawTransactions, filter]);
 
+  /** Years available for period chips: first buy year → current year (newest first). */
+  const years = useMemo(() => {
+    let firstYear: number | null = null;
+    for (const tx of rawTransactions) {
+      if (tx.status !== PositionStatus.Buy) continue;
+      const year = Number(tx.buy_date.slice(0, 4));
+      if (!Number.isFinite(year)) continue;
+      if (firstYear === null || year < firstYear) firstYear = year;
+    }
+    if (firstYear === null) return [];
+
+    const currentYear = new Date().getUTCFullYear();
+    const start = Math.min(firstYear, currentYear);
+    const end = Math.max(firstYear, currentYear);
+    const result: number[] = [];
+    for (let year = end; year >= start; year -= 1) {
+      result.push(year);
+    }
+    return result;
+  }, [rawTransactions]);
+
   const tickerCurrency = useMemo(() => {
     const map = new Map<string, Currency>();
     for (const tx of transactions) {
@@ -105,9 +129,20 @@ export function usePortfolioPerformance(
     })),
   });
 
+  const {
+    data: ronUsdHistory = [],
+    isLoading: isLoadingRonUsdHistory,
+  } = useQuery({
+    queryKey: ['stock-history', RON_USD_TICKER] as const,
+    queryFn: () => fetchStockHistory(RON_USD_TICKER),
+    enabled: needsRonConversion,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const isLoadingPrices = priceQueries.some((q) => q.isLoading);
   const isErrorPrices = priceQueries.some((q) => q.isError);
   const pricesError = (priceQueries.find((q) => q.error)?.error ?? null) as Error | null;
+  const waitingForRonUsdHistory = needsRonConversion && isLoadingRonUsdHistory;
 
   const pricesByTicker = useMemo(
     () => new Map(uniqueTickers.map((ticker, i) => [ticker, priceQueries[i]?.data ?? []])),
@@ -115,16 +150,30 @@ export function usePortfolioPerformance(
     [uniqueTickers, priceQueries],
   );
 
-  const { dailyHoldings, dailyCostBasis } = useMemo(
-    () => runFifoEngine(transactions),
-    [transactions],
-  );
+  const {
+    dailyHoldings,
+    dailyCostBasis,
+    dailyTickerCost,
+    realizedGains: rawRealizedGains,
+  } = useMemo(() => runFifoEngine(transactions), [transactions]);
 
   const dateRange = useMemo(() => [...dailyHoldings.keys()], [dailyHoldings]);
 
+  /** Buy prices fill valuation gaps before a ticker's first market bar. */
+  const buyPriceSeeds = useMemo(() => {
+    const seeds = new Map<string, PriceSeed[]>();
+    for (const tx of transactions) {
+      if (tx.status !== PositionStatus.Buy) continue;
+      const list = seeds.get(tx.ticker_symbol) ?? [];
+      list.push({ date: tx.buy_date, price: tx.price });
+      seeds.set(tx.ticker_symbol, list);
+    }
+    return seeds;
+  }, [transactions]);
+
   const priceMatrix: PriceMatrix = useMemo(
-    () => buildPriceMatrix(pricesByTicker, dateRange),
-    [pricesByTicker, dateRange],
+    () => buildPriceMatrix(pricesByTicker, dateRange, buyPriceSeeds),
+    [pricesByTicker, dateRange, buyPriceSeeds],
   );
 
   const latestHoldings = useMemo(() => {
@@ -164,18 +213,108 @@ export function usePortfolioPerformance(
 
   const waitingForQuotes = needsQuotes && isLoadingQuotes;
 
-  const data: PortfolioDataPoint[] = useMemo(() => {
-    if (isLoadingTransactions || isLoadingPrices || waitingForQuotes) return [];
+  const quoteMap = useMemo(
+    () => new Map((quotes ?? []).map((q) => [q.symbol, q])),
+    [quotes],
+  );
 
-    const quoteMap = new Map((quotes ?? []).map((q) => [q.symbol, q]));
-    const ronToUsd = needsRonConversion
-      ? resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price
-      : 0;
+  const liveRonToUsd = useMemo(() => {
+    if (!needsRonConversion) return 0;
+    return resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
+  }, [needsRonConversion, quoteMap]);
+
+  /** Per-day RON→USD; live spot overrides the latest calendar day. */
+  const ronToUsdByDate = useMemo(() => {
+    if (!needsRonConversion) return null;
+    if (waitingForRonUsdHistory) return null;
+
+    return buildRonUsdSeries(
+      ronUsdHistory,
+      dateRange,
+      liveRonToUsd > 0 ? liveRonToUsd : undefined,
+    );
+  }, [
+    needsRonConversion,
+    waitingForRonUsdHistory,
+    ronUsdHistory,
+    dateRange,
+    liveRonToUsd,
+  ]);
+
+  const hasRonFx =
+    !needsRonConversion ||
+    liveRonToUsd > 0 ||
+    (ronToUsdByDate != null &&
+      [...ronToUsdByDate.values()].some((rate) => rate > 0));
+
+  /** Still fetching the FX inputs — not a permanent missing-rate state. */
+  const waitingForRonFx =
+    needsRonConversion && (waitingForRonUsdHistory || waitingForQuotes);
+
+  const realizedGains: RealizedGainPoint[] = useMemo(() => {
+    if (isLoadingTransactions || waitingForRonFx || !hasRonFx) return [];
+
+    return rawRealizedGains.map((event) => {
+      const fx =
+        needsRonConversion && event.currency === Currency.RON
+          ? ronUsdOnDate(ronToUsdByDate, event.date, liveRonToUsd)
+          : 1;
+      return {
+        date: event.date,
+        gain: event.gain * fx,
+        cost: event.cost * fx,
+      };
+    });
+  }, [
+    rawRealizedGains,
+    isLoadingTransactions,
+    waitingForRonFx,
+    hasRonFx,
+    needsRonConversion,
+    ronToUsdByDate,
+    liveRonToUsd,
+  ]);
+
+  const cashFlows: CashFlowPoint[] = useMemo(() => {
+    if (isLoadingTransactions || waitingForRonFx || !hasRonFx) return [];
+
+    return transactions.map((tx) => {
+      const fx =
+        needsRonConversion && tx.currency === Currency.RON
+          ? ronUsdOnDate(ronToUsdByDate, tx.buy_date, liveRonToUsd)
+          : 1;
+      const notional = tx.quantity * tx.price * fx;
+      return {
+        date: tx.buy_date,
+        amount: tx.status === PositionStatus.Buy ? -notional : notional,
+      };
+    });
+  }, [
+    transactions,
+    isLoadingTransactions,
+    waitingForRonFx,
+    hasRonFx,
+    needsRonConversion,
+    ronToUsdByDate,
+    liveRonToUsd,
+  ]);
+
+  const data: PortfolioDataPoint[] = useMemo(() => {
+    if (
+      isLoadingTransactions ||
+      isLoadingPrices ||
+      waitingForRonFx ||
+      !hasRonFx
+    ) {
+      return [];
+    }
 
     const series = computePortfolioValue(dailyHoldings, priceMatrix, dailyCostBasis, {
       tickerCurrency,
-      ronToUsd,
+      ronToUsdByDate: ronToUsdByDate ?? undefined,
+      ronToUsd: liveRonToUsd,
       convertRon: needsRonConversion,
+      dailyTickerCost,
     });
 
     if (series.length === 0 || !latestHoldings) return series;
@@ -183,11 +322,16 @@ export function usePortfolioPerformance(
 
     let liveValue = 0;
     let usedLivePrice = false;
+    const latestFx = ronUsdOnDate(
+      ronToUsdByDate,
+      latestHoldings.date,
+      liveRonToUsd,
+    );
 
     for (const [ticker, shares] of latestHoldings.holdings) {
       const livePrice = resolveQuotePrice(quoteMap.get(ticker)).price;
       const currency = tickerCurrency.get(ticker);
-      const fx = needsRonConversion && currency === Currency.RON ? ronToUsd : 1;
+      const fx = needsRonConversion && currency === Currency.RON ? latestFx : 1;
 
       if (livePrice > 0) {
         liveValue += shares * livePrice * fx;
@@ -205,25 +349,44 @@ export function usePortfolioPerformance(
 
     const patched = [...series];
     const last = patched[patched.length - 1];
-    patched[patched.length - 1] = { ...last, value: liveValue };
+    patched[patched.length - 1] = {
+      ...last,
+      value: liveValue,
+      // Keep invested capital on the same FX as the live mark.
+      costBasis: needsRonConversion
+        ? (dailyCostBasis.get(latestHoldings.date)?.usd ?? 0) +
+          (dailyCostBasis.get(latestHoldings.date)?.ron ?? 0) * latestFx
+        : last.costBasis,
+    };
     return patched;
   }, [
     dailyHoldings,
     priceMatrix,
     dailyCostBasis,
+    dailyTickerCost,
     isLoadingTransactions,
     isLoadingPrices,
-    waitingForQuotes,
+    waitingForRonFx,
+    hasRonFx,
     latestHoldings,
     quotes,
     heldTickers.length,
     tickerCurrency,
     needsRonConversion,
+    ronToUsdByDate,
+    liveRonToUsd,
+    quoteMap,
   ]);
 
   return {
     data,
-    isLoading: isLoadingTransactions || isLoadingPrices || waitingForQuotes,
+    realizedGains,
+    cashFlows,
+    years,
+    isLoading:
+      isLoadingTransactions ||
+      isLoadingPrices ||
+      waitingForRonFx,
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? pricesError,
   };

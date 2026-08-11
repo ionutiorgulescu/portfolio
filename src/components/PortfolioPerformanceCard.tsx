@@ -74,7 +74,13 @@ export function PortfolioPerformanceCard({
 }: Props) {
   const [interval, setInterval] = useState<ChartInterval>('YTD');
   const [scrubbedPoint, setScrubbedPoint] = useState<PortfolioChartPoint | null>(null);
-  const { data: allData, isLoading, isError, error } = usePortfolioPerformance(filter, portfolioId);
+  const {
+    data: allData,
+    cashFlows,
+    isLoading,
+    isError,
+    error,
+  } = usePortfolioPerformance(filter, portfolioId);
   const { valuesHidden } = useValuesVisibility();
 
   const filteredData = useMemo(() => {
@@ -114,14 +120,25 @@ export function PortfolioPerformanceCard({
       }));
     }
 
-    const twr = toCumulativeReturnPercent(buildTimeWeightedSeries(filteredData));
+    const externalFlows = cashFlows
+      .filter(
+        (cf) =>
+          filteredData.length > 0 &&
+          cf.date > filteredData[0].date &&
+          cf.date <= filteredData[filteredData.length - 1].date,
+      )
+      .map((cf) => ({ date: cf.date, amount: -cf.amount }));
+
+    const twr = toCumulativeReturnPercent(
+      buildTimeWeightedSeries(filteredData, externalFlows),
+    );
     return twr.map((p) => ({
       t: parseIsoDate(p.date).getTime(),
       close: p.returnPercent,
       rawValue: p.value,
       costBasis: p.costBasis,
     }));
-  }, [filteredData, interval]);
+  }, [filteredData, interval, cashFlows]);
 
   useEffect(() => {
     setScrubbedPoint(null);

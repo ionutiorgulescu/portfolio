@@ -1,4 +1,13 @@
-import type { DailyCostBasis, DailyHoldings, FifoEngineResult, Lot, LotQueues, Transaction } from '../types/performance';
+import type {
+  DailyCostBasis,
+  DailyHoldings,
+  DailyTickerCost,
+  FifoEngineResult,
+  Lot,
+  LotQueues,
+  RealizedGainEvent,
+  Transaction,
+} from '../types/performance';
 import { Currency, PositionStatus } from '../types/positions';
 
 function toUtcDate(isoDate: string): Date {
@@ -27,14 +36,29 @@ function buildDateRange(startIso: string, endIso: string): string[] {
   return dates;
 }
 
+type ConsumeResult = {
+  quantity: number;
+  cost: number;
+  currency: Currency;
+};
+
 /**
  * Consumes `sellQty` shares from the front of `queue` using FIFO.
  * Mutates the queue in place (partial lot support: the front lot's
  * remainingQty is reduced rather than removed when only partially consumed).
  * Logs a warning if the queue is exhausted before all shares are consumed.
+ * Returns matched quantity and purchase-cost basis of the consumed lots.
  */
-function consumeFifo(queue: Lot[], sellQty: number, ticker: string, date: string): void {
+function consumeFifo(
+  queue: Lot[],
+  sellQty: number,
+  ticker: string,
+  date: string,
+): ConsumeResult {
   let remaining = sellQty;
+  let cost = 0;
+  let quantity = 0;
+  let currency: Currency = Currency.USD;
   const EPSILON = 1e-10;
 
   while (remaining > EPSILON) {
@@ -44,15 +68,22 @@ function consumeFifo(queue: Lot[], sellQty: number, ticker: string, date: string
     }
 
     const front = queue[0];
+    currency = front.currency;
 
     if (front.remainingQty <= remaining) {
+      cost += front.remainingQty * front.buyPrice;
+      quantity += front.remainingQty;
       remaining -= front.remainingQty;
       queue.shift();
     } else {
+      cost += remaining * front.buyPrice;
+      quantity += remaining;
       front.remainingQty -= remaining;
       remaining = 0;
     }
   }
+
+  return { quantity, cost, currency };
 }
 
 /**
@@ -69,7 +100,12 @@ function consumeFifo(queue: Lot[], sellQty: number, ticker: string, date: string
  */
 export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
   if (transactions.length === 0) {
-    return { dailyHoldings: new Map(), dailyCostBasis: new Map() };
+    return {
+      dailyHoldings: new Map(),
+      dailyCostBasis: new Map(),
+      dailyTickerCost: new Map(),
+      realizedGains: [],
+    };
   }
 
   // Sort chronologically; buys before sells on the same date
@@ -99,6 +135,8 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
   const lotQueues: LotQueues = new Map();
   const dailyHoldings: DailyHoldings = new Map();
   const dailyCostBasis: DailyCostBasis = new Map();
+  const dailyTickerCost: DailyTickerCost = new Map();
+  const realizedGains: RealizedGainEvent[] = [];
 
   for (const date of dateRange) {
     const dayTxns = byDate.get(date) ?? [];
@@ -122,22 +160,34 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
           console.warn(`[FIFO] Sell without open lots for ${tx.ticker_symbol} on ${date}`);
           continue;
         }
-        consumeFifo(queue, tx.quantity, tx.ticker_symbol, date);
+        const matched = consumeFifo(queue, tx.quantity, tx.ticker_symbol, date);
+        if (matched.quantity <= 1e-10) continue;
+
+        const proceeds = matched.quantity * tx.price;
+        realizedGains.push({
+          date,
+          ticker: tx.ticker_symbol,
+          quantity: matched.quantity,
+          proceeds,
+          cost: matched.cost,
+          gain: proceeds - matched.cost,
+          currency: matched.currency,
+        });
       }
     }
 
     // End-of-day snapshot: record remaining shares and cost basis for every active ticker
     const snapshot = new Map<string, number>();
+    const tickerCost = new Map<string, number>();
     let usdCostBasis = 0;
     let ronCostBasis = 0;
     for (const [ticker, lots] of lotQueues) {
       const total = lots.reduce((sum, lot) => sum + lot.remainingQty, 0);
-      if (total > 0) {
-        snapshot.set(ticker, total);
-      }
+      let remainingCost = 0;
       for (const lot of lots) {
         if (lot.remainingQty > 1e-10) {
           const lotCost = lot.remainingQty * lot.buyPrice;
+          remainingCost += lotCost;
           if (lot.currency === Currency.RON) {
             ronCostBasis += lotCost;
           } else {
@@ -145,10 +195,15 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
           }
         }
       }
+      if (total > 0) {
+        snapshot.set(ticker, total);
+        tickerCost.set(ticker, remainingCost);
+      }
     }
     dailyHoldings.set(date, snapshot);
     dailyCostBasis.set(date, { usd: usdCostBasis, ron: ronCostBasis });
+    dailyTickerCost.set(date, tickerCost);
   }
 
-  return { dailyHoldings, dailyCostBasis };
+  return { dailyHoldings, dailyCostBasis, dailyTickerCost, realizedGains };
 }
