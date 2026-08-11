@@ -53,10 +53,9 @@ function buildMonthKeys(range: RangeOption): string[] {
     const currentMonth = now.getMonth(); // 0-indexed
 
     if (rangeOptions.includes(range)) {
-        const yr = parseInt(range);
-        const maxMonth = yr === currentYear ? currentMonth : 11;
-        return Array.from({ length: maxMonth + 1 }, (_, i) =>
-            `${yr}-${String(i + 1).padStart(2, '0')}`
+        // Always Jan–Dec so future months render as empty stubs (performance chart style).
+        return Array.from({ length: 12 }, (_, i) =>
+            `${range}-${String(i + 1).padStart(2, '0')}`
         );
     }
 

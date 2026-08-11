@@ -6,7 +6,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
@@ -32,33 +31,15 @@ interface ChartEntry extends MonthlyData {
   currencySymbol: string;
 }
 
-const primaryTextSx = {
-  color: '#393a36',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const secondaryTextSx = {
-  color: '#61615e',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const COLOR_MET = 'var(--color-goal-met)';
-const COLOR_MISSED = 'var(--color-goal-in-progress)';
-const COLOR_SHORTFALL = 'var(--color-goal-remaining)';
-const COLOR_GOAL = 'var(--color-goal-met)';
-
-function formatCurrency(value: number, symbol: string): string {
-  if (symbol === 'RON') {
-    if (value >= 1000) return `${(value / 1000).toFixed(0)}K RON`;
-    return `${value} RON`;
-  }
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${value}`;
-}
+const GAIN_COLOR = '#27a69a';
+const SHORTFALL_COLOR = '#B4EEE5';
+const BASE_BAR_COLOR = '#e5e7eb';
+const MUTED = '#9ca3af';
+const TEXT = '#111827';
 
 const LEGEND = [
-  { color: COLOR_MET, label: 'Goal met' },
-  { color: COLOR_SHORTFALL, label: 'Remaining' },
+  { color: GAIN_COLOR, label: 'Goal met' },
+  { color: SHORTFALL_COLOR, label: 'Remaining' },
 ];
 
 function fmtAmount(value: number, symbol: string): string {
@@ -66,6 +47,47 @@ function fmtAmount(value: number, symbol: string): string {
     return value.toLocaleString('ro-RO', { maximumFractionDigits: 0 }) + ' RON';
   }
   return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/**
+ * Rounded bar with the curve on the outer tip (away from the baseline).
+ * Matches PortfolioPerformance chart bar geometry.
+ */
+function RoundedGoalBar(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  tip: 'up' | 'flat';
+}) {
+  const { x = 0, width = 0, fill, tip } = props;
+  if (!width || !props.height) return null;
+
+  const rawY = props.y ?? 0;
+  const rawH = props.height ?? 0;
+  const top = rawH >= 0 ? rawY : rawY + rawH;
+  const bottom = rawH >= 0 ? rawY + rawH : rawY;
+  const absHeight = bottom - top;
+  if (absHeight <= 0) return null;
+
+  if (tip === 'flat') {
+    return (
+      <rect x={x} y={top} width={width} height={absHeight} fill={fill} />
+    );
+  }
+
+  const radius = Math.min(8, width / 2, absHeight / 2);
+  const d = [
+    `M ${x},${bottom}`,
+    `L ${x},${top + radius}`,
+    `Q ${x},${top} ${x + radius},${top}`,
+    `L ${x + width - radius},${top}`,
+    `Q ${x + width},${top} ${x + width},${top + radius}`,
+    `L ${x + width},${bottom}`,
+    'Z',
+  ].join(' ');
+  return <path d={d} fill={fill} />;
 }
 
 function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType, NameType>) {
@@ -76,45 +98,58 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
   const sym = entry.currencySymbol;
 
   return (
-    <Box sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider', borderRadius: '12px', px: 1.5, py: 1.25, minWidth: 150, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
-      <Typography sx={{ ...primaryTextSx, fontSize: 16, lineHeight: '20px', fontWeight: 600, mb: 0.5 }}>
+    <Box
+      sx={{
+        bgcolor: 'white',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2,
+        px: 1.5,
+        py: 1.25,
+        minWidth: 150,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+      }}
+    >
+      <Typography
+        sx={{ fontSize: 14, lineHeight: '20px', fontWeight: 600, color: TEXT, mb: 0.5 }}
+      >
         {String(label)}
       </Typography>
       {entry.hasData ? (
         <>
-          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
+          <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }} display="block">
             Buy:{' '}
-            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
+            <Box component="span" sx={{ fontWeight: 600, color: TEXT }}>
               {fmtAmount(entry.totalBuys, sym)}
             </Box>
           </Typography>
-          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
+          <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }} display="block">
             Sell:{' '}
-            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
+            <Box component="span" sx={{ fontWeight: 600, color: TEXT }}>
               {fmtAmount(entry.totalSells, sym)}
             </Box>
           </Typography>
-          <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
+          <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }} display="block">
             Invested:{' '}
-            <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
+            <Box component="span" sx={{ fontWeight: 600, color: TEXT }}>
               {fmtAmount(entry.totalInvested, sym)}
             </Box>
           </Typography>
           {entry.metGoal ? (
-            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#27a69a', fontFamily: '"Open Sans", sans-serif' }} display="block">
+            <Typography sx={{ fontSize: 13, lineHeight: '18px', color: GAIN_COLOR }} display="block">
               +{fmtAmount(entry.invested - entry.goal, sym)} above goal
             </Typography>
           ) : (
-            <Typography sx={{ fontSize: 14, lineHeight: '20px', color: '#d92673', fontFamily: '"Open Sans", sans-serif' }} display="block">
+            <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }} display="block">
               Remaining:{' '}
-              <Box component="span" sx={{ ...primaryTextSx, fontWeight: 600 }}>
+              <Box component="span" sx={{ fontWeight: 600, color: TEXT }}>
                 {fmtAmount(entry.shortfall, sym)}
               </Box>
             </Typography>
           )}
         </>
       ) : (
-        <Typography sx={{ ...secondaryTextSx, fontSize: 14, lineHeight: '20px' }} display="block">
+        <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }} display="block">
           No investment
         </Typography>
       )}
@@ -124,88 +159,130 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
 
 export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: MonthlyGoalChartProps) {
   if (loading) {
-    return <Skeleton variant="rounded" width="100%" height={288} sx={{ borderRadius: '16px' }} />;
+    return (
+      <Skeleton
+        variant="rounded"
+        width="100%"
+        height={240}
+        sx={{ mt: 1, borderRadius: 2 }}
+      />
+    );
   }
 
-  const data: ChartEntry[] = months.map(m => ({
+  const data: ChartEntry[] = months.map((m) => ({
     ...m,
     totalBuys: m.buys,
     totalSells: m.sells,
     totalInvested: m.invested,
     goal,
-    shortfallBar: m.shortfall,
+    // Empty months stay blank (no light “remaining” stub).
+    shortfallBar: m.hasData ? m.shortfall : 0,
     currencySymbol,
   }));
 
+  const maxValue = Math.max(goal, ...data.map((d) => d.invested + d.shortfallBar), 1);
+  const pad = maxValue * 0.12;
+  const alternateLabels = data.length >= 12;
+
   return (
-    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 2.5, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart
-          data={data}
-          margin={{ top: 16, right: 16, left: 0, bottom: 0 }}
-          barSize={months.length > 24 ? 8 : months.length > 12 ? 12 : 20}
-        >
-          <CartesianGrid vertical={false} stroke="#e5e7eb" strokeOpacity={1} />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 12, fill: '#61615e' }}
-            tickLine={false}
-            axisLine={false}
-            interval={months.length > 24 ? 2 : months.length > 12 ? 1 : 0}
-            angle={months.length > 18 ? -45 : 0}
-            textAnchor={months.length > 18 ? 'end' : 'middle'}
-            height={months.length > 18 ? 40 : 24}
-          />
-          <YAxis
-            tick={{ fontSize: 12, fill: '#61615e' }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatCurrency(v, currencySymbol)}
-            width={48}
-          />
-          <Tooltip
-            content={CustomTooltip}
-            cursor={{ fill: '#000000', opacity: 0.03, radius: 4 }}
-          />
-          <ReferenceLine
-            y={goal}
-            stroke={COLOR_GOAL}
-            strokeWidth={1.5}
-            strokeDasharray="6 4"
-            label={{
-              value: `Goal ${formatCurrency(goal, currencySymbol)}`,
-              position: 'insideTopRight',
-              fontSize: 11,
-              fill: COLOR_GOAL,
-              fontWeight: 600,
-            }}
-          />
+    <Box>
+      <Box
+        className="portfolio-chart"
+        data-no-pull-refresh
+        sx={{ width: '100%', height: { xs: 240, sm: 280 }, mt: 1 }}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 4, left: 4, bottom: 4 }}
+            barCategoryGap="22%"
+          >
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+              tick={({ x, y, payload, index }) => {
+                const show = !alternateLabels || index % 2 === 0;
+                if (!show) return <g />;
+                return (
+                  <text
+                    x={x}
+                    y={y}
+                    dy={12}
+                    textAnchor="middle"
+                    fill={MUTED}
+                    fontSize={13}
+                  >
+                    {payload.value}
+                  </text>
+                );
+              }}
+            />
+            <YAxis hide domain={[0, maxValue + pad]} />
+            <Tooltip
+              content={CustomTooltip}
+              cursor={{ fill: '#000000', opacity: 0.03 }}
+            />
+            <ReferenceLine
+              y={goal}
+              stroke={GAIN_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="6 4"
+            />
 
-          <Bar dataKey="invested" stackId="a" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-            {data.map(entry => (
-              <Cell
-                key={entry.key}
-                fill={!entry.hasData ? 'transparent' : entry.metGoal ? COLOR_MET : COLOR_MISSED}
-              />
-            ))}
-          </Bar>
+            <Bar
+              dataKey="invested"
+              stackId="goal"
+              shape={(props) => {
+                const entry = props.payload as ChartEntry | undefined;
+                const tip = entry && entry.shortfallBar > 0 ? 'flat' : 'up';
+                return <RoundedGoalBar {...props} tip={tip} />;
+              }}
+              maxBarSize={36}
+              isAnimationActive={false}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={`invested-${entry.key}`}
+                  fill={!entry.hasData ? 'transparent' : GAIN_COLOR}
+                />
+              ))}
+            </Bar>
 
-          <Bar dataKey="shortfallBar" stackId="a" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-            {data.map(entry => (
-              <Cell
-                key={entry.key}
-                fill={entry.shortfall > 0 ? COLOR_SHORTFALL : 'transparent'}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+            <Bar
+              dataKey="shortfallBar"
+              stackId="goal"
+              shape={(props) => <RoundedGoalBar {...props} tip="up" />}
+              maxBarSize={36}
+              isAnimationActive={false}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={`shortfall-${entry.key}`}
+                  fill={entry.shortfallBar > 0 ? SHORTFALL_COLOR : 'transparent'}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mt: 1, px: 0.5 }}>
-        {LEGEND.map(l => (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mt: 1.5, px: 0.5 }}>
+        {LEGEND.map((l) => (
           <Box key={l.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: l.color }} />
-            <Typography sx={{ ...secondaryTextSx, fontSize: 16, lineHeight: '20px' }}>{l.label}</Typography>
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                bgcolor: l.color,
+                border: l.color === SHORTFALL_COLOR ? `1px solid ${BASE_BAR_COLOR}` : undefined,
+              }}
+            />
+            <Typography sx={{ fontSize: 13, lineHeight: '18px', color: MUTED }}>
+              {l.label}
+            </Typography>
           </Box>
         ))}
       </Box>

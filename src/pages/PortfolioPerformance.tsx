@@ -31,8 +31,8 @@ import type {
   RealizedGainPoint,
 } from '../types/performance';
 
-const GAIN_COLOR = '#34d399';
-const LOSS_COLOR = '#ef4444';
+const GAIN_COLOR = '#27a69a';
+const LOSS_COLOR = '#d92673';
 const BASE_BAR_COLOR = '#e5e7eb';
 const MUTED = '#9ca3af';
 const TEXT = '#111827';
