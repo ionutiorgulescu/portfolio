@@ -96,7 +96,7 @@ const getDateRange = (): { from: string; to: string } => {
 
 const normalizeTicker = (value: string): string | null => {
   const ticker = value.trim().toUpperCase();
-  const tickerPattern = /^[A-Z0-9.-]{1,15}$/;
+  const tickerPattern = /^[A-Z0-9.=-]{1,15}$/;
   return tickerPattern.test(ticker) ? ticker : null;
 };
 
