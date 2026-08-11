@@ -21,8 +21,11 @@ const MIN_RETURN_BASE = 1;
 /**
  * Daily moves beyond this without a matching cash flow are treated as price-data
  * discontinuities (history starting mid-hold, bad prints, etc.), not performance.
+ *
+ * Keep this well below 100%: a −80% bad tick that later recovers +400% would
+ * otherwise book the crash and clamp the recovery, permanently dragging TTWROR.
  */
-const MAX_UNEXPLAINED_DAILY_RETURN = 1; // ±100%
+const MAX_UNEXPLAINED_DAILY_RETURN = 0.5; // ±50%
 
 function resolveFlow(
   curr: PerformanceInputPoint,
@@ -30,14 +33,14 @@ function resolveFlow(
   flowsByDate: Map<string, number> | null,
 ): number {
   const costFlow = curr.costBasis - prev.costBasis;
+  // No explicit flows — approximate with cost-basis deltas (buys only; sells
+  // use lot cost rather than proceeds).
   if (!flowsByDate || !curr.date) return costFlow;
 
-  let flow = flowsByDate.get(curr.date) ?? 0;
-  // Buy days missing from the flow map would otherwise look like pure gain.
-  if (Math.abs(flow) < 1e-9 && costFlow > 1e-9) {
-    flow = costFlow;
-  }
-  return flow;
+  // When buy/sell notionals are provided, trust them only. Falling back to
+  // cost-basis growth mis-treats FX marks on RON lots as fresh deposits and
+  // systematically depresses TWR.
+  return flowsByDate.get(curr.date) ?? 0;
 }
 
 function dailyReturnForStep(
@@ -128,16 +131,14 @@ function prepareTtwrorPoints(
   ) {
     startIdx++;
   }
-  let seriesPoints = startIdx === 0 ? [...points] : points.slice(startIdx);
+  const seriesPoints = startIdx === 0 ? [...points] : points.slice(startIdx);
   if (seriesPoints.length === 0) return null;
 
-  // Inception alignment: if the first snapshot is marked below cost (e.g. buy
-  // day valued at a crash close), start TWR from capital deployed. Otherwise the
-  // same-day loss is skipped and only the recovery compounds into all-time.
-  const first = seriesPoints[0];
-  if (first.costBasis > first.value + MIN_RETURN_BASE) {
-    seriesPoints = [{ ...first, value: first.costBasis }, ...seriesPoints.slice(1)];
-  }
+  // Do NOT rewrite an underwater opening mark up to costBasis here.
+  // That was meant for true inception, but year/month windows prepend the prior
+  // day — rewriting it books earlier drawdowns into the selected period and
+  // paints every underwater month red. Buy-day pricing in `buildPriceMatrix`
+  // already aligns inception capital with cash deployed.
 
   const startDate = seriesPoints[0].date;
   const externalFlows = cashFlows

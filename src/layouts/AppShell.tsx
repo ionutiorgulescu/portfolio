@@ -42,11 +42,11 @@ const PULL_THRESHOLD = 72;
 const MOBILE_BOTTOM_NAV_HEIGHT = 72;
 
 const menuItems = [
-  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
-  { label: 'Transactions', path: '/transactions', icon: <AccountBalanceWalletIcon fontSize="small" /> },
-  { label: 'Performance', path: '/performance', icon: <ShowChartIcon fontSize="small" /> },
-  { label: 'Goal', path: '/goal', icon: <GoalIcon fontSize="small" /> },
-  { label: 'Plan', path: '/plan', icon: <CallMadeIcon fontSize="small" /> },
+  { label: 'Home', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
+  { label: 'Trades', path: '/transactions', icon: <AccountBalanceWalletIcon fontSize="small" /> },
+  { label: 'Growth', path: '/performance', icon: <ShowChartIcon fontSize="small" /> },
+  { label: 'Goals', path: '/goal', icon: <GoalIcon fontSize="small" /> },
+  { label: 'Plans', path: '/plan', icon: <CallMadeIcon fontSize="small" /> },
 ];
 
 const AppShell = () => {
