@@ -60,6 +60,7 @@ const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transa
 export function usePortfolioPerformance(
   filter: CompositionFilter = 'all',
   portfolioId: string = '',
+  includeCrypto = true,
 ): UsePortfolioPerformanceResult {
   const {
     data: rawTransactions = [],
@@ -73,17 +74,29 @@ export function usePortfolioPerformance(
   });
 
   const transactions = useMemo(() => {
-    if (filter === 'all') return rawTransactions;
-    if (filter === 'stock') return rawTransactions.filter(tx => tx.transaction_type === TransactionType.Stock && tx.currency === Currency.USD);
-    if (filter === 'crypto') return rawTransactions.filter(tx => tx.transaction_type === TransactionType.Crypto);
-    if (filter === 'bvb') return rawTransactions.filter(tx => tx.currency === Currency.RON);
-    return rawTransactions;
-  }, [rawTransactions, filter]);
+    const scoped = includeCrypto
+      ? rawTransactions
+      : rawTransactions.filter((tx) => tx.transaction_type !== TransactionType.Crypto);
+
+    if (filter === 'all') return scoped;
+    if (filter === 'stock') {
+      return scoped.filter(
+        (tx) =>
+          tx.transaction_type === TransactionType.Stock &&
+          tx.currency === Currency.USD,
+      );
+    }
+    if (filter === 'crypto') {
+      return scoped.filter((tx) => tx.transaction_type === TransactionType.Crypto);
+    }
+    if (filter === 'bvb') return scoped.filter((tx) => tx.currency === Currency.RON);
+    return scoped;
+  }, [rawTransactions, filter, includeCrypto]);
 
   /** Years available for period chips: first buy year → current year (newest first). */
   const years = useMemo(() => {
     let firstYear: number | null = null;
-    for (const tx of rawTransactions) {
+    for (const tx of transactions) {
       if (tx.status !== PositionStatus.Buy) continue;
       const year = Number(tx.buy_date.slice(0, 4));
       if (!Number.isFinite(year)) continue;
@@ -99,7 +112,7 @@ export function usePortfolioPerformance(
       result.push(year);
     }
     return result;
-  }, [rawTransactions]);
+  }, [transactions]);
 
   const tickerCurrency = useMemo(() => {
     const map = new Map<string, Currency>();

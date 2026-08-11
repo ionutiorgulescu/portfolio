@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Box,
   ButtonBase,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   Skeleton,
   Stack,
@@ -805,6 +807,7 @@ function MetricRow({
 
 const PortfolioPerformance = () => {
   const [period, setPeriod] = useState<PeriodKey>('alltime');
+  const [includeCrypto, setIncludeCrypto] = useState(true);
   const [investedInfoOpen, setInvestedInfoOpen] = useState(false);
   const [priceGainInfoOpen, setPriceGainInfoOpen] = useState(false);
   const [realizedGainInfoOpen, setRealizedGainInfoOpen] = useState(false);
@@ -813,7 +816,7 @@ const PortfolioPerformance = () => {
   const [averageReturnInfoOpen, setAverageReturnInfoOpen] = useState(false);
   const { selectedPortfolioId } = usePortfolioContext();
   const { data, realizedGains, cashFlows, years, isLoading } =
-    usePortfolioPerformance('all', selectedPortfolioId ?? '');
+    usePortfolioPerformance('all', selectedPortfolioId ?? '', includeCrypto);
 
   const periods = useMemo(() => buildPeriods(years), [years]);
 
@@ -887,17 +890,33 @@ const PortfolioPerformance = () => {
                 gap: 1,
               }}
             >
-              <Typography
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={includeCrypto}
+                    onChange={(event) => setIncludeCrypto(event.target.checked)}
+                    sx={{
+                      color: MUTED,
+                      '&.Mui-checked': { color: GAIN_COLOR },
+                      py: 0.25,
+                    }}
+                  />
+                }
+                label="Crypto"
                 sx={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  color: MUTED,
-                  textTransform: 'uppercase',
+                  m: 0,
+                  userSelect: 'none',
+                  '& .MuiFormControlLabel-label': {
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    color: includeCrypto ? TEXT : MUTED,
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  },
                 }}
-              >
-                Chart
-              </Typography>
+              />
 
               <ButtonBase
                 onClick={() => setAverageReturnInfoOpen(true)}
