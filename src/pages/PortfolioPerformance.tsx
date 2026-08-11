@@ -516,7 +516,11 @@ function PerformanceBarChart({
   const pad = Math.max(maxAbove, Math.abs(maxBelow)) * 0.12;
 
   return (
-    <Box sx={{ width: '100%', height: { xs: 240, sm: 280 }, mt: 1 }}>
+    <Box
+      className="portfolio-chart"
+      data-no-pull-refresh
+      sx={{ width: '100%', height: { xs: 240, sm: 280 }, mt: 1 }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={bars}
