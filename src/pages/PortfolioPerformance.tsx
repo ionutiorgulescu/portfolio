@@ -862,97 +862,114 @@ const PortfolioPerformance = () => {
 
   return (
     <>
-      <Stack
-        spacing={3.5}
+      <Box
         sx={{
           width: '100%',
           minWidth: 0,
           maxWidth: 720,
           mx: 'auto',
-          pb: 4,
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        <PeriodSelector value={period} onChange={setPeriod} periods={periods} />
+        <Stack spacing={2} sx={{ flexShrink: 0 }}>
+          <PeriodSelector value={period} onChange={setPeriod} periods={periods} />
 
-        <Box>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1,
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                color: MUTED,
-                textTransform: 'uppercase',
-              }}
-            >
-              Chart
-            </Typography>
-
-            <ButtonBase
-              onClick={() => setAverageReturnInfoOpen(true)}
-              aria-label="About average return"
+          <Box>
+            <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.25,
-                borderRadius: 1,
-                px: 0.25,
-                py: 0.15,
+                justifyContent: 'space-between',
+                gap: 1,
               }}
             >
-              {isLoading || averageReturnPercent == null ? (
-                isLoading ? (
-                  <Skeleton variant="text" width={64} height={22} />
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.06em',
+                  color: MUTED,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Chart
+              </Typography>
+
+              <ButtonBase
+                onClick={() => setAverageReturnInfoOpen(true)}
+                aria-label="About average return"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  borderRadius: 1,
+                  px: 0.25,
+                  py: 0.15,
+                }}
+              >
+                {isLoading || averageReturnPercent == null ? (
+                  isLoading ? (
+                    <Skeleton variant="text" width={64} height={22} />
+                  ) : (
+                    <Typography
+                      sx={{ fontSize: 14, fontWeight: 600, color: MUTED }}
+                    >
+                      —
+                    </Typography>
+                  )
                 ) : (
                   <Typography
-                    sx={{ fontSize: 14, fontWeight: 600, color: MUTED }}
+                    component="span"
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.35,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: averageReturnPositive ? GAIN_COLOR : LOSS_COLOR,
+                    }}
                   >
-                    —
+                    <Box component="span" sx={{ fontSize: 15, lineHeight: 1 }}>
+                      Ø
+                    </Box>
+                    {Math.abs(averageReturnPercent).toFixed(1)}%
                   </Typography>
-                )
-              ) : (
-                <Typography
-                  component="span"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.35,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: averageReturnPositive ? GAIN_COLOR : LOSS_COLOR,
-                  }}
-                >
-                  <Box component="span" sx={{ fontSize: 15, lineHeight: 1 }}>
-                    Ø
-                  </Box>
-                  {Math.abs(averageReturnPercent).toFixed(1)}%
-                </Typography>
-              )}
-              <InfoOutlinedIcon sx={{ fontSize: 16, color: MUTED }} />
-            </ButtonBase>
+                )}
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: MUTED }} />
+              </ButtonBase>
+            </Box>
+
+            {isLoading ? (
+              <Skeleton
+                variant="rounded"
+                height={240}
+                sx={{ mt: 1, borderRadius: 2 }}
+              />
+            ) : (
+              <PerformanceBarChart
+                bars={chartBars}
+                alternateLabels={period !== 'alltime'}
+              />
+            )}
           </Box>
+        </Stack>
 
-          {isLoading ? (
-            <Skeleton
-              variant="rounded"
-              height={240}
-              sx={{ mt: 1, borderRadius: 2 }}
-            />
-          ) : (
-            <PerformanceBarChart
-              bars={chartBars}
-              alternateLabels={period !== 'alltime'}
-            />
-          )}
-        </Box>
-
+        <Stack
+          spacing={3.5}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overscrollBehaviorY: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            mt: 3.5,
+            pb: 4,
+          }}
+        >
         <Box>
           <SectionTitle>Capital</SectionTitle>
           {isLoading ? (
@@ -1168,7 +1185,8 @@ const PortfolioPerformance = () => {
             )}
           </Box>
         </Box>
-      </Stack>
+        </Stack>
+      </Box>
 
       <MetricInfoSheet
         open={investedInfoOpen}

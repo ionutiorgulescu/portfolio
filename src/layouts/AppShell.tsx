@@ -222,46 +222,58 @@ const AppShell = () => {
 
       <Box
         component="main"
-        ref={setScrollEl}
         sx={{
           flexGrow: 1,
           height: '100dvh',
           minWidth: 0,
-          overflowY: 'auto',
-          overscrollBehaviorY: 'contain',
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y',
-          p: { xs: 2, sm: 3 },
-          pb: {
-            xs: `calc(${MOBILE_BOTTOM_NAV_HEIGHT + 24}px + env(safe-area-inset-bottom, 0px))`,
-            md: 3,
-          },
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           backgroundColor: 'grey.100',
         }}
       >
-        <Toolbar />
+        <Toolbar sx={{ flexShrink: 0 }} />
 
         <Box
-          aria-hidden={!showIndicator}
+          ref={setScrollEl}
           sx={{
-            height: showIndicator ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+            flex: 1,
+            minHeight: 0,
             display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            pointerEvents: 'none',
-            transition: isPulling ? 'none' : 'height 0.2s ease',
-            opacity: showIndicator
-              ? (isRefreshing ? 1 : Math.min(1, pullDistance / PULL_THRESHOLD))
-              : 0,
+            flexDirection: 'column',
+            overflowY: 'auto',
+            overscrollBehaviorY: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            p: { xs: 2, sm: 3 },
+            pb: {
+              xs: `calc(${MOBILE_BOTTOM_NAV_HEIGHT + 24}px + env(safe-area-inset-bottom, 0px))`,
+              md: 3,
+            },
           }}
         >
-          <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
-        </Box>
+          <Box
+            aria-hidden={!showIndicator}
+            sx={{
+              height: showIndicator ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              pointerEvents: 'none',
+              transition: isPulling ? 'none' : 'height 0.2s ease',
+              opacity: showIndicator
+                ? (isRefreshing ? 1 : Math.min(1, pullDistance / PULL_THRESHOLD))
+                : 0,
+            }}
+          >
+            <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
+          </Box>
 
-        <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
-          <Outlet />
-        </PullToRefreshProvider>
+          <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
+            <Outlet />
+          </PullToRefreshProvider>
+        </Box>
       </Box>
 
       {isMobile && (
