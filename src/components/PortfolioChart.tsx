@@ -20,7 +20,7 @@ import { formatChartCursorDate } from './stockMarket.types';
 
 export type PortfolioChartPoint = {
   t: number;
-  /** Chart Y: return on cost % (MAX) or period TWR % (other intervals). 0 = baseline. */
+  /** Return on cost % (plotted; 0 = break-even vs money invested). */
   close: number;
   /** Actual portfolio market value (Total Value display). */
   rawValue: number;

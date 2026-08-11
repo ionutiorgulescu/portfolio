@@ -4,14 +4,21 @@ import { BrowserRouter } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import { AppProviders } from './providers'
 import App from './App.tsx'
-import { setupStaleChunkReload } from './utils/reloadOnStaleChunk'
+import {
+  setupResumeDeployCheck,
+  setupStaleChunkReload,
+} from './utils/reloadOnStaleChunk'
 import './index.css'
 
+let swRegistration: ServiceWorkerRegistration | undefined
+
 setupStaleChunkReload()
+setupResumeDeployCheck(() => swRegistration)
 
 registerSW({
   immediate: true,
   onRegisteredSW(_swUrl: string, registration: ServiceWorkerRegistration | undefined) {
+    swRegistration = registration
     if (!registration) return
     // Pick up new deploys even when the tab stays open.
     window.setInterval(() => {

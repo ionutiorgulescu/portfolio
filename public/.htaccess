@@ -1,6 +1,6 @@
 <IfModule mod_headers.c>
   # Always revalidate the app shell so deploys are picked up quickly.
-  <FilesMatch "^(index\.html|sw\.js|workbox-.*\.js|manifest\.webmanifest)$">
+  <FilesMatch "^(index\.html|sw\.js|workbox-.*\.js|manifest\.webmanifest|build-id\.txt)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
   </FilesMatch>
 </IfModule>
