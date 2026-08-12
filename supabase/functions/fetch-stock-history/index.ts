@@ -20,6 +20,9 @@ declare const Deno: {
   };
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClient = any;
+
 type YahooHistoricalRow = {
   date?: Date | string | null;
   open?: number | string | null;
@@ -40,6 +43,29 @@ type StockBar = {
   volume: number;
 };
 
+/** Slim wire format: [date, close]. */
+type ResponseBar = [string, number];
+
+type SeriesRow = {
+  ticker: string;
+  latest_date: string | null;
+  bars: unknown;
+};
+
+type TickerResult = {
+  ticker: string;
+  count: number;
+  data: ResponseBar[];
+  error?: {
+    code: string;
+    message: string;
+  };
+};
+
+type EdgeRuntimeGlobal = {
+  waitUntil?: (promise: Promise<unknown>) => void;
+};
+
 type ErrorPayload = {
   error: {
     code: string;
@@ -52,6 +78,22 @@ const CORS_HEADERS: HeadersInit = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
+const DB_PAGE_SIZE = 1000;
+const UPSERT_CHUNK_SIZE = 500;
+const MAX_TICKERS_PER_REQUEST = 25;
+const YAHOO_CONCURRENCY = 3;
+/** Skip Yahoo when latest bar is within this many calendar days (covers weekends). Live tip comes from quotes. */
+const CACHE_MAX_STALE_DAYS = 3;
+
+const scheduleBackground = (promise: Promise<unknown>): void => {
+  const edgeRuntime = (globalThis as { EdgeRuntime?: EdgeRuntimeGlobal }).EdgeRuntime;
+  if (edgeRuntime?.waitUntil) {
+    edgeRuntime.waitUntil(promise);
+    return;
+  }
+  promise.catch((error) => console.error("background task failed:", error));
 };
 
 const jsonResponse = (status: number, payload: unknown): Response =>
@@ -111,21 +153,45 @@ const parseRequestBody = async (request: Request): Promise<JsonRecord | null> =>
   }
 };
 
-const getTickerFromRequest = async (request: Request): Promise<string | null> => {
-  const url = new URL(request.url);
-  const queryTicker = url.searchParams.get("ticker");
+const collectRawTickers = (body: JsonRecord | null, url: URL): string[] => {
+  const raw: string[] = [];
 
-  let bodyTicker: string | null = null;
-  if (request.method === "POST") {
-    const body = await parseRequestBody(request);
-    if (body && typeof body.ticker === "string") {
-      bodyTicker = body.ticker;
+  if (body) {
+    if (typeof body.ticker === "string") raw.push(body.ticker);
+    if (Array.isArray(body.tickers)) {
+      for (const value of body.tickers) {
+        if (typeof value === "string") raw.push(value);
+      }
     }
   }
 
-  const rawTicker = bodyTicker ?? queryTicker;
-  if (!rawTicker) return null;
-  return normalizeTicker(rawTicker);
+  const queryTicker = url.searchParams.get("ticker");
+  if (queryTicker) raw.push(queryTicker);
+
+  const queryTickers = url.searchParams.get("tickers");
+  if (queryTickers) {
+    for (const part of queryTickers.split(",")) {
+      if (part.trim()) raw.push(part);
+    }
+  }
+
+  return raw;
+};
+
+const getTickersFromRequest = async (request: Request): Promise<string[]> => {
+  const url = new URL(request.url);
+  const body = request.method === "POST" ? await parseRequestBody(request) : null;
+  const seen = new Set<string>();
+  const tickers: string[] = [];
+
+  for (const raw of collectRawTickers(body, url)) {
+    const ticker = normalizeTicker(raw);
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    tickers.push(ticker);
+  }
+
+  return tickers;
 };
 
 const isYahooHistoricalRow = (value: unknown): value is YahooHistoricalRow => {
@@ -290,6 +356,431 @@ const fetchAllBars = async (
   }
 };
 
+const createServiceClient = (): SupabaseClient | null => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  return createClient(supabaseUrl, serviceRoleKey);
+};
+
+const toResponseBar = (bar: StockBar): ResponseBar => [bar.date, bar.close];
+
+const parseSeriesBars = (bars: unknown, from: string, to: string): ResponseBar[] => {
+  if (!Array.isArray(bars)) return [];
+
+  const parsed: ResponseBar[] = [];
+  for (const item of bars) {
+    if (
+      !Array.isArray(item) ||
+      item.length < 2 ||
+      typeof item[0] !== "string" ||
+      typeof item[1] !== "number" ||
+      !Number.isFinite(item[1])
+    ) {
+      continue;
+    }
+    const date = item[0];
+    if (date < from || date >= to) continue;
+    parsed.push([date, item[1]]);
+  }
+  return parsed;
+};
+
+const responseBarsToStockBars = (bars: ResponseBar[]): StockBar[] =>
+  bars.map(([date, close]) => {
+    const timestamp = Date.parse(`${date}T00:00:00.000Z`);
+    return {
+      timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+      date,
+      open: close,
+      high: close,
+      low: close,
+      close,
+      volume: 0,
+    };
+  });
+
+const barToCachedRow = (ticker: string, bar: StockBar) => ({
+  ticker,
+  trade_date: bar.date,
+  timestamp: bar.timestamp,
+  open: bar.open,
+  high: bar.high,
+  low: bar.low,
+  close: bar.close,
+  volume: bar.volume,
+});
+
+const loadViaRpc = async (
+  supabase: SupabaseClient,
+  tickers: string[],
+  from: string,
+  to: string,
+): Promise<Map<string, ResponseBar[]> | null> => {
+  const byTicker = new Map<string, ResponseBar[]>();
+  for (const ticker of tickers) byTicker.set(ticker, []);
+  if (tickers.length === 0) return byTicker;
+
+  const { data, error } = await supabase.rpc("get_stock_price_history_batch", {
+    p_tickers: tickers,
+    p_from: from,
+    p_to: to,
+  });
+
+  if (error) {
+    console.error("get_stock_price_history_batch failed:", error.message);
+    return null;
+  }
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  for (const ticker of tickers) {
+    byTicker.set(ticker, parseSeriesBars(payload[ticker], from, to));
+  }
+
+  return byTicker;
+};
+
+const loadCachedBarsForTickers = async (
+  supabase: SupabaseClient,
+  tickers: string[],
+  from: string,
+  to: string,
+): Promise<Map<string, ResponseBar[]> | null> => {
+  const byTicker = new Map<string, ResponseBar[]>();
+  for (const ticker of tickers) byTicker.set(ticker, []);
+  if (tickers.length === 0) return byTicker;
+
+  // Fast path: one row per ticker from denormalized series table.
+  const { data: seriesRows, error: seriesError } = await supabase
+    .from("stock_price_series")
+    .select("ticker, latest_date, bars")
+    .in("ticker", tickers);
+
+  if (!seriesError && Array.isArray(seriesRows)) {
+    const found = new Set<string>();
+    for (const row of seriesRows as SeriesRow[]) {
+      byTicker.set(row.ticker, parseSeriesBars(row.bars, from, to));
+      found.add(row.ticker);
+    }
+
+    const missing = tickers.filter((ticker) => !found.has(ticker));
+    if (missing.length === 0) return byTicker;
+
+    const fromRpc = await loadViaRpc(supabase, missing, from, to);
+    if (!fromRpc) return byTicker;
+
+    for (const ticker of missing) {
+      const bars = fromRpc.get(ticker) ?? [];
+      byTicker.set(ticker, bars);
+      if (bars.length > 0) {
+        scheduleBackground(
+          supabase.rpc("rebuild_stock_price_series", { p_ticker: ticker }).then(
+            ({ error }: { error: { message?: string } | null }) => {
+              if (error) {
+                console.error(`rebuild_stock_price_series failed for ${ticker}:`, error.message);
+              }
+            },
+          ),
+        );
+      }
+    }
+
+    return byTicker;
+  }
+
+  if (seriesError) {
+    console.error("stock_price_series read failed:", seriesError.message);
+  }
+
+  // Fallback: aggregate in one RPC (still one round-trip, no pagination).
+  const fromRpc = await loadViaRpc(supabase, tickers, from, to);
+  if (fromRpc) return fromRpc;
+
+  // Last resort: paginated table scan (legacy / if RPC missing).
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("stock_price_history")
+      .select("ticker, trade_date, close")
+      .in("ticker", tickers)
+      .gte("trade_date", from)
+      .lt("trade_date", to)
+      .order("ticker", { ascending: true })
+      .order("trade_date", { ascending: true })
+      .range(offset, offset + DB_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("stock_price_history read failed:", error.message);
+      return null;
+    }
+
+    const page = (data ?? []) as Array<{ ticker: string; trade_date: string; close: number }>;
+    for (const row of page) {
+      const bars = byTicker.get(row.ticker);
+      if (bars) bars.push([row.trade_date, row.close]);
+    }
+
+    if (page.length < DB_PAGE_SIZE) break;
+    offset += DB_PAGE_SIZE;
+  }
+
+  return byTicker;
+};
+
+const rebuildSeries = async (supabase: SupabaseClient, ticker: string): Promise<void> => {
+  const { error } = await supabase.rpc("rebuild_stock_price_series", { p_ticker: ticker });
+  if (error) {
+    console.error(`rebuild_stock_price_series failed for ${ticker}:`, error.message);
+  }
+};
+
+const upsertCachedBars = async (
+  supabase: SupabaseClient,
+  ticker: string,
+  bars: StockBar[],
+): Promise<void> => {
+  if (bars.length === 0) return;
+
+  const updatedAt = new Date().toISOString();
+  const payload = bars.map((bar) => ({
+    ...barToCachedRow(ticker, bar),
+    updated_at: updatedAt,
+  }));
+
+  for (let index = 0; index < payload.length; index += UPSERT_CHUNK_SIZE) {
+    const chunk = payload.slice(index, index + UPSERT_CHUNK_SIZE);
+    const { error } = await supabase
+      .from("stock_price_history")
+      .upsert(chunk, { onConflict: "ticker,trade_date" });
+
+    if (error) {
+      console.error("stock_price_history upsert failed:", error.message);
+      return;
+    }
+  }
+
+  await rebuildSeries(supabase, ticker);
+};
+
+const mergeBarsByDate = (existing: StockBar[], incoming: StockBar[]): StockBar[] => {
+  const byDate = new Map<string, StockBar>();
+  for (const bar of existing) byDate.set(bar.date, bar);
+  for (const bar of incoming) byDate.set(bar.date, bar);
+  return [...byDate.values()].sort((left, right) => left.timestamp - right.timestamp);
+};
+
+const isCacheFresh = (latestCachedDate: string): boolean => {
+  const today = formatDate(new Date());
+  if (latestCachedDate >= today) return true;
+
+  const latest = new Date(`${latestCachedDate}T00:00:00.000Z`).getTime();
+  const now = new Date(`${today}T00:00:00.000Z`).getTime();
+  if (!Number.isFinite(latest) || !Number.isFinite(now)) return false;
+
+  const staleDays = (now - latest) / (24 * 60 * 60 * 1000);
+  return staleDays <= CACHE_MAX_STALE_DAYS;
+};
+
+/**
+ * Decide the Yahoo window to fetch.
+ * - No cache → full requested range.
+ * - Cache is fresh enough (today, or within weekend/holiday slack) → skip Yahoo.
+ * - Otherwise refetch from the last cached day through `to`.
+ */
+const resolveYahooFetchRange = (
+  cachedBars: StockBar[],
+  from: string,
+  to: string,
+): { from: string; to: string } | null => {
+  if (cachedBars.length === 0) {
+    return { from, to };
+  }
+
+  const latestCachedDate = cachedBars[cachedBars.length - 1]?.date;
+  if (!latestCachedDate) {
+    return { from, to };
+  }
+
+  if (isCacheFresh(latestCachedDate)) {
+    return null;
+  }
+
+  // Inclusive refetch of the latest day so an incomplete meta candle can be replaced.
+  const fetchFrom = latestCachedDate < from ? from : latestCachedDate;
+  if (fetchFrom >= to) return null;
+
+  return { from: fetchFrom, to };
+};
+
+const getBarsWithCache = async (
+  ticker: string,
+  from: string,
+  to: string,
+  serviceClient: SupabaseClient | null,
+  cachedBars: StockBar[],
+): Promise<StockBar[]> => {
+  const yahooRange = resolveYahooFetchRange(cachedBars, from, to);
+  if (!yahooRange) {
+    return cachedBars;
+  }
+
+  try {
+    const fetchedBars = await fetchAllBars(ticker, yahooRange.from, yahooRange.to);
+
+    if (serviceClient && fetchedBars.length > 0) {
+      await upsertCachedBars(serviceClient, ticker, fetchedBars);
+    }
+
+    return mergeBarsByDate(cachedBars, fetchedBars);
+  } catch (error) {
+    // Prefer serving stale cache over failing the request when we already have history.
+    if (cachedBars.length > 0) {
+      console.error("Yahoo refresh failed; returning cached bars:", error);
+      return cachedBars;
+    }
+    throw error;
+  }
+};
+
+const mapPool = async <T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> => {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, Math.max(items.length, 1)) },
+    async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await mapper(items[index]);
+      }
+    },
+  );
+
+  await Promise.all(workers);
+  return results;
+};
+
+const toTickerError = (error: unknown): NonNullable<TickerResult["error"]> => {
+  if (
+    typeof error === "object" &&
+    error &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string" &&
+    error instanceof Error
+  ) {
+    return {
+      code: (error as { code: string }).code,
+      message: error.message,
+    };
+  }
+
+  return {
+    code: "fetch_failed",
+    message: error instanceof Error
+      ? error.message
+      : "Failed to fetch stock history from Yahoo Finance.",
+  };
+};
+
+const fetchHistoryForTickers = async (
+  tickers: string[],
+  from: string,
+  to: string,
+): Promise<TickerResult[]> => {
+  const serviceClient = createServiceClient();
+
+  let cachedByTicker = new Map<string, ResponseBar[]>();
+  if (serviceClient) {
+    const loaded = await loadCachedBarsForTickers(serviceClient, tickers, from, to);
+    if (loaded) {
+      cachedByTicker = loaded;
+    } else {
+      for (const ticker of tickers) cachedByTicker.set(ticker, []);
+    }
+  } else {
+    for (const ticker of tickers) cachedByTicker.set(ticker, []);
+  }
+
+  const missingTickers: string[] = [];
+  const staleTickers: string[] = [];
+
+  for (const ticker of tickers) {
+    const cached = cachedByTicker.get(ticker) ?? [];
+    if (cached.length === 0) {
+      missingTickers.push(ticker);
+      continue;
+    }
+    const latest = cached[cached.length - 1]?.[0];
+    if (!latest || !isCacheFresh(latest)) {
+      staleTickers.push(ticker);
+    }
+  }
+
+  // Warm path: return DB cache immediately. Refresh stale tickers after the response.
+  if (staleTickers.length > 0 && serviceClient) {
+    scheduleBackground(
+      mapPool(staleTickers, YAHOO_CONCURRENCY, async (ticker) => {
+        try {
+          await getBarsWithCache(
+            ticker,
+            from,
+            to,
+            serviceClient,
+            responseBarsToStockBars(cachedByTicker.get(ticker) ?? []),
+          );
+        } catch (error) {
+          console.error(`background refresh failed for ${ticker}:`, error);
+        }
+      }),
+    );
+  }
+
+  const missingResults = missingTickers.length === 0
+    ? []
+    : await mapPool(missingTickers, YAHOO_CONCURRENCY, async (ticker) => {
+      try {
+        const bars = await getBarsWithCache(
+          ticker,
+          from,
+          to,
+          serviceClient,
+          [],
+        );
+        return {
+          ticker,
+          count: bars.length,
+          data: bars.map(toResponseBar),
+        } satisfies TickerResult;
+      } catch (error) {
+        return {
+          ticker,
+          count: 0,
+          data: [],
+          error: toTickerError(error),
+        } satisfies TickerResult;
+      }
+    });
+
+  const missingByTicker = new Map(missingResults.map((result) => [result.ticker, result]));
+
+  return tickers.map((ticker) => {
+    const missing = missingByTicker.get(ticker);
+    if (missing) return missing;
+
+    const cached = cachedByTicker.get(ticker) ?? [];
+    return {
+      ticker,
+      count: cached.length,
+      data: cached,
+    };
+  });
+};
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -299,9 +790,14 @@ Deno.serve(async (request) => {
     return errorResponse(405, "method_not_allowed", "Use GET or POST for this endpoint.");
   }
 
-  // ✅ Auth guard — works with new sb_publishable_... key system
+  // ✅ Auth guard — prefer local JWT claims (no Auth HTTP round-trip).
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
+    return errorResponse(401, "unauthorized", "Missing Authorization header.");
+  }
+
+  const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!jwt) {
     return errorResponse(401, "unauthorized", "Missing Authorization header.");
   }
 
@@ -310,36 +806,79 @@ Deno.serve(async (request) => {
     Deno.env.get("SUPABASE_ANON_KEY")!,
   );
 
-  const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-    authHeader.replace("Bearer ", ""),
-  );
+  let isAuthenticated = false;
+  try {
+    if (typeof supabaseClient.auth.getClaims === "function") {
+      const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(jwt);
+      if (!claimsError && claimsData?.claims?.sub) {
+        isAuthenticated = true;
+      }
+    }
+  } catch {
+    // Fall through to getUser.
+  }
 
-  if (authError || !user) {
-    return errorResponse(401, "unauthorized", "Invalid or expired token.");
+  if (!isAuthenticated) {
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(jwt);
+    if (authError || !user) {
+      return errorResponse(401, "unauthorized", "Invalid or expired token.");
+    }
   }
 
   // ✅ User is authenticated, proceed
-  const ticker = await getTickerFromRequest(request);
-  if (!ticker) {
+  const tickers = await getTickersFromRequest(request);
+  if (tickers.length === 0) {
     return errorResponse(
       400,
       "invalid_ticker",
-      "Provide a valid ticker via body.ticker or query parameter `ticker`.",
+      "Provide valid ticker(s) via body.ticker, body.tickers, or query `ticker`/`tickers`.",
+    );
+  }
+
+  if (tickers.length > MAX_TICKERS_PER_REQUEST) {
+    return errorResponse(
+      400,
+      "too_many_tickers",
+      `Request at most ${MAX_TICKERS_PER_REQUEST} tickers per call.`,
     );
   }
 
   const { from, to } = getDateRange();
+  const isSingleTickerRequest = tickers.length === 1;
 
-  console.log("date range:", { from, to });
+  console.log("date range:", { from, to, tickers });
 
   try {
-    const bars = await fetchAllBars(ticker, from, to);
+    const results = await fetchHistoryForTickers(tickers, from, to);
+
+    // Keep the legacy single-ticker payload so existing clients keep working.
+    if (isSingleTickerRequest) {
+      const [result] = results;
+      if (result.error && result.data.length === 0) {
+        const status = result.error.code === "rate_limited"
+          ? 429
+          : result.error.code === "ticker_not_found"
+            ? 404
+            : result.error.code === "bad_request"
+              ? 400
+              : 502;
+        return errorResponse(status, result.error.code, result.error.message);
+      }
+
+      return jsonResponse(200, {
+        ticker: result.ticker,
+        from,
+        to,
+        count: result.count,
+        data: result.data,
+      });
+    }
+
     return jsonResponse(200, {
-      ticker,
       from,
       to,
-      count: bars.length,
-      data: bars,
+      count: results.length,
+      results,
     });
   } catch (error) {
     const status =

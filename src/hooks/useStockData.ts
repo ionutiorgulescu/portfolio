@@ -22,8 +22,25 @@ type FetchStockHistoryResponse = {
   data: unknown[];
 };
 
+type FetchStockHistoryBatchResponse = {
+  from: string;
+  to: string;
+  count: number;
+  results: Array<{
+    ticker: string;
+    count: number;
+    data: unknown[];
+    error?: {
+      code?: string;
+      message?: string;
+    };
+  }>;
+};
+
 type EdgeFunctionError = {
+  code?: string;
   error?: {
+    code?: string;
     message?: string;
   };
   message?: string;
@@ -38,6 +55,22 @@ type MappedStockBar = {
   close: number;
   volume: number;
 };
+
+type SlimStockBar = {
+  t: number;
+  c: number;
+  d?: string;
+};
+
+/** Max tickers per edge-function call (must match server limit). */
+const HISTORY_BATCH_SIZE = 25;
+const MAX_HISTORY_ATTEMPTS = 3;
+const HISTORY_STALE_TIME_MS = 30 * 60 * 1000;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const formatDate = (timestamp: number): string => new Date(timestamp).toISOString().slice(0, 10);
 
@@ -73,8 +106,39 @@ const isMappedStockBar = (value: unknown): value is MappedStockBar => {
   );
 };
 
+const isSlimStockBar = (value: unknown): value is SlimStockBar => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const bar = value as Partial<SlimStockBar>;
+  return typeof bar.t === 'number' && typeof bar.c === 'number';
+};
+
+const isTupleBar = (value: unknown): value is [string, number] =>
+  Array.isArray(value) &&
+  value.length >= 2 &&
+  typeof value[0] === 'string' &&
+  typeof value[1] === 'number' &&
+  Number.isFinite(value[1]);
+
 const normalizeBars = (items: unknown[]): StockBarWithDate[] =>
   items.reduce<StockBarWithDate[]>((accumulator, item) => {
+    if (isTupleBar(item)) {
+      const [date, close] = item;
+      const timestamp = Date.parse(`${date}T00:00:00.000Z`);
+      accumulator.push({
+        t: Number.isFinite(timestamp) ? timestamp : 0,
+        o: close,
+        h: close,
+        l: close,
+        c: close,
+        v: 0,
+        date,
+      });
+      return accumulator;
+    }
+
     if (isStockBar(item)) {
       accumulator.push({
         ...item,
@@ -92,6 +156,19 @@ const normalizeBars = (items: unknown[]): StockBarWithDate[] =>
         c: item.close,
         v: item.volume,
         date: item.date || formatDate(item.timestamp),
+      });
+      return accumulator;
+    }
+
+    if (isSlimStockBar(item)) {
+      accumulator.push({
+        t: item.t,
+        o: item.c,
+        h: item.c,
+        l: item.c,
+        c: item.c,
+        v: 0,
+        date: item.d || formatDate(item.t),
       });
     }
 
@@ -114,27 +191,166 @@ const parseResponseError = (payload: EdgeFunctionError | null): string => {
   return 'Failed to load stock history.';
 };
 
-export const fetchStockHistory = async (ticker: string): Promise<StockBarWithDate[]> => {
+const isRetryableHistoryError = (message: string): boolean => {
+  const lowered = message.toLowerCase();
+  return (
+    lowered.includes('boot_error') ||
+    lowered.includes('failed to start') ||
+    lowered.includes('503') ||
+    lowered.includes('429') ||
+    lowered.includes('rate limit') ||
+    lowered.includes('worker') ||
+    lowered.includes('failed to send a request to the edge function')
+  );
+};
+
+const normalizeTickerList = (tickers: string[]): string[] => {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const raw of tickers) {
+    const ticker = raw.trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    normalized.push(ticker);
+  }
+
+  return normalized;
+};
+
+const chunkTickers = (tickers: string[], size: number): string[][] => {
+  const chunks: string[][] = [];
+  for (let index = 0; index < tickers.length; index += size) {
+    chunks.push(tickers.slice(index, index + size));
+  }
+  return chunks;
+};
+
+const readInvokeErrorMessage = async (invokeError: {
+  message?: string;
+  context?: Response;
+}): Promise<string> => {
+  const context = invokeError.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = (await context.clone().json()) as EdgeFunctionError;
+      return parseResponseError(body);
+    } catch {
+      // ignore body parse failures
+    }
+  }
+  return invokeError.message || 'Failed to invoke fetch-stock-history.';
+};
+
+const invokeStockHistoryBatch = async (
+  tickers: string[],
+): Promise<Map<string, StockBarWithDate[]>> => {
+  const { data: responseData, error: invokeError } = await supabase.functions.invoke<
+    FetchStockHistoryResponse | FetchStockHistoryBatchResponse | EdgeFunctionError
+  >('fetch-stock-history', {
+    body: tickers.length === 1 ? { ticker: tickers[0] } : { tickers },
+  });
+
+  if (invokeError) {
+    throw new Error(await readInvokeErrorMessage(invokeError));
+  }
+
+  if (
+    responseData &&
+    typeof responseData === 'object' &&
+    'code' in responseData &&
+    (responseData as EdgeFunctionError).code === 'BOOT_ERROR'
+  ) {
+    throw new Error(parseResponseError(responseData as EdgeFunctionError));
+  }
+
+  const byTicker = new Map<string, StockBarWithDate[]>();
+
+  // Legacy / single-ticker payload.
+  if (
+    responseData &&
+    'data' in responseData &&
+    Array.isArray(responseData.data) &&
+    'ticker' in responseData &&
+    typeof responseData.ticker === 'string'
+  ) {
+    byTicker.set(responseData.ticker, normalizeBars(responseData.data));
+    return byTicker;
+  }
+
+  if (
+    !responseData ||
+    !('results' in responseData) ||
+    !Array.isArray(responseData.results)
+  ) {
+    throw new Error(parseResponseError((responseData as EdgeFunctionError | null) ?? null));
+  }
+
+  for (const result of responseData.results) {
+    byTicker.set(
+      result.ticker,
+      Array.isArray(result.data) ? normalizeBars(result.data) : [],
+    );
+  }
+
+  return byTicker;
+};
+
+const invokeWithRetry = async (
+  tickers: string[],
+): Promise<Map<string, StockBarWithDate[]>> => {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_HISTORY_ATTEMPTS; attempt += 1) {
+    try {
+      return await invokeStockHistoryBatch(tickers);
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const canRetry = attempt < MAX_HISTORY_ATTEMPTS && isRetryableHistoryError(message);
+      if (!canRetry) break;
+      await sleep(400 * attempt);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Failed to load stock history.');
+};
+
+/**
+ * Fetch daily history for many tickers in as few edge-function calls as possible.
+ * Returns a map keyed by normalized ticker; missing/failed tickers map to [].
+ */
+export const fetchStockHistories = async (
+  tickers: string[],
+): Promise<Map<string, StockBarWithDate[]>> => {
+  const normalized = normalizeTickerList(tickers);
+  const byTicker = new Map<string, StockBarWithDate[]>();
+  for (const ticker of normalized) byTicker.set(ticker, []);
+
+  if (normalized.length === 0) return byTicker;
+
   try {
-    const { data: responseData, error: invokeError } = await supabase.functions.invoke<
-      FetchStockHistoryResponse | EdgeFunctionError
-    >('fetch-stock-history', {
-      body: { ticker },
-    });
-
-    if (invokeError) {
-      throw new Error(invokeError.message || 'Failed to invoke fetch-stock-history.');
+    for (const chunk of chunkTickers(normalized, HISTORY_BATCH_SIZE)) {
+      const partial = await invokeWithRetry(chunk);
+      for (const ticker of chunk) {
+        byTicker.set(ticker, partial.get(ticker) ?? []);
+      }
     }
-
-    if (!responseData || !('data' in responseData) || !Array.isArray(responseData.data)) {
-      throw new Error(parseResponseError((responseData as EdgeFunctionError | null) ?? null));
-    }
-
-    return normalizeBars(responseData.data);
+    return byTicker;
   } catch (error) {
     console.error(error);
-    return [];
+    return byTicker;
   }
+};
+
+export const fetchStockHistory = async (ticker: string): Promise<StockBarWithDate[]> => {
+  const normalized = ticker.trim().toUpperCase();
+  if (!normalized) return [];
+
+  const byTicker = await fetchStockHistories([normalized]);
+  return byTicker.get(normalized) ?? [];
 };
 
 export const useStockData = (ticker: string) => {
@@ -144,7 +360,7 @@ export const useStockData = (ticker: string) => {
     queryKey: ['stock-history', normalizedTicker],
     queryFn: () => fetchStockHistory(normalizedTicker),
     enabled: normalizedTicker.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_STALE_TIME_MS,
   });
 
   return {

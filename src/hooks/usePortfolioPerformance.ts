@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type {
@@ -12,7 +12,7 @@ import type {
 } from '../types/performance';
 import type { CompositionFilter } from '../components/FilterControl';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
-import { fetchStockHistory } from './useStockData';
+import { fetchStockHistories, type StockBarWithDate } from './useStockData';
 import { runFifoEngine } from '../services/fifoEngine';
 import { buildPriceMatrix, type PriceSeed } from '../services/priceMatrix';
 import { computePortfolioValue } from '../services/portfolioValue';
@@ -134,34 +134,38 @@ export function usePortfolioPerformance(
     [transactions],
   );
 
-  const priceQueries = useQueries({
-    queries: uniqueTickers.map((ticker) => ({
-      queryKey: ['stock-history', ticker] as const,
-      queryFn: () => fetchStockHistory(ticker),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
+  const historyTickers = useMemo(() => {
+    const tickers = needsRonConversion
+      ? [...uniqueTickers, RON_USD_TICKER]
+      : uniqueTickers;
+    return [...new Set(tickers)].sort();
+  }, [uniqueTickers, needsRonConversion]);
 
   const {
-    data: ronUsdHistory = [],
-    isLoading: isLoadingRonUsdHistory,
+    data: historyByTicker,
+    isLoading: isLoadingPrices,
+    isError: isErrorPrices,
+    error: pricesQueryError,
   } = useQuery({
-    queryKey: ['stock-history', RON_USD_TICKER] as const,
-    queryFn: () => fetchStockHistory(RON_USD_TICKER),
-    enabled: needsRonConversion,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['stock-history', 'batch', historyTickers] as const,
+    queryFn: () => fetchStockHistories(historyTickers),
+    enabled: historyTickers.length > 0,
+    staleTime: 30 * 60 * 1000,
   });
 
-  const isLoadingPrices = priceQueries.some((q) => q.isLoading);
-  const isErrorPrices = priceQueries.some((q) => q.isError);
-  const pricesError = (priceQueries.find((q) => q.error)?.error ?? null) as Error | null;
-  const waitingForRonUsdHistory = needsRonConversion && isLoadingRonUsdHistory;
+  const pricesError = (pricesQueryError as Error | null) ?? null;
+  const waitingForRonUsdHistory =
+    needsRonConversion && isLoadingPrices && historyTickers.includes(RON_USD_TICKER);
 
-  const pricesByTicker = useMemo(
-    () => new Map(uniqueTickers.map((ticker, i) => [ticker, priceQueries[i]?.data ?? []])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uniqueTickers, priceQueries],
-  );
+  const pricesByTicker = useMemo(() => {
+    const map = new Map<string, StockBarWithDate[]>();
+    for (const ticker of uniqueTickers) {
+      map.set(ticker, historyByTicker?.get(ticker) ?? []);
+    }
+    return map;
+  }, [uniqueTickers, historyByTicker]);
+
+  const ronUsdHistory = historyByTicker?.get(RON_USD_TICKER) ?? [];
 
   const {
     dailyHoldings,
