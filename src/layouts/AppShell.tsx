@@ -26,7 +26,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CallMadeIcon from '@mui/icons-material/CallMade';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
@@ -51,11 +51,16 @@ const menuItems = [
 
 const AppShell = () => {
   const theme = useTheme();
+  const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
   const { valuesHidden, toggleValuesHidden } = useValuesVisibility();
+
+  // Growth page owns its own nested scroll (chart fixed, metrics scroll).
+  // Lock the shell scroller so that page gets a definite height again.
+  const lockShellScroll = location.pathname.startsWith('/performance');
 
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const refreshHandlerRef = useRef<RefreshHandler | null>(null);
@@ -245,14 +250,16 @@ const AppShell = () => {
       >
         <Toolbar sx={{ flexShrink: 0 }} />
 
-        {/* Scrollport: keep this a plain overflow box (no flex). iOS/WebKit drops
-            padding-bottom from scrollHeight when the scroller itself is a flex column. */}
+        {/* Default: plain overflow scroller (Dashboard etc).
+            Growth (/performance): lock height so only its metrics section scrolls. */}
         <Box
           ref={setScrollEl}
           sx={{
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
+            display: lockShellScroll ? 'flex' : 'block',
+            flexDirection: 'column',
+            overflowY: lockShellScroll ? 'hidden' : 'auto',
             overscrollBehaviorY: 'contain',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
@@ -262,6 +269,9 @@ const AppShell = () => {
             sx={{
               boxSizing: 'border-box',
               minHeight: '100%',
+              ...(lockShellScroll
+                ? { flex: 1, minHeight: 0, height: '100%' }
+                : null),
               display: 'flex',
               flexDirection: 'column',
               p: { xs: 2, sm: 3 },

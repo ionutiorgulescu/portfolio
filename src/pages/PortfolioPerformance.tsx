@@ -521,7 +521,7 @@ function PerformanceBarChart({
     <Box
       className="portfolio-chart"
       data-no-pull-refresh
-      sx={{ width: '100%', height: { xs: 240, sm: 280 }, mt: 1 }}
+      sx={{ width: '100%', height: { xs: 200, sm: 240 }, mt: 0.5 }}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
@@ -600,11 +600,11 @@ function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <Typography
       sx={{
-        fontSize: { xs: 20, sm: 22 },
+        fontSize: { xs: 18, sm: 20 },
         fontWeight: 700,
         color: TEXT,
         letterSpacing: '-0.02em',
-        mb: 1.5,
+        mb: 0.75,
       }}
     >
       {children}
@@ -688,6 +688,7 @@ function MetricRow({
   bold,
   locked,
   showInfo = true,
+  disableVerticalPadding = false,
   onInfoClick,
 }: {
   label: string;
@@ -698,6 +699,7 @@ function MetricRow({
   bold?: boolean;
   locked?: boolean;
   showInfo?: boolean;
+  disableVerticalPadding?: boolean;
   onInfoClick?: () => void;
 }) {
   const signed = amount ?? percent;
@@ -711,7 +713,8 @@ function MetricRow({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 2,
-        py: 1.75,
+        py: disableVerticalPadding ? 0 : 1.25,
+        pb: disableVerticalPadding ? 1.25 : 0,
         borderBottom: '1px solid',
         borderColor: 'rgba(0,0,0,0.06)',
         '&:last-of-type': { borderBottom: 'none' },
@@ -747,7 +750,6 @@ function MetricRow({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: { xs: 1.5, sm: 2.5 },
             flexShrink: 0,
           }}
         >
@@ -878,7 +880,7 @@ const PortfolioPerformance = () => {
           overflow: 'hidden',
         }}
       >
-        <Stack spacing={2} sx={{ flexShrink: 0 }}>
+        <Stack spacing={1.25} sx={{ flexShrink: 0 }}>
           <PeriodSelector value={period} onChange={setPeriod} periods={periods} />
 
           <Box>
@@ -965,8 +967,8 @@ const PortfolioPerformance = () => {
             {isLoading ? (
               <Skeleton
                 variant="rounded"
-                height={240}
-                sx={{ mt: 1, borderRadius: 2 }}
+                height={200}
+                sx={{ mt: 0.5, borderRadius: 2 }}
               />
             ) : (
               <PerformanceBarChart
@@ -978,15 +980,15 @@ const PortfolioPerformance = () => {
         </Stack>
 
         <Stack
-          spacing={3.5}
+          spacing={0}
           sx={{
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
             overscrollBehaviorY: 'contain',
             WebkitOverflowScrolling: 'touch',
-            mt: 3.5,
-            pb: 4,
+            mt: 2,
+            pb: { xs: 2, md: 4 },
           }}
         >
         <Box>
@@ -997,7 +999,7 @@ const PortfolioPerformance = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                py: 1.75,
+                py: 0,
                 borderBottom: '1px solid',
                 borderColor: 'rgba(0,0,0,0.06)',
               }}
@@ -1021,12 +1023,13 @@ const PortfolioPerformance = () => {
             <MetricRow
               label="Invested capital"
               value={formatUsd(investedCapital ?? 0)}
+              disableVerticalPadding
               onInfoClick={() => setInvestedInfoOpen(true)}
             />
           )}
         </Box>
 
-        <Box>
+        <Box sx={{ mt: '10px' }}>
           <SectionTitle>Performance breakdown</SectionTitle>
           {isLoading || priceGain == null || priceGainPercent == null ? (
             <Box
@@ -1034,7 +1037,7 @@ const PortfolioPerformance = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                py: 1.75,
+                py: 1.25,
                 borderBottom: '1px solid',
                 borderColor: 'rgba(0,0,0,0.06)',
               }}
@@ -1069,7 +1072,7 @@ const PortfolioPerformance = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                py: 1.75,
+                py: 1.25,
                 borderBottom: '1px solid',
                 borderColor: 'rgba(0,0,0,0.06)',
               }}
@@ -1105,7 +1108,7 @@ const PortfolioPerformance = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  py: 1.75,
+                  py: 1.25,
                   borderBottom: '1px solid',
                   borderColor: 'rgba(0,0,0,0.06)',
                 }}
@@ -1130,7 +1133,7 @@ const PortfolioPerformance = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  py: 1.75,
+                  py: 1.25,
                   borderBottom: '1px solid',
                   borderColor: 'rgba(0,0,0,0.06)',
                 }}
@@ -1169,7 +1172,7 @@ const PortfolioPerformance = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  py: 1.75,
+                  py: 1.25,
                   borderBottom: '1px solid',
                   borderColor: 'rgba(0,0,0,0.06)',
                 }}
