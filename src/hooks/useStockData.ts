@@ -345,11 +345,134 @@ export const fetchStockHistories = async (
   }
 };
 
+export type IntradayInterval = '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '1h';
+
+const INTRADAY_STALE_TIME_MS = 60 * 1000;
+
+const invokeStockIntradayBatch = async (
+  tickers: string[],
+  interval: IntradayInterval,
+): Promise<Map<string, StockBarWithDate[]>> => {
+  const { data: responseData, error: invokeError } = await supabase.functions.invoke<
+    FetchStockHistoryResponse | FetchStockHistoryBatchResponse | EdgeFunctionError
+  >('fetch-stock-history', {
+    body:
+      tickers.length === 1
+        ? { ticker: tickers[0], interval }
+        : { tickers, interval },
+  });
+
+  if (invokeError) {
+    throw new Error(await readInvokeErrorMessage(invokeError));
+  }
+
+  if (
+    responseData &&
+    typeof responseData === 'object' &&
+    'code' in responseData &&
+    (responseData as EdgeFunctionError).code === 'BOOT_ERROR'
+  ) {
+    throw new Error(parseResponseError(responseData as EdgeFunctionError));
+  }
+
+  const byTicker = new Map<string, StockBarWithDate[]>();
+
+  if (
+    responseData &&
+    'data' in responseData &&
+    Array.isArray(responseData.data) &&
+    'ticker' in responseData &&
+    typeof responseData.ticker === 'string'
+  ) {
+    byTicker.set(responseData.ticker, normalizeBars(responseData.data));
+    return byTicker;
+  }
+
+  if (
+    !responseData ||
+    !('results' in responseData) ||
+    !Array.isArray(responseData.results)
+  ) {
+    throw new Error(parseResponseError((responseData as EdgeFunctionError | null) ?? null));
+  }
+
+  for (const result of responseData.results) {
+    byTicker.set(
+      result.ticker,
+      Array.isArray(result.data) ? normalizeBars(result.data) : [],
+    );
+  }
+
+  return byTicker;
+};
+
+const invokeIntradayWithRetry = async (
+  tickers: string[],
+  interval: IntradayInterval,
+): Promise<Map<string, StockBarWithDate[]>> => {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_HISTORY_ATTEMPTS; attempt += 1) {
+    try {
+      return await invokeStockIntradayBatch(tickers, interval);
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const canRetry = attempt < MAX_HISTORY_ATTEMPTS && isRetryableHistoryError(message);
+      if (!canRetry) break;
+      await sleep(400 * attempt);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Failed to load intraday stock history.');
+};
+
+/**
+ * Fetch intraday bars (default 5m) for many tickers.
+ * Bypasses the daily DB cache on the edge function.
+ */
+export const fetchStockIntradayHistories = async (
+  tickers: string[],
+  interval: IntradayInterval = '5m',
+): Promise<Map<string, StockBarWithDate[]>> => {
+  const normalized = normalizeTickerList(tickers);
+  const byTicker = new Map<string, StockBarWithDate[]>();
+  for (const ticker of normalized) byTicker.set(ticker, []);
+
+  if (normalized.length === 0) return byTicker;
+
+  try {
+    for (const chunk of chunkTickers(normalized, HISTORY_BATCH_SIZE)) {
+      const partial = await invokeIntradayWithRetry(chunk, interval);
+      for (const ticker of chunk) {
+        byTicker.set(ticker, partial.get(ticker) ?? []);
+      }
+    }
+    return byTicker;
+  } catch (error) {
+    console.error(error);
+    return byTicker;
+  }
+};
+
 export const fetchStockHistory = async (ticker: string): Promise<StockBarWithDate[]> => {
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return [];
 
   const byTicker = await fetchStockHistories([normalized]);
+  return byTicker.get(normalized) ?? [];
+};
+
+export const fetchStockIntradayHistory = async (
+  ticker: string,
+  interval: IntradayInterval = '5m',
+): Promise<StockBarWithDate[]> => {
+  const normalized = ticker.trim().toUpperCase();
+  if (!normalized) return [];
+
+  const byTicker = await fetchStockIntradayHistories([normalized], interval);
   return byTicker.get(normalized) ?? [];
 };
 
@@ -361,6 +484,27 @@ export const useStockData = (ticker: string) => {
     queryFn: () => fetchStockHistory(normalizedTicker),
     enabled: normalizedTicker.length > 0,
     staleTime: HISTORY_STALE_TIME_MS,
+  });
+
+  return {
+    data: data ?? [],
+    error: error ? error.message : null,
+    isLoading,
+  };
+};
+
+export const useStockIntradayData = (
+  ticker: string,
+  interval: IntradayInterval = '5m',
+  enabled = true,
+) => {
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['stock-intraday', normalizedTicker, interval],
+    queryFn: () => fetchStockIntradayHistory(normalizedTicker, interval),
+    enabled: enabled && normalizedTicker.length > 0,
+    staleTime: INTRADAY_STALE_TIME_MS,
   });
 
   return {

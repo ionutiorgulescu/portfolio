@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useStockData } from '../../hooks/useStockData';
+import { useStockData, useStockIntradayData } from '../../hooks/useStockData';
+import { takeLatestSessionBars } from '../../services/intradayPortfolioValue';
 import { IntervalSelector } from '../IntervalSelector';
 import { StockStats } from './StockStats';
 import { StockTickerForm } from './StockTickerForm';
@@ -9,6 +10,7 @@ import {
   intervalOptions,
   parseIsoDate,
   formatTimestamp,
+  formatChartCursorTime,
 } from '../stockMarket.types';
 import type { ChartInterval, ChartPoint } from '../stockMarket.types';
 import { Box } from '@mui/material';
@@ -19,7 +21,13 @@ const Market = () => {
   const [inputTicker, setInputTicker] = useState<string>('AAPL');
   const [ticker, setTicker] = useState<string>('AAPL');
   const [interval, setInterval] = useState<ChartInterval>('YTD');
+  const isIntraday = interval === '1D';
   const { data, error, isLoading } = useStockData(ticker);
+  const {
+    data: intradayData,
+    error: intradayError,
+    isLoading: isLoadingIntraday,
+  } = useStockIntradayData(ticker, '5m', isIntraday);
 
   const sortedData = useMemo(
     () => [...data].sort((left, right) => left.t - right.t),
@@ -27,6 +35,12 @@ const Market = () => {
   );
 
   const filteredBars = useMemo(() => {
+    if (isIntraday) {
+      const normalized = ticker.trim().toUpperCase();
+      const session = takeLatestSessionBars(new Map([[normalized, intradayData]]));
+      return [...(session.get(normalized) ?? [])].sort((left, right) => left.t - right.t);
+    }
+
     if (sortedData.length === 0) {
       return [];
     }
@@ -56,7 +70,7 @@ const Market = () => {
 
     const sliced = sortedData.filter((bar) => parseIsoDate(bar.date) >= startDate);
     return sliced.length > 0 ? sliced : sortedData;
-  }, [interval, sortedData]);
+  }, [interval, sortedData, isIntraday, intradayData, ticker]);
 
   const chartData = useMemo<ChartPoint[]>(
     () =>
@@ -87,6 +101,10 @@ const Market = () => {
   }, [filteredBars]);
 
   const xAxisTickFormatter = useMemo(() => {
+    if (interval === '1D') {
+      return (value: number) => formatChartCursorTime(value);
+    }
+
     const options: Intl.DateTimeFormatOptions =
       interval === '1W' || interval === '1M'
         ? { month: 'short', day: 'numeric' }
@@ -138,6 +156,9 @@ const Market = () => {
     [inputTicker],
   );
 
+  const activeError = isIntraday ? intradayError : error;
+  const activeLoading = isIntraday ? isLoadingIntraday : isLoading;
+
   return (
     <section className="w-full rounded-xl bg-white p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -148,19 +169,19 @@ const Market = () => {
         />
       </div>
 
-      {isLoading ? (
+      {activeLoading ? (
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
           Loading stock history...
         </div>
       ) : null}
 
-      {!isLoading && error ? (
+      {!activeLoading && activeError ? (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          Failed to load stock history: {error}
+          Failed to load stock history: {activeError}
         </p>
       ) : null}
 
-      {!isLoading && !error ? (
+      {!activeLoading && !activeError ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="m-0 text-lg font-semibold leading-normal text-gray-900">

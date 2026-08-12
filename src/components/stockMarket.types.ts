@@ -1,4 +1,4 @@
-export type ChartInterval = '1W' | '1M' | 'YTD' | '1Y' | 'MAX';
+export type ChartInterval = '1D' | '1W' | '1M' | 'YTD' | '1Y' | 'MAX';
 
 export type IntervalOption = {
   key: ChartInterval;
@@ -12,6 +12,7 @@ export type ChartPoint = {
 };
 
 export const intervalOptions: IntervalOption[] = [
+  { key: '1D', label: '1 Day' },
   { key: '1W', label: '1 Week', days: 7 },
   { key: '1M', label: '1 Month', days: 30 },
   { key: 'YTD', label: 'YTD' },
@@ -47,6 +48,20 @@ export const formatChartCursorDate = (timestamp: number): string => {
   const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
   const year = date.getUTCFullYear();
   return `${day}. ${month} ${year}`;
+};
+
+/** Intraday cursor, e.g. "14:35" (local time). */
+export const formatChartCursorTime = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 };
 
 export const getNiceTickStep = (value: number): number => {

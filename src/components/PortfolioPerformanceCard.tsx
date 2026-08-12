@@ -12,6 +12,7 @@ import SouthEastIcon from '@mui/icons-material/SouthEast';
 import { IntervalSelector } from './IntervalSelector';
 import type { CompositionFilter } from './FilterControl';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
+import { usePortfolioIntradayPerformance } from '../hooks/usePortfolioIntradayPerformance';
 import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import {
   formatNumber,
@@ -74,16 +75,28 @@ export function PortfolioPerformanceCard({
 }: Props) {
   const [interval, setInterval] = useState<ChartInterval>('YTD');
   const [scrubbedPoint, setScrubbedPoint] = useState<PortfolioChartPoint | null>(null);
+  const isIntraday = interval === '1D';
   const {
     data: allData,
     cashFlows,
-    isLoading,
-    isError,
-    error,
+    isLoading: isLoadingDaily,
+    isError: isErrorDaily,
+    error: dailyError,
   } = usePortfolioPerformance(filter, portfolioId);
+  const {
+    data: intradayData,
+    isLoading: isLoadingIntraday,
+    isError: isErrorIntraday,
+    error: intradayError,
+  } = usePortfolioIntradayPerformance(filter, portfolioId, isIntraday);
   const { valuesHidden } = useValuesVisibility();
 
+  const isLoading = isIntraday ? isLoadingIntraday : isLoadingDaily;
+  const isError = isIntraday ? isErrorIntraday : isErrorDaily;
+  const error = isIntraday ? intradayError : dailyError;
+
   const filteredData = useMemo(() => {
+    if (isIntraday) return [];
     if (allData.length === 0) return [];
 
     const latestDate = parseIsoDate(allData[allData.length - 1].date);
@@ -106,9 +119,20 @@ export function PortfolioPerformanceCard({
     if (!startDate) return allData;
     const sliced = allData.filter((p) => parseIsoDate(p.date) >= startDate!);
     return sliced.length > 0 ? sliced : allData;
-  }, [allData, interval]);
+  }, [allData, interval, isIntraday]);
 
   const chartData = useMemo<PortfolioChartPoint[]>(() => {
+    if (isIntraday) {
+      if (intradayData.length === 0) return [];
+      const startValue = intradayData[0].value;
+      return intradayData.map((p) => ({
+        t: p.t,
+        close: startValue > 0 ? ((p.value / startValue) - 1) * 100 : 0,
+        rawValue: p.value,
+        costBasis: p.costBasis,
+      }));
+    }
+
     // MAX: return on cost (0% = money invested).
     // YTD/1W/1M/1Y: period TWR % (0% = interval start) so the chart matches header P&L.
     if (interval === 'MAX') {
@@ -138,7 +162,7 @@ export function PortfolioPerformanceCard({
       rawValue: p.value,
       costBasis: p.costBasis,
     }));
-  }, [filteredData, interval, cashFlows]);
+  }, [filteredData, interval, cashFlows, isIntraday, intradayData]);
 
   useEffect(() => {
     setScrubbedPoint(null);
@@ -157,7 +181,6 @@ export function PortfolioPerformanceCard({
   const startPoint = chartData.length > 0 ? chartData[0] : null;
   const activePoint = scrubbedPoint ?? latestPoint;
 
-  // Header: market value + interval P&L. Chart: ROC on MAX, period TWR % otherwise.
   const displayValue = activePoint?.rawValue ?? 0;
 
   const periodEndPerformance = useMemo(() => {
@@ -184,7 +207,6 @@ export function PortfolioPerformanceCard({
     if (chartData.length === 0) return [-1, 1];
 
     const values = chartData.map((p) => p.close);
-    // Always include 0% so the invested / break-even line stays in view.
     const minVal = Math.min(...values, 0);
     const maxVal = Math.max(...values, 0);
     const spread = maxVal - minVal;
@@ -271,7 +293,15 @@ export function PortfolioPerformanceCard({
     );
   }
 
-  if (allData.length === 0) {
+  if (!isIntraday && allData.length === 0) {
+    return (
+      <Alert severity="info">
+        No transactions found. Add open or closed positions to see portfolio performance.
+      </Alert>
+    );
+  }
+
+  if (isIntraday && allData.length === 0 && intradayData.length === 0 && !isLoadingDaily) {
     return (
       <Alert severity="info">
         No transactions found. Add open or closed positions to see portfolio performance.
@@ -369,7 +399,6 @@ export function PortfolioPerformanceCard({
             width: '100%',
             minWidth: 0,
             mt: { xs: 1.5, sm: 2 },
-            // Keep the chart area from scrolling/pulling even while Suspense loads.
             touchAction: 'none',
           }}
         >
@@ -386,6 +415,7 @@ export function PortfolioPerformanceCard({
                 positive={periodEndPerformance.positive}
                 domain={chartDomain}
                 onScrub={handleScrub}
+                cursorFormat={isIntraday ? 'time' : 'date'}
               />
             </Suspense>
           ) : (
@@ -403,7 +433,9 @@ export function PortfolioPerformanceCard({
               }}
             >
               <Typography variant="body2" color="text.secondary" textAlign="center">
-                No data available for the selected period.
+                {isIntraday
+                  ? 'No intraday data available for the latest session.'
+                  : 'No data available for the selected period.'}
               </Typography>
             </Box>
           )}

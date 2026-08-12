@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { formatChartCursorDate } from './stockMarket.types';
+import { formatChartCursorDate, formatChartCursorTime } from './stockMarket.types';
 
 export type PortfolioChartPoint = {
   t: number;
@@ -34,6 +34,8 @@ type Props = {
   /** Break-even reference (0% for return charts). */
   baseline?: number;
   onScrub?: (point: PortfolioChartPoint | null) => void;
+  /** Cursor label: calendar date (default) or clock time for 1D. */
+  cursorFormat?: 'date' | 'time';
 };
 
 const GAIN_COLOR = '#27a69a';
@@ -42,8 +44,17 @@ const BASELINE_COLOR = '#d1d5db';
 const CURSOR_COLOR = '#c4c4c4';
 const CHART_MARGIN = { top: 22, right: 4, left: 4, bottom: 4 };
 
-function DateCursorTooltip({ active, label }: TooltipContentProps<ValueType, NameType>) {
+function DateCursorTooltip({
+  active,
+  label,
+  cursorFormat = 'date',
+}: TooltipContentProps<ValueType, NameType> & { cursorFormat?: 'date' | 'time' }) {
   if (!active || label == null) return null;
+
+  const text =
+    cursorFormat === 'time'
+      ? formatChartCursorTime(Number(label))
+      : formatChartCursorDate(Number(label));
 
   return (
     <div
@@ -57,7 +68,7 @@ function DateCursorTooltip({ active, label }: TooltipContentProps<ValueType, Nam
         pointerEvents: 'none',
       }}
     >
-      {formatChartCursorDate(Number(label))}
+      {text}
     </div>
   );
 }
@@ -104,6 +115,7 @@ export default function PortfolioChart({
   domain,
   baseline = 0,
   onScrub,
+  cursorFormat = 'date',
 }: Props) {
   const stroke = positive ? GAIN_COLOR : LOSS_COLOR;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -224,7 +236,9 @@ export default function PortfolioChart({
           />
 
           <Tooltip
-            content={DateCursorTooltip}
+            content={(props) => (
+              <DateCursorTooltip {...props} cursorFormat={cursorFormat} />
+            )}
             cursor={{ stroke: CURSOR_COLOR, strokeWidth: 1 }}
             allowEscapeViewBox={{ x: true, y: true }}
             position={{ y: 0 }}

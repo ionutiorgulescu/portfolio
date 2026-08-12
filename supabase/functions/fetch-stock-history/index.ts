@@ -46,6 +46,38 @@ type StockBar = {
 /** Slim wire format: [date, close]. */
 type ResponseBar = [string, number];
 
+/** Intraday wire format: unix ms + close. */
+type IntradayBar = { t: number; c: number };
+
+type YahooChartInterval =
+  | "1m"
+  | "2m"
+  | "5m"
+  | "15m"
+  | "30m"
+  | "60m"
+  | "90m"
+  | "1h"
+  | "1d"
+  | "5d"
+  | "1wk"
+  | "1mo"
+  | "3mo";
+
+const INTRADAY_INTERVALS = new Set<YahooChartInterval>([
+  "1m",
+  "2m",
+  "5m",
+  "15m",
+  "30m",
+  "60m",
+  "90m",
+  "1h",
+]);
+
+/** How far back to request for intraday (Yahoo ~60d for 5m; keep small). */
+const INTRADAY_LOOKBACK_MS = 5 * 24 * 60 * 60 * 1000;
+
 type SeriesRow = {
   ticker: string;
   latest_date: string | null;
@@ -55,7 +87,7 @@ type SeriesRow = {
 type TickerResult = {
   ticker: string;
   count: number;
-  data: ResponseBar[];
+  data: ResponseBar[] | IntradayBar[];
   error?: {
     code: string;
     message: string;
@@ -178,9 +210,7 @@ const collectRawTickers = (body: JsonRecord | null, url: URL): string[] => {
   return raw;
 };
 
-const getTickersFromRequest = async (request: Request): Promise<string[]> => {
-  const url = new URL(request.url);
-  const body = request.method === "POST" ? await parseRequestBody(request) : null;
+const getTickersFromBody = (body: JsonRecord | null, url: URL): string[] => {
   const seen = new Set<string>();
   const tickers: string[] = [];
 
@@ -192,6 +222,33 @@ const getTickersFromRequest = async (request: Request): Promise<string[]> => {
   }
 
   return tickers;
+};
+
+const parseYahooInterval = (
+  body: JsonRecord | null,
+  url: URL,
+): YahooChartInterval => {
+  const raw =
+    (body && typeof body.interval === "string" ? body.interval : null) ??
+    url.searchParams.get("interval") ??
+    "1d";
+  const normalized = raw.trim().toLowerCase() as YahooChartInterval;
+  const allowed: YahooChartInterval[] = [
+    "1m",
+    "2m",
+    "5m",
+    "15m",
+    "30m",
+    "60m",
+    "90m",
+    "1h",
+    "1d",
+    "5d",
+    "1wk",
+    "1mo",
+    "3mo",
+  ];
+  return allowed.includes(normalized) ? normalized : "1d";
 };
 
 const isYahooHistoricalRow = (value: unknown): value is YahooHistoricalRow => {
@@ -687,6 +744,94 @@ const toTickerError = (error: unknown): NonNullable<TickerResult["error"]> => {
   };
 };
 
+const fetchIntradayBars = async (
+  ticker: string,
+  interval: YahooChartInterval,
+  period1: Date,
+  period2: Date,
+): Promise<IntradayBar[]> => {
+  try {
+    const result = await yahooFinance.chart(ticker, {
+      period1,
+      period2,
+      interval,
+      includePrePost: false,
+    });
+
+    const normalizedRows: unknown[] = Array.isArray(result?.quotes)
+      ? result.quotes
+      : [];
+    const bars = normalizedRows
+      .filter(isYahooHistoricalRow)
+      .map(mapYahooRow)
+      .filter((bar): bar is StockBar => bar !== null)
+      // Intraday FX/crypto often report volume 0 — keep any positive close.
+      .filter((bar) => bar.close > 0)
+      .sort((left, right) => left.timestamp - right.timestamp)
+      .map((bar): IntradayBar => ({ t: bar.timestamp, c: bar.close }));
+
+    const lastBar = bars[bars.length - 1];
+    const metaPrice = result?.meta?.regularMarketPrice;
+    const metaTimeRaw = result?.meta?.regularMarketTime;
+    const metaTimestamp = metaTimeRaw ? new Date(metaTimeRaw).getTime() : NaN;
+
+    if (
+      Number.isFinite(metaTimestamp) &&
+      typeof metaPrice === "number" &&
+      Number.isFinite(metaPrice) &&
+      metaPrice > 0 &&
+      (!lastBar || metaTimestamp > lastBar.t)
+    ) {
+      bars.push({ t: metaTimestamp, c: metaPrice });
+    }
+
+    return bars;
+  } catch (upstreamError) {
+    const mapped = mapYahooError(upstreamError);
+    const error = new Error(mapped.message) as Error & {
+      status?: number;
+      code?: string;
+      details?: unknown;
+    };
+    error.status = mapped.code === "rate_limited"
+      ? 429
+      : mapped.code === "ticker_not_found"
+        ? 404
+        : mapped.code === "bad_request"
+          ? 400
+          : 502;
+    error.code = mapped.code;
+    error.details = mapped.details;
+    throw error;
+  }
+};
+
+const fetchIntradayForTickers = async (
+  tickers: string[],
+  interval: YahooChartInterval,
+): Promise<TickerResult[]> => {
+  const period2 = new Date();
+  const period1 = new Date(period2.getTime() - INTRADAY_LOOKBACK_MS);
+
+  return mapPool(tickers, YAHOO_CONCURRENCY, async (ticker) => {
+    try {
+      const bars = await fetchIntradayBars(ticker, interval, period1, period2);
+      return {
+        ticker,
+        count: bars.length,
+        data: bars,
+      } satisfies TickerResult;
+    } catch (error) {
+      return {
+        ticker,
+        count: 0,
+        data: [],
+        error: toTickerError(error),
+      } satisfies TickerResult;
+    }
+  });
+};
+
 const fetchHistoryForTickers = async (
   tickers: string[],
   from: string,
@@ -826,7 +971,10 @@ Deno.serve(async (request) => {
   }
 
   // ✅ User is authenticated, proceed
-  const tickers = await getTickersFromRequest(request);
+  const url = new URL(request.url);
+  const body = request.method === "POST" ? await parseRequestBody(request) : null;
+  const tickers = getTickersFromBody(body, url);
+  const chartInterval = parseYahooInterval(body, url);
   if (tickers.length === 0) {
     return errorResponse(
       400,
@@ -843,13 +991,16 @@ Deno.serve(async (request) => {
     );
   }
 
+  const isIntraday = INTRADAY_INTERVALS.has(chartInterval);
   const { from, to } = getDateRange();
   const isSingleTickerRequest = tickers.length === 1;
 
-  console.log("date range:", { from, to, tickers });
+  console.log("date range:", { from, to, tickers, interval: chartInterval });
 
   try {
-    const results = await fetchHistoryForTickers(tickers, from, to);
+    const results = isIntraday
+      ? await fetchIntradayForTickers(tickers, chartInterval)
+      : await fetchHistoryForTickers(tickers, from, to);
 
     // Keep the legacy single-ticker payload so existing clients keep working.
     if (isSingleTickerRequest) {
@@ -867,16 +1018,18 @@ Deno.serve(async (request) => {
 
       return jsonResponse(200, {
         ticker: result.ticker,
-        from,
-        to,
+        from: isIntraday ? undefined : from,
+        to: isIntraday ? undefined : to,
+        interval: chartInterval,
         count: result.count,
         data: result.data,
       });
     }
 
     return jsonResponse(200, {
-      from,
-      to,
+      from: isIntraday ? undefined : from,
+      to: isIntraday ? undefined : to,
+      interval: chartInterval,
       count: results.length,
       results,
     });
