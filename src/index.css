@@ -1,6 +1,17 @@
 @import "./config/colors.css";
 @import "tailwindcss";
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+}
+
 /* Chart owns the gesture while scrubbing so the page doesn't scroll underneath. */
 .portfolio-chart {
   touch-action: none;

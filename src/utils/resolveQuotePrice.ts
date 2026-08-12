@@ -35,6 +35,10 @@ export function resolveQuotePrice(quote?: QuoteResult): {
   price: number;
   session: PriceSession | null;
   sessionChangePercent: number | null;
+  /** True when Yahoo reports regular trading hours (REGULAR). */
+  isMarketOpen: boolean;
+  /** Intraday % vs previous close during regular hours; null otherwise. */
+  dayChangePercent: number | null;
 } {
   const regular = toNum(quote?.regularMarketPrice) ?? 0;
   const previousClose = toNum(quote?.regularMarketPreviousClose);
@@ -43,6 +47,7 @@ export function resolveQuotePrice(quote?: QuoteResult): {
   // PREPRE/POSTPOST are outside live extended hours — no session badge.
   const isPre = marketState === 'PRE';
   const isPost = marketState === 'POST';
+  const isMarketOpen = marketState === 'REGULAR';
 
   if (isPre) {
     const sessionPrice =
@@ -58,7 +63,13 @@ export function resolveQuotePrice(quote?: QuoteResult): {
       ?? regularChangePercent
       ?? (previousClose != null ? percentChange(previousClose, price) : null);
 
-    return { price, session: 'PRE', sessionChangePercent };
+    return {
+      price,
+      session: 'PRE',
+      sessionChangePercent,
+      isMarketOpen: false,
+      dayChangePercent: null,
+    };
   }
 
   if (isPost) {
@@ -75,8 +86,20 @@ export function resolveQuotePrice(quote?: QuoteResult): {
       ?? regularChangePercent
       ?? (previousClose != null ? percentChange(previousClose, price) : null);
 
-    return { price, session: 'POST', sessionChangePercent };
+    return {
+      price,
+      session: 'POST',
+      sessionChangePercent,
+      isMarketOpen: false,
+      dayChangePercent: null,
+    };
   }
 
-  return { price: regular, session: null, sessionChangePercent: null };
+  return {
+    price: regular,
+    session: null,
+    sessionChangePercent: null,
+    isMarketOpen,
+    dayChangePercent: isMarketOpen ? regularChangePercent : null,
+  };
 }

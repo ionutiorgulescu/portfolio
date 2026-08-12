@@ -113,8 +113,19 @@ const AppShell = () => {
     </List>
   );
 
+  // Floating nav sits 12px above the home indicator; keep page content clear of it.
+  const mobileBottomClearance = `calc(${MOBILE_BOTTOM_NAV_HEIGHT + 12 + 24}px + env(safe-area-inset-bottom, 0px))`;
+
   return (
-    <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        // Pin to the visual viewport — 100dvh is unreliable in iOS standalone/PWA.
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        overflow: 'hidden',
+      }}
+    >
       <AppBar
         position="fixed"
         color="default"
@@ -224,8 +235,8 @@ const AppShell = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          height: '100dvh',
           minWidth: 0,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -234,45 +245,55 @@ const AppShell = () => {
       >
         <Toolbar sx={{ flexShrink: 0 }} />
 
+        {/* Scrollport: keep this a plain overflow box (no flex). iOS/WebKit drops
+            padding-bottom from scrollHeight when the scroller itself is a flex column. */}
         <Box
           ref={setScrollEl}
           sx={{
             flex: 1,
             minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
             overflowY: 'auto',
             overscrollBehaviorY: 'contain',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
-            p: { xs: 2, sm: 3 },
-            pb: {
-              xs: `calc(${MOBILE_BOTTOM_NAV_HEIGHT + 24}px + env(safe-area-inset-bottom, 0px))`,
-              md: 3,
-            },
           }}
         >
           <Box
-            aria-hidden={!showIndicator}
             sx={{
-              height: showIndicator ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+              boxSizing: 'border-box',
+              minHeight: '100%',
               display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              pointerEvents: 'none',
-              transition: isPulling ? 'none' : 'height 0.2s ease',
-              opacity: showIndicator
-                ? (isRefreshing ? 1 : Math.min(1, pullDistance / PULL_THRESHOLD))
-                : 0,
+              flexDirection: 'column',
+              p: { xs: 2, sm: 3 },
+              pb: {
+                xs: mobileBottomClearance,
+                md: 3,
+              },
             }}
           >
-            <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
-          </Box>
+            <Box
+              aria-hidden={!showIndicator}
+              sx={{
+                flexShrink: 0,
+                height: showIndicator ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                pointerEvents: 'none',
+                transition: isPulling ? 'none' : 'height 0.2s ease',
+                opacity: showIndicator
+                  ? (isRefreshing ? 1 : Math.min(1, pullDistance / PULL_THRESHOLD))
+                  : 0,
+              }}
+            >
+              <CircularProgress size={22} thickness={4} sx={{ mb: 1 }} />
+            </Box>
 
-          <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
-            <Outlet />
-          </PullToRefreshProvider>
+            <PullToRefreshProvider onHandlerChange={handleHandlerChange}>
+              <Outlet />
+            </PullToRefreshProvider>
+          </Box>
         </Box>
       </Box>
 

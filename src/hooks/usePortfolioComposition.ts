@@ -23,6 +23,10 @@ export interface TickerComposition {
   priceSession: PriceSession | null;
   /** % change of PRE/POST price vs regularMarketPrice; null when not in session pricing. */
   sessionChangePercent: number | null;
+  /** Regular-hours trading (Yahoo marketState === REGULAR). */
+  isMarketOpen: boolean;
+  /** Intraday regular-session % change; null when market is closed / extended. */
+  dayChangePercent: number | null;
   gainLoss: number;
   weight: number;
   currency: Currency;
@@ -172,6 +176,8 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           price: currentPrice,
           session: priceSession,
           sessionChangePercent,
+          isMarketOpen,
+          dayChangePercent,
         } = resolveQuotePrice(quoteMap.get(ticker));
         let currentValue: number;
         let costBasisUsd: number;
@@ -201,6 +207,8 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           currentPrice: displayCurrentPrice,
           priceSession,
           sessionChangePercent,
+          isMarketOpen,
+          dayChangePercent,
           gainLoss,
           weight,
           currency: holding.currency,
