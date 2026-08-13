@@ -74,6 +74,9 @@ const sleep = (ms: number): Promise<void> =>
 
 const formatDate = (timestamp: number): string => new Date(timestamp).toISOString().slice(0, 10);
 
+/** Yahoo chart timestamps are unix seconds; daily bars are already ms. */
+const toUnixMs = (t: number): number => (t > 0 && t < 1e12 ? t * 1000 : t);
+
 const isStockBar = (value: unknown): value is StockBar => {
   if (!value || typeof value !== 'object') {
     return false;
@@ -140,35 +143,39 @@ const normalizeBars = (items: unknown[]): StockBarWithDate[] =>
     }
 
     if (isStockBar(item)) {
+      const t = toUnixMs(item.t);
       accumulator.push({
         ...item,
-        date: formatDate(item.t),
+        t,
+        date: formatDate(t),
       });
       return accumulator;
     }
 
     if (isMappedStockBar(item)) {
+      const t = toUnixMs(item.timestamp);
       accumulator.push({
-        t: item.timestamp,
+        t,
         o: item.open,
         h: item.high,
         l: item.low,
         c: item.close,
         v: item.volume,
-        date: item.date || formatDate(item.timestamp),
+        date: item.date || formatDate(t),
       });
       return accumulator;
     }
 
     if (isSlimStockBar(item)) {
+      const t = toUnixMs(item.t);
       accumulator.push({
-        t: item.t,
+        t,
         o: item.c,
         h: item.c,
         l: item.c,
         c: item.c,
         v: 0,
-        date: item.d || formatDate(item.t),
+        date: item.d || formatDate(t),
       });
     }
 

@@ -744,6 +744,93 @@ const toTickerError = (error: unknown): NonNullable<TickerResult["error"]> => {
   };
 };
 
+const yahooUnixToMs = (value: number): number =>
+  value > 0 && value < 1e12 ? value * 1000 : value;
+
+type YahooChartPayload = {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      meta?: {
+        regularMarketPrice?: number;
+        regularMarketTime?: number | string;
+      };
+      indicators?: {
+        quote?: Array<{ close?: Array<number | null> }>;
+      };
+    }>;
+    error?: { description?: string };
+  };
+};
+
+const barsFromYahooChart = (
+  timestamps: number[],
+  closes: Array<number | null | undefined>,
+  metaPrice?: number,
+  metaTimeRaw?: number | string | Date,
+): IntradayBar[] => {
+  const bars: IntradayBar[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const t = yahooUnixToMs(timestamps[i]);
+    const c = closes[i];
+    if (Number.isFinite(t) && typeof c === "number" && Number.isFinite(c) && c > 0) {
+      bars.push({ t, c });
+    }
+  }
+  bars.sort((left, right) => left.t - right.t);
+
+  const metaTimestamp = typeof metaTimeRaw === "number"
+    ? yahooUnixToMs(metaTimeRaw)
+    : metaTimeRaw
+      ? new Date(metaTimeRaw).getTime()
+      : NaN;
+  const lastBar = bars[bars.length - 1];
+  if (
+    Number.isFinite(metaTimestamp) &&
+    typeof metaPrice === "number" &&
+    Number.isFinite(metaPrice) &&
+    metaPrice > 0 &&
+    (!lastBar || metaTimestamp > lastBar.t)
+  ) {
+    bars.push({ t: metaTimestamp, c: metaPrice });
+  }
+  return bars;
+};
+
+const fetchYahooChartRaw = async (
+  ticker: string,
+  interval: YahooChartInterval,
+  period1: Date,
+  period2: Date,
+): Promise<IntradayBar[]> => {
+  const p1 = Math.floor(period1.getTime() / 1000);
+  const p2 = Math.floor(period2.getTime() / 1000);
+  const url =
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
+    `?interval=${encodeURIComponent(interval)}` +
+    `&period1=${p1}&period2=${p2}&includePrePost=true`;
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!response.ok) {
+    throw new Error(`Yahoo chart HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as YahooChartPayload;
+  const result = payload.chart?.result?.[0];
+  if (!result) {
+    throw new Error(payload.chart?.error?.description ?? "Empty Yahoo chart result");
+  }
+
+  return barsFromYahooChart(
+    result.timestamp ?? [],
+    result.indicators?.quote?.[0]?.close ?? [],
+    result.meta?.regularMarketPrice,
+    result.meta?.regularMarketTime,
+  );
+};
+
 const fetchIntradayBars = async (
   ticker: string,
   interval: YahooChartInterval,
@@ -751,41 +838,43 @@ const fetchIntradayBars = async (
   period2: Date,
 ): Promise<IntradayBar[]> => {
   try {
-    const result = await yahooFinance.chart(ticker, {
-      period1,
-      period2,
-      interval,
-      includePrePost: false,
-    });
+    try {
+      const rawBars = await fetchYahooChartRaw(ticker, interval, period1, period2);
+      if (rawBars.length > 0) return rawBars;
+    } catch {
+      // Fall through to yahoo-finance2.
+    }
 
-    const normalizedRows: unknown[] = Array.isArray(result?.quotes)
-      ? result.quotes
-      : [];
-    const bars = normalizedRows
+    const result = await yahooFinance.chart(
+      ticker,
+      {
+        period1,
+        period2,
+        interval,
+        includePrePost: true,
+        return: "object",
+      },
+      { validateResult: false },
+    );
+
+    const timestamps = Array.isArray(result?.timestamp) ? result.timestamp as number[] : [];
+    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    const bars = barsFromYahooChart(
+      timestamps,
+      closes,
+      result?.meta?.regularMarketPrice,
+      result?.meta?.regularMarketTime,
+    );
+    if (bars.length > 0) return bars;
+
+    const quoteRows: unknown[] = Array.isArray(result?.quotes) ? result.quotes : [];
+    return quoteRows
       .filter(isYahooHistoricalRow)
       .map(mapYahooRow)
       .filter((bar): bar is StockBar => bar !== null)
-      // Intraday FX/crypto often report volume 0 — keep any positive close.
       .filter((bar) => bar.close > 0)
       .sort((left, right) => left.timestamp - right.timestamp)
       .map((bar): IntradayBar => ({ t: bar.timestamp, c: bar.close }));
-
-    const lastBar = bars[bars.length - 1];
-    const metaPrice = result?.meta?.regularMarketPrice;
-    const metaTimeRaw = result?.meta?.regularMarketTime;
-    const metaTimestamp = metaTimeRaw ? new Date(metaTimeRaw).getTime() : NaN;
-
-    if (
-      Number.isFinite(metaTimestamp) &&
-      typeof metaPrice === "number" &&
-      Number.isFinite(metaPrice) &&
-      metaPrice > 0 &&
-      (!lastBar || metaTimestamp > lastBar.t)
-    ) {
-      bars.push({ t: metaTimestamp, c: metaPrice });
-    }
-
-    return bars;
   } catch (upstreamError) {
     const mapped = mapYahooError(upstreamError);
     const error = new Error(mapped.message) as Error & {

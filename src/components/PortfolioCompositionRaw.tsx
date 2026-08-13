@@ -1,12 +1,11 @@
 import { Box, Typography } from "@mui/material";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useEffect, useState } from "react";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
 import chartPieIcon from "../assets/chart-pie.svg";
 import sunriseIcon from "../assets/sunrise.svg";
 import sunsetIcon from "../assets/sunset.svg";
-
-const HIDDEN_VALUE = '*****';
 
 const primaryTextSx = {
     color: "#393a36",
@@ -35,10 +34,6 @@ function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string 
         style: 'currency',
         currency,
     }).format(value);
-}
-
-function maskCurrency(currency: 'USD' | 'RON'): string {
-    return currency === 'RON' ? `${HIDDEN_VALUE} RON` : `$${HIDDEN_VALUE}`;
 }
 
 function formatPercent(value: number): string {
@@ -402,24 +397,26 @@ export function PortfolioCompositionRow({
                         userSelect: 'none',
                     }}
                 >
-                    <Typography
-                        fontWeight={600}
-                        sx={{
-                            fontFamily: '"Open Sans", sans-serif',
-                            fontSize: 14,
-                            lineHeight: '18px',
-                            color: gainPositive ? '#27a69a' : '#d92673',
-                            whiteSpace: 'nowrap',
-                            fontVariantNumeric: 'tabular-nums',
-                        }}
-                    >
-                        {gainPositive ? '↑' : '↓'}{' '}
-                        {valuesHidden
-                            ? (showPercent ? `${HIDDEN_VALUE}%` : maskCurrency(currency))
-                            : showPercent
+                    {valuesHidden ? (
+                        <LockOutlinedIcon sx={{ fontSize: 18, color: '#9ca3af' }} />
+                    ) : (
+                        <Typography
+                            fontWeight={600}
+                            sx={{
+                                fontFamily: '"Open Sans", sans-serif',
+                                fontSize: 14,
+                                lineHeight: '18px',
+                                color: gainPositive ? '#27a69a' : '#d92673',
+                                whiteSpace: 'nowrap',
+                                fontVariantNumeric: 'tabular-nums',
+                            }}
+                        >
+                            {gainPositive ? '↑' : '↓'}{' '}
+                            {showPercent
                                 ? `${gainPositive ? '+' : ''}${gainLossPercent.toFixed(2)}%`
                                 : `${gainPositive ? '+' : ''}${formatCurrency(row.gainLoss, currency)}`}
-                    </Typography>
+                        </Typography>
+                    )}
                     <Box
                         sx={{
                             display: 'flex',
@@ -439,17 +436,21 @@ export function PortfolioCompositionRow({
                                 flexShrink: 0,
                             }}
                         />
-                        <Typography
-                            sx={{
-                                ...secondaryTextSx,
-                                fontSize: 12,
-                                lineHeight: '14px',
-                                fontVariantNumeric: 'tabular-nums',
-                                whiteSpace: 'nowrap',
-                            }}
-                        >
-                            {valuesHidden ? `${HIDDEN_VALUE}%` : formatPercent(row.weight)}
-                        </Typography>
+                        {valuesHidden ? (
+                            <LockOutlinedIcon sx={{ fontSize: 14, color: '#9ca3af' }} />
+                        ) : (
+                            <Typography
+                                sx={{
+                                    ...secondaryTextSx,
+                                    fontSize: 12,
+                                    lineHeight: '14px',
+                                    fontVariantNumeric: 'tabular-nums',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {formatPercent(row.weight)}
+                            </Typography>
+                        )}
                     </Box>
                 </Box>
             </Box>

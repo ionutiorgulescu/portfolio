@@ -11,6 +11,10 @@ import {
   computeIntradayPortfolioValue,
   type IntradayPortfolioPoint,
 } from '../services/intradayPortfolioValue';
+import {
+  resolveTradingSession,
+  type SessionMarket,
+} from '../services/tradingSession';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
 const RON_USD_TICKER = 'RONUSD=X';
@@ -52,14 +56,32 @@ const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transa
 
 export type UsePortfolioIntradayPerformanceResult = {
   data: IntradayPortfolioPoint[];
+  sessionStart: number | undefined;
+  sessionEnd: number | undefined;
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
 };
 
+function sessionMarketForFilter(
+  filter: CompositionFilter,
+  transactions: Transaction[],
+): SessionMarket {
+  if (filter === 'stock') return 'us';
+  if (filter === 'bvb') return 'bvb';
+  if (filter === 'crypto') return 'crypto';
+
+  const hasUsdStock = transactions.some(
+    (tx) => tx.transaction_type === TransactionType.Stock && tx.currency === Currency.USD,
+  );
+  if (hasUsdStock) return 'us';
+  if (transactions.some((tx) => tx.currency === Currency.RON)) return 'bvb';
+  return 'crypto';
+}
+
 /**
  * 1D portfolio series from Yahoo 5m bars × latest FIFO holdings.
- * Uses a rolling ~24h window (overnight flat between sessions is expected).
+ * Window is the current trading session (open → now), not a rolling wall-clock range.
  */
 export function usePortfolioIntradayPerformance(
   filter: CompositionFilter = 'all',
@@ -136,7 +158,7 @@ export function usePortfolioIntradayPerformance(
     isError: isErrorPrices,
     error: pricesQueryError,
   } = useQuery({
-    queryKey: ['stock-intraday', 'batch', '5m', historyTickers] as const,
+    queryKey: ['stock-intraday', 'batch', '5m', 'prepost', historyTickers] as const,
     queryFn: () => fetchStockIntradayHistories(historyTickers, '5m'),
     enabled: enabled && historyTickers.length > 0,
     staleTime: INTRADAY_STALE_TIME_MS,
@@ -178,22 +200,40 @@ export function usePortfolioIntradayPerformance(
     !(liveRonToUsd > 0);
 
   const hasRonFx = !needsRonConversion || liveRonToUsd > 0;
+  const waitingForQuotes = needsQuotes && !quotes && isLoadingQuotes;
 
-  const data = useMemo(() => {
+  const sessionMarket = useMemo(
+    () => sessionMarketForFilter(filter, transactions),
+    [filter, transactions],
+  );
+
+  const { data, sessionStart, sessionEnd } = useMemo(() => {
+    const empty = { data: [] as IntradayPortfolioPoint[], sessionStart: undefined, sessionEnd: undefined };
     if (
       !enabled ||
       !latestHoldings ||
       isLoadingTransactions ||
       isLoadingPrices ||
+      waitingForQuotes ||
       waitingForRonFx ||
       !hasRonFx
     ) {
-      return [];
+      return empty;
     }
 
     const pricesByTicker = new Map(
       heldTickers.map((ticker) => [ticker, historyByTicker?.get(ticker) ?? []]),
     );
+
+    let latestBarT: number | undefined;
+    for (const bars of pricesByTicker.values()) {
+      const last = bars[bars.length - 1];
+      if (last && last.t > (latestBarT ?? 0)) latestBarT = last.t;
+    }
+
+    const now = Date.now();
+    const session = resolveTradingSession(sessionMarket, now, latestBarT);
+    const windowEnd = Math.min(now, session.end);
 
     let ronToUsd = liveRonToUsd;
     if (needsRonConversion && !(ronToUsd > 0)) {
@@ -215,10 +255,18 @@ export function usePortfolioIntradayPerformance(
         tickerCurrency,
         ronToUsd,
         convertRon: needsRonConversion,
+        windowStart: session.start,
+        windowEnd,
       },
     );
 
-    if (series.length === 0 || heldTickers.length === 0 || !quotes) return series;
+    const withSession = {
+      data: series,
+      sessionStart: session.start,
+      sessionEnd: session.end,
+    };
+
+    if (series.length === 0 || heldTickers.length === 0 || !quotes) return withSession;
 
     let liveValue = 0;
     let usedLivePrice = false;
@@ -242,23 +290,23 @@ export function usePortfolioIntradayPerformance(
       }
     }
 
-    if (!usedLivePrice) return series;
+    if (!usedLivePrice || now > session.end) return withSession;
 
     const patched = [...series];
     const last = patched[patched.length - 1];
-    const now = Date.now();
     patched[patched.length - 1] = {
       ...last,
-      t: Math.max(last.t, now),
+      t: windowEnd,
       value: liveValue,
       costBasis,
     };
-    return patched;
+    return { ...withSession, data: patched };
   }, [
     enabled,
     latestHoldings,
     isLoadingTransactions,
     isLoadingPrices,
+    waitingForQuotes,
     waitingForRonFx,
     hasRonFx,
     heldTickers,
@@ -269,14 +317,18 @@ export function usePortfolioIntradayPerformance(
     tickerCurrency,
     quotes,
     quoteMap,
+    sessionMarket,
   ]);
 
   return {
     data,
+    sessionStart,
+    sessionEnd,
     isLoading:
       enabled &&
       (isLoadingTransactions ||
         (historyTickers.length > 0 && isLoadingPrices) ||
+        waitingForQuotes ||
         waitingForRonFx),
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? (pricesQueryError as Error | null),

@@ -12,11 +12,11 @@ export type IntradayPortfolioOptions = {
   tickerCurrency?: Map<string, Currency>;
   ronToUsd?: number;
   convertRon?: boolean;
-  /** Chart window length ending at the newest bar (default 24h). */
-  windowMs?: number;
+  /** Session open (inclusive). */
+  windowStart: number;
+  /** Last plotted timestamp: min(now, session close). */
+  windowEnd: number;
 };
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Keep each ticker's latest session calendar day.
@@ -42,56 +42,53 @@ export function takeLatestSessionBars(
 }
 
 /**
- * Mark portfolio value on a shared intraday grid using latest holdings.
- * Prices are forward-filled; the plotted window is the last ~24h ending at
- * the newest bar (overnight flat between sessions is intentional).
+ * Mark portfolio value at session open, each real print, and `windowEnd`.
+ * Prices are forward-filled across tickers. Do not synthesize a 5m grid —
+ * that paints a flat previous-close line and a vertical jump to the live tip.
  */
 export function computeIntradayPortfolioValue(
   holdings: Map<string, number>,
   costBasis: number,
   pricesByTicker: Map<string, StockBarWithDate[]>,
-  options: IntradayPortfolioOptions = {},
+  options: IntradayPortfolioOptions,
 ): IntradayPortfolioPoint[] {
   const {
     tickerCurrency,
     ronToUsd = 0,
     convertRon = false,
-    windowMs = ONE_DAY_MS,
+    windowStart,
+    windowEnd,
   } = options;
-  if (holdings.size === 0) return [];
+  if (holdings.size === 0 || !(windowEnd >= windowStart)) return [];
 
   const heldTickers = [...holdings.keys()];
   const sortedBars = new Map<string, StockBarWithDate[]>();
-  let maxT = 0;
+  let hasAnyBar = false;
 
   for (const ticker of heldTickers) {
     const bars = [...(pricesByTicker.get(ticker) ?? [])]
       .filter((bar) => Number.isFinite(bar.t) && bar.c > 0)
       .sort((left, right) => left.t - right.t);
     sortedBars.set(ticker, bars);
-    if (bars.length > 0) {
-      maxT = Math.max(maxT, bars[bars.length - 1].t);
-    }
+    if (bars.length > 0) hasAnyBar = true;
   }
 
-  if (maxT <= 0) return [];
+  if (!hasAnyBar) return [];
 
-  const windowStart = maxT - windowMs;
-  const timestampSet = new Set<number>();
+  const timestampSet = new Set<number>([windowStart, windowEnd]);
   for (const bars of sortedBars.values()) {
     for (const bar of bars) {
-      if (bar.t >= windowStart) timestampSet.add(bar.t);
+      if (bar.t >= windowStart && bar.t <= windowEnd) timestampSet.add(bar.t);
     }
   }
 
   const timestamps = [...timestampSet].sort((a, b) => a - b);
-  if (timestamps.length === 0) return [];
 
   const cursors = new Map<string, number>();
   const lastPrice = new Map<string, number>();
   for (const ticker of heldTickers) {
     cursors.set(ticker, 0);
-    // Seed with the last print at or before the window so equity stays marked overnight.
+    // Seed with the last print at or before the open so the line starts at the left.
     const bars = sortedBars.get(ticker) ?? [];
     let seedPrice: number | undefined;
     for (const bar of bars) {

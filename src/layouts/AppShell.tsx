@@ -18,18 +18,25 @@ import {
   useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import GoalIcon from '@mui/icons-material/PieChart';
+import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import ShowChartOutlinedIcon from '@mui/icons-material/ShowChartOutlined';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CallMadeIcon from '@mui/icons-material/CallMade';
+import CallMadeOutlinedIcon from '@mui/icons-material/CallMadeOutlined';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import { PortfolioManagerModal } from '../components/PortfolioManagerModal';
+import { ValuesPinModal } from '../components/ValuesPinModal';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { PullToRefreshProvider } from '../contexts/PullToRefreshContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -39,14 +46,54 @@ type RefreshHandler = () => void | Promise<void>;
 const drawerWidthOpen = 240;
 const drawerWidthClosed = 72;
 const PULL_THRESHOLD = 72;
-const MOBILE_BOTTOM_NAV_HEIGHT = 72;
+const MOBILE_BOTTOM_NAV_HEIGHT = 76;
+const MOBILE_NAV_ACTIVE_BG = '#E6F4F1';
+const MOBILE_NAV_ACTIVE_FG = '#0A4F46';
+const MOBILE_NAV_INACTIVE_FG = '#8B909A';
+const PORTFOLIO_SELECT_SELECTED_BG = 'rgb(230, 244, 241)';
+const portfolioSelectMenuItemSx = {
+  '&.Mui-selected': {
+    backgroundColor: `${PORTFOLIO_SELECT_SELECTED_BG} !important`,
+  },
+  '&.Mui-selected:hover': {
+    backgroundColor: `${PORTFOLIO_SELECT_SELECTED_BG} !important`,
+  },
+  '&.Mui-selected.Mui-focusVisible': {
+    backgroundColor: `${PORTFOLIO_SELECT_SELECTED_BG} !important`,
+  },
+};
 
 const menuItems = [
-  { label: 'Home', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
-  { label: 'Trades', path: '/transactions', icon: <AccountBalanceWalletIcon fontSize="small" /> },
-  { label: 'Growth', path: '/performance', icon: <ShowChartIcon fontSize="small" /> },
-  { label: 'Goals', path: '/goal', icon: <GoalIcon fontSize="small" /> },
-  { label: 'Plans', path: '/plan', icon: <CallMadeIcon fontSize="small" /> },
+  {
+    label: 'Home',
+    path: '/dashboard',
+    icon: <DashboardIcon fontSize="small" />,
+    mobileIcon: <GridViewOutlinedIcon sx={{ fontSize: 22 }} />,
+  },
+  {
+    label: 'Trades',
+    path: '/transactions',
+    icon: <AccountBalanceWalletIcon fontSize="small" />,
+    mobileIcon: <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 22 }} />,
+  },
+  {
+    label: 'Growth',
+    path: '/performance',
+    icon: <ShowChartIcon fontSize="small" />,
+    mobileIcon: <ShowChartOutlinedIcon sx={{ fontSize: 22 }} />,
+  },
+  {
+    label: 'Goals',
+    path: '/goal',
+    icon: <GoalIcon fontSize="small" />,
+    mobileIcon: <PieChartOutlineIcon sx={{ fontSize: 22 }} />,
+  },
+  {
+    label: 'Plans',
+    path: '/plan',
+    icon: <CallMadeIcon fontSize="small" />,
+    mobileIcon: <CallMadeOutlinedIcon sx={{ fontSize: 22 }} />,
+  },
 ];
 
 const AppShell = () => {
@@ -56,7 +103,8 @@ const AppShell = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
-  const { valuesHidden, toggleValuesHidden } = useValuesVisibility();
+  const { valuesHidden, hasPin, lockWithPin, unlockWithPin } = useValuesVisibility();
+  const [pinModalMode, setPinModalMode] = useState<'set' | 'unlock' | null>(null);
 
   // Growth page owns its own nested scroll (chart fixed, metrics scroll).
   // Lock the shell scroller so that page gets a definite height again.
@@ -157,18 +205,46 @@ const AppShell = () => {
             )}
 
             {portfoliosLoading ? (
-              <Skeleton width={140} height={36} sx={{ borderRadius: 1 }} />
+              <Skeleton width={140} height={36} sx={{ borderRadius: '12px' }} />
             ) : portfolios.length > 1 ? (
               <Select
                 size="small"
                 value={selectedPortfolioId ?? ''}
                 onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                IconComponent={KeyboardArrowDownIcon}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                    },
+                  },
+                  MenuListProps: {
+                    sx: {
+                      borderRadius: '12px',
+                    },
+                  },
+                }}
                 sx={{
                   minWidth: 140,
+                  borderRadius: '12px',
+                  bgcolor: 'white',
                   fontSize: 14,
+                  fontWeight: 600,
+                  '& .MuiSelect-select': {
+                    py: 0.875,
+                    pl: 2,
+                    pr: 4,
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'text.primary',
+                    fontSize: 20,
+                    right: 8,
+                  },
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'divider',
                     borderWidth: 1,
+                    borderRadius: '12px',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'divider',
@@ -180,9 +256,13 @@ const AppShell = () => {
                   },
                 }}
               >
-                <MenuItem value={ALL_PORTFOLIOS_ID}>All Portfolios</MenuItem>
+                <MenuItem value={ALL_PORTFOLIOS_ID} sx={portfolioSelectMenuItemSx}>
+                  All Portfolios
+                </MenuItem>
                 {portfolios.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                  <MenuItem key={p.id} value={p.id} sx={portfolioSelectMenuItemSx}>
+                    {p.name}
+                  </MenuItem>
                 ))}
               </Select>
             ) : null}
@@ -191,7 +271,17 @@ const AppShell = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <IconButton
               size="small"
-              onClick={toggleValuesHidden}
+              onClick={() => {
+                if (valuesHidden) {
+                  if (hasPin) {
+                    setPinModalMode('unlock');
+                    return;
+                  }
+                  unlockWithPin('');
+                  return;
+                }
+                setPinModalMode('set');
+              }}
               title={valuesHidden ? 'Show total value' : 'Hide total value'}
               aria-label={valuesHidden ? 'Show total value' : 'Hide total value'}
               color="inherit"
@@ -313,22 +403,23 @@ const AppShell = () => {
           aria-label="Primary"
           sx={{
             position: 'fixed',
-            left: 12,
-            right: 12,
+            left: 16,
+            right: 16,
             bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
             zIndex: (t) => t.zIndex.appBar,
             display: 'flex',
             alignItems: 'stretch',
             justifyContent: 'space-between',
-            gap: 0.25,
+            gap: 0.5,
             minHeight: MOBILE_BOTTOM_NAV_HEIGHT,
-            px: 0.75,
-            py: 0.75,
-            bgcolor: 'background.paper',
-            borderRadius: 999,
-            border: '1px solid',
-            borderColor: 'divider',
-            boxShadow: '0 8px 28px rgba(15, 23, 42, 0.12)',
+            px: 1,
+            py: 1,
+            bgcolor: 'rgba(255, 255, 255, 0.82)',
+            backdropFilter: 'blur(20px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+            border: '1px solid rgba(15, 23, 42, 0.08)',
+            borderRadius: '26px',
+            boxShadow: '0 12px 40px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08)',
           }}
         >
           {menuItems.map((item) => (
@@ -346,21 +437,22 @@ const AppShell = () => {
                 gap: 0.25,
                 px: 0.5,
                 py: 0.75,
-                borderRadius: 999,
+                borderRadius: '20px',
                 textDecoration: 'none',
-                color: 'text.secondary',
+                color: MOBILE_NAV_INACTIVE_FG,
                 transition: 'background-color 0.15s ease, color 0.15s ease',
+                '& .MuiSvgIcon-root': { color: 'inherit' },
                 '&.active': {
-                  color: 'text.primary',
-                  bgcolor: 'grey.100',
+                  color: MOBILE_NAV_ACTIVE_FG,
+                  bgcolor: MOBILE_NAV_ACTIVE_BG,
                 },
               }}
             >
-              {item.icon}
+              {item.mobileIcon}
               <Typography
                 component="span"
                 sx={{
-                  fontSize: 10,
+                  fontSize: 11,
                   lineHeight: 1.2,
                   fontWeight: 500,
                   textAlign: 'center',
@@ -378,6 +470,20 @@ const AppShell = () => {
       )}
 
       <PortfolioManagerModal open={manageOpen} onClose={() => setManageOpen(false)} />
+      <ValuesPinModal
+        open={pinModalMode != null}
+        mode={pinModalMode ?? 'set'}
+        onClose={() => setPinModalMode(null)}
+        onSubmit={(pin) => {
+          if (pinModalMode === 'unlock') {
+            const matched = unlockWithPin(pin);
+            if (matched) setPinModalMode(null);
+            return matched;
+          }
+          lockWithPin(pin);
+          setPinModalMode(null);
+        }}
+      />
     </Box>
   );
 };

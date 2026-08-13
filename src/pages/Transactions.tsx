@@ -7,6 +7,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import PositionsTable from '../components/PositionsTable';
 import PositionFormModal from '../components/PositionFormModal';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
@@ -25,6 +27,19 @@ type ImportResult = {
   imported: number;
   errors: RowError[];
 };
+
+const pillButtonSx = {
+  borderRadius: '12px',
+  textTransform: 'none',
+  fontWeight: 500,
+  px: 2.25,
+  py: 1,
+  boxShadow: 'none',
+  whiteSpace: 'nowrap',
+  '& .MuiButton-startIcon': {
+    mr: 0.75,
+  },
+} as const;
 
 const Transactions = () => {
   const { selectedPortfolioId } = usePortfolioContext();
@@ -132,23 +147,42 @@ const Transactions = () => {
     <Stack spacing={3}>
       {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-        <Typography variant="h4">Transactions</Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1.25}>
           <Button
             variant="outlined"
             onClick={handleImportClick}
             disabled={isImporting}
-            startIcon={isImporting ? <CircularProgress size={16} /> : undefined}
-            sx={{ borderColor: 'text.primary', color: 'text.primary', whiteSpace: 'nowrap' }}
+            startIcon={
+              isImporting ? <CircularProgress size={16} /> : <FileDownloadOutlinedIcon fontSize="small" />
+            }
+            sx={{
+              ...pillButtonSx,
+              bgcolor: 'background.paper',
+              borderColor: 'var(--color-border-2)',
+              color: 'text.primary',
+              '&:hover': {
+                bgcolor: 'grey.50',
+                borderColor: 'var(--color-border-2)',
+              },
+            }}
           >
             {isImporting ? 'Importing…' : 'Import'}
           </Button>
           <Button
             variant="contained"
             onClick={handleOpenCreate}
-            sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' }, whiteSpace: 'nowrap' }}
+            startIcon={<AddIcon fontSize="small" />}
+            sx={{
+              ...pillButtonSx,
+              bgcolor: 'text.primary',
+              color: 'background.paper',
+              '&:hover': {
+                bgcolor: 'grey.800',
+                boxShadow: 'none',
+              },
+            }}
           >
-            Add Position
+            Add position
           </Button>
         </Stack>
       </Stack>

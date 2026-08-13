@@ -24,6 +24,7 @@ import {
   YAxis,
 } from 'recharts';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
+import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
 import { computeXirrPercent } from '../services/irr';
 import { computeTtwrorPercent } from '../services/performanceSeries';
@@ -817,6 +818,7 @@ const PortfolioPerformance = () => {
   const [ttwrorInfoOpen, setTtwrorInfoOpen] = useState(false);
   const [averageReturnInfoOpen, setAverageReturnInfoOpen] = useState(false);
   const { selectedPortfolioId } = usePortfolioContext();
+  const { valuesHidden } = useValuesVisibility();
   const { data, realizedGains, cashFlows, years, isLoading } =
     usePortfolioPerformance('all', selectedPortfolioId ?? '', includeCrypto);
 
@@ -862,6 +864,15 @@ const PortfolioPerformance = () => {
   const totalReturn = priceGain != null ? priceGain + realizedGain : null;
   const averageReturnPositive =
     averageReturnPercent == null || averageReturnPercent >= 0;
+  const hiddenChartBars = useMemo(
+    () =>
+      chartBars.map((bar) =>
+        bar.placeholder
+          ? bar
+          : { ...bar, returnPct: 0, above: 1.2, below: -1.2, placeholder: true },
+      ),
+    [chartBars],
+  );
 
   if (!selectedPortfolioId) return null;
 
@@ -932,7 +943,9 @@ const PortfolioPerformance = () => {
                   py: 0.15,
                 }}
               >
-                {isLoading || averageReturnPercent == null ? (
+                {valuesHidden ? (
+                  <LockOutlinedIcon sx={{ fontSize: 16, color: MUTED }} />
+                ) : isLoading || averageReturnPercent == null ? (
                   isLoading ? (
                     <Skeleton variant="text" width={64} height={22} />
                   ) : (
@@ -972,7 +985,7 @@ const PortfolioPerformance = () => {
               />
             ) : (
               <PerformanceBarChart
-                bars={chartBars}
+                bars={valuesHidden ? hiddenChartBars : chartBars}
                 alternateLabels={period !== 'alltime'}
               />
             )}
@@ -993,7 +1006,7 @@ const PortfolioPerformance = () => {
         >
         <Box>
           <SectionTitle>Capital</SectionTitle>
-          {isLoading ? (
+          {isLoading && !valuesHidden ? (
             <Box
               sx={{
                 display: 'flex',
@@ -1023,6 +1036,7 @@ const PortfolioPerformance = () => {
             <MetricRow
               label="Invested capital"
               value={formatUsd(investedCapital ?? 0)}
+              locked={valuesHidden}
               disableVerticalPadding
               onInfoClick={() => setInvestedInfoOpen(true)}
             />
@@ -1031,7 +1045,7 @@ const PortfolioPerformance = () => {
 
         <Box sx={{ mt: '10px' }}>
           <SectionTitle>Performance breakdown</SectionTitle>
-          {isLoading || priceGain == null || priceGainPercent == null ? (
+          {(isLoading || priceGain == null || priceGainPercent == null) && !valuesHidden ? (
             <Box
               sx={{
                 display: 'flex',
@@ -1060,13 +1074,14 @@ const PortfolioPerformance = () => {
           ) : (
             <MetricRow
               label="Price gain"
-              percent={priceGainPercent}
-              value={formatUsd(priceGain)}
+              percent={priceGainPercent ?? undefined}
+              value={formatUsd(priceGain ?? 0)}
+              locked={valuesHidden}
               onInfoClick={() => setPriceGainInfoOpen(true)}
             />
           )}
 
-          {isLoading ? (
+          {isLoading && !valuesHidden ? (
             <Box
               sx={{
                 display: 'flex',
@@ -1097,12 +1112,13 @@ const PortfolioPerformance = () => {
               label="Realized gain"
               percent={realizedGainPercent}
               value={formatUsd(realizedGain)}
+              locked={valuesHidden}
               onInfoClick={() => setRealizedGainInfoOpen(true)}
             />
           )}
 
           <Box sx={{ mt: 0.5 }}>
-            {isLoading || totalReturn == null ? (
+            {(isLoading || totalReturn == null) && !valuesHidden ? (
               <Box
                 sx={{
                   display: 'flex',
@@ -1121,13 +1137,14 @@ const PortfolioPerformance = () => {
             ) : (
               <MetricRow
                 label="Total return"
-                value={formatUsd(totalReturn)}
-                amount={totalReturn}
+                value={formatUsd(totalReturn ?? 0)}
+                amount={totalReturn ?? undefined}
                 bold
+                locked={valuesHidden}
                 showInfo={false}
               />
             )}
-            {isLoading || irrPercent == null ? (
+            {(isLoading || irrPercent == null) && !valuesHidden ? (
               <Box
                 sx={{
                   display: 'flex',
@@ -1162,11 +1179,12 @@ const PortfolioPerformance = () => {
             ) : (
               <MetricRow
                 label="Internal rate of return"
-                percent={irrPercent}
+                percent={irrPercent ?? undefined}
+                locked={valuesHidden}
                 onInfoClick={() => setIrrInfoOpen(true)}
               />
             )}
-            {isLoading || ttwrorPercent == null ? (
+            {(isLoading || ttwrorPercent == null) && !valuesHidden ? (
               <Box
                 sx={{
                   display: 'flex',
@@ -1201,7 +1219,8 @@ const PortfolioPerformance = () => {
             ) : (
               <MetricRow
                 label="TTWROR"
-                percent={ttwrorPercent}
+                percent={ttwrorPercent ?? undefined}
+                locked={valuesHidden}
                 onInfoClick={() => setTtwrorInfoOpen(true)}
               />
             )}

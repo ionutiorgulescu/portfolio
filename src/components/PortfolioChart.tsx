@@ -1,6 +1,7 @@
 import {
   useCallback,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -31,11 +32,18 @@ type Props = {
   chartData: PortfolioChartPoint[];
   positive: boolean;
   domain: [number, number];
+  /** Explicit x range so 1D can span the session (open → close) with empty time after now. */
+  xDomain?: [number, number];
+  /** Unix ms for the vertical Live marker (typically "now"). */
+  liveAt?: number;
   /** Break-even reference (0% for return charts). */
   baseline?: number;
+  showBaseline?: boolean;
   onScrub?: (point: PortfolioChartPoint | null) => void;
   /** Cursor label: calendar date (default) or clock time for 1D. */
   cursorFormat?: 'date' | 'time';
+  /** `linear` matches a session sparkline; `monotone` is smoother for longer ranges. */
+  lineType?: 'monotone' | 'linear';
 };
 
 const GAIN_COLOR = '#27a69a';
@@ -48,11 +56,17 @@ function DateCursorTooltip({
   active,
   label,
   cursorFormat = 'date',
-}: TooltipContentProps<ValueType, NameType> & { cursorFormat?: 'date' | 'time' }) {
+  liveAt,
+}: TooltipContentProps<ValueType, NameType> & {
+  cursorFormat?: 'date' | 'time';
+  liveAt?: number;
+}) {
   if (!active || label == null) return null;
 
-  const text =
-    cursorFormat === 'time'
+  const isLive = liveAt != null && Number(label) === liveAt;
+  const text = isLive
+    ? 'Live'
+    : cursorFormat === 'time'
       ? formatChartCursorTime(Number(label))
       : formatChartCursorDate(Number(label));
 
@@ -77,6 +91,7 @@ function findNearestPoint(
   chartData: PortfolioChartPoint[],
   clientX: number,
   container: HTMLElement | null,
+  xDomain?: [number, number],
 ): { point: PortfolioChartPoint; index: number } | null {
   if (!container || chartData.length === 0) return null;
 
@@ -88,8 +103,8 @@ function findNearestPoint(
     0,
     Math.min(1, (clientX - rect.left - CHART_MARGIN.left) / plotWidth),
   );
-  const tMin = chartData[0].t;
-  const tMax = chartData[chartData.length - 1].t;
+  const tMin = xDomain?.[0] ?? chartData[0].t;
+  const tMax = xDomain?.[1] ?? chartData[chartData.length - 1].t;
   const targetT = tMin + ratio * (tMax - tMin);
 
   let lo = 0;
@@ -113,11 +128,22 @@ export default function PortfolioChart({
   chartData,
   positive,
   domain,
+  xDomain,
+  liveAt,
   baseline = 0,
+  showBaseline = true,
   onScrub,
   cursorFormat = 'date',
+  lineType = 'monotone',
 }: Props) {
   const stroke = positive ? GAIN_COLOR : LOSS_COLOR;
+  const plotData = useMemo(() => {
+    if (!xDomain || chartData.length === 0) return chartData;
+    const last = chartData[chartData.length - 1];
+    if (last.t >= xDomain[1]) return chartData;
+    // Invisible future point so the x-axis extends from "now" to session close.
+    return [...chartData, { ...last, t: xDomain[1], close: Number.NaN }];
+  }, [chartData, xDomain]);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchScrubbingRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -152,13 +178,13 @@ export default function PortfolioChart({
 
   const scrubAtClientX = useCallback(
     (clientX: number) => {
-      const nearest = findNearestPoint(chartData, clientX, containerRef.current);
+      const nearest = findNearestPoint(chartData, clientX, containerRef.current, xDomain);
       if (!nearest) return;
 
       setActiveIndex((prev) => (prev === nearest.index ? prev : nearest.index));
       onScrub?.(nearest.point);
     },
-    [chartData, onScrub],
+    [chartData, onScrub, xDomain],
   );
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -216,28 +242,35 @@ export default function PortfolioChart({
         initialDimension={containerSize}
       >
         <LineChart
-          data={chartData}
+          data={plotData}
           margin={CHART_MARGIN}
         >
           <XAxis
             dataKey="t"
             type="number"
-            domain={['dataMin', 'dataMax']}
+            scale="linear"
+            domain={xDomain ?? ['dataMin', 'dataMax']}
             hide
           />
           <YAxis domain={domain} hide />
 
-          <ReferenceLine
-            y={baseline}
-            stroke={BASELINE_COLOR}
-            strokeDasharray="3 4"
-            strokeWidth={1}
-            ifOverflow="extendDomain"
-          />
+          {showBaseline ? (
+            <ReferenceLine
+              y={baseline}
+              stroke={BASELINE_COLOR}
+              strokeDasharray="3 4"
+              strokeWidth={1}
+              ifOverflow="extendDomain"
+            />
+          ) : null}
 
           <Tooltip
             content={(props) => (
-              <DateCursorTooltip {...props} cursorFormat={cursorFormat} />
+              <DateCursorTooltip
+                {...props}
+                cursorFormat={cursorFormat}
+                liveAt={liveAt}
+              />
             )}
             cursor={{ stroke: CURSOR_COLOR, strokeWidth: 1 }}
             allowEscapeViewBox={{ x: true, y: true }}
@@ -249,10 +282,10 @@ export default function PortfolioChart({
           />
 
           <Line
-            type="monotone"
+            type={lineType}
             dataKey="close"
             stroke={stroke}
-            strokeWidth={2.25}
+            strokeWidth={lineType === 'linear' ? 2 : 2.25}
             dot={false}
             // Recharts can keep an internal active index after touch-up; only render
             // the scrubber dot while we are actively scrubbing.
@@ -267,6 +300,7 @@ export default function PortfolioChart({
                 : false
             }
             isAnimationActive={false}
+            connectNulls={false}
           />
         </LineChart>
       </ResponsiveContainer>

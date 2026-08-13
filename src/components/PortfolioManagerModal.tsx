@@ -18,8 +18,8 @@ import {
   Typography,
   DialogActions,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { useCreatePortfolio } from '../hooks/useCreatePortfolio';
@@ -154,16 +154,22 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
                       primaryTypographyProps={{ fontWeight: portfolio.id === selectedPortfolioId ? 700 : 400 }}
                     />
                     <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                      <IconButton size="small" onClick={() => handleStartEdit(portfolio.id, portfolio.name)}>
-                        <EditIcon fontSize="small" />
+                      <IconButton
+                        size="small"
+                        onClick={() => handleStartEdit(portfolio.id, portfolio.name)}
+                        aria-label={`Edit ${portfolio.name}`}
+                        sx={{ color: '#9CA3AF' }}
+                      >
+                        <EditNoteOutlinedIcon fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
-                        color="error"
                         onClick={() => setDeletingId(portfolio.id)}
                         disabled={portfolios.length === 1}
+                        aria-label={`Delete ${portfolio.name}`}
+                        sx={{ color: '#D95D39' }}
                       >
-                        <DeleteIcon fontSize="small" />
+                        <DeleteOutlineIcon fontSize="small" />
                       </IconButton>
                     </Box>
                   </>

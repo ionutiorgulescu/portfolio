@@ -7,6 +7,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import NorthEastIcon from '@mui/icons-material/NorthEast';
 import SouthEastIcon from '@mui/icons-material/SouthEast';
 import { IntervalSelector } from './IntervalSelector';
@@ -38,7 +39,7 @@ const FILTER_LABELS: Record<CompositionFilter, string> = {
 
 const GAIN_COLOR = '#27a69a';
 const LOSS_COLOR = '#d92673';
-const HIDDEN_VALUE = '*****';
+const MUTED = '#9ca3af';
 
 const cardSx = {
   borderRadius: { xs: '16px', sm: '20px' },
@@ -73,7 +74,7 @@ export function PortfolioPerformanceCard({
   portfolioId,
   showFooter = true,
 }: Props) {
-  const [interval, setInterval] = useState<ChartInterval>('YTD');
+  const [interval, setInterval] = useState<ChartInterval>('1D');
   const [scrubbedPoint, setScrubbedPoint] = useState<PortfolioChartPoint | null>(null);
   const isIntraday = interval === '1D';
   const {
@@ -85,6 +86,8 @@ export function PortfolioPerformanceCard({
   } = usePortfolioPerformance(filter, portfolioId);
   const {
     data: intradayData,
+    sessionStart,
+    sessionEnd,
     isLoading: isLoadingIntraday,
     isError: isErrorIntraday,
     error: intradayError,
@@ -207,13 +210,28 @@ export function PortfolioPerformanceCard({
     if (chartData.length === 0) return [-1, 1];
 
     const values = chartData.map((p) => p.close);
+
+    if (isIntraday) {
+      const minVal = Math.min(...values, 0);
+      const maxVal = Math.max(...values, 0);
+      const spread = maxVal - minVal;
+      const padding = Math.max(spread * 0.18, 0.02);
+      return [minVal - padding, maxVal + padding];
+    }
+
     const minVal = Math.min(...values, 0);
     const maxVal = Math.max(...values, 0);
     const spread = maxVal - minVal;
     const padding = Math.max(spread * 0.12, 0.5);
 
     return [minVal - padding, maxVal + padding];
-  }, [chartData]);
+  }, [chartData, isIntraday]);
+
+  const liveAt = isIntraday && latestPoint ? latestPoint.t : undefined;
+  const xDomain = useMemo((): [number, number] | undefined => {
+    if (!isIntraday || sessionStart == null || sessionEnd == null) return undefined;
+    return [sessionStart, sessionEnd];
+  }, [isIntraday, sessionStart, sessionEnd]);
 
   const performanceColor = displayPerformance.positive ? GAIN_COLOR : LOSS_COLOR;
   const chartHeight = { xs: 220, sm: 280, md: 320 };
@@ -225,8 +243,10 @@ export function PortfolioPerformanceCard({
         overflowX: 'auto',
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
-        pt: { xs: 1, sm: 1.25 },
-        mt: { xs: 0.5, sm: 1 },
+        pt: { xs: 1.25, sm: 1.5 },
+        mt: { xs: 0.5, sm: 0.75 },
+        borderTop: '1px dotted',
+        borderColor: '#e5e7eb',
       }}
     >
       <IntervalSelector
@@ -295,20 +315,24 @@ export function PortfolioPerformanceCard({
 
   if (!isIntraday && allData.length === 0) {
     return (
-      <Alert severity="info">
-        No transactions found. Add open or closed positions to see portfolio performance.
-      </Alert>
+      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          No transactions found to show performance.
+        </Typography>
+      </Box>
     );
   }
 
   if (isIntraday && allData.length === 0 && intradayData.length === 0 && !isLoadingDaily) {
     return (
-      <Alert severity="info">
-        No transactions found. Add open or closed positions to see portfolio performance.
-      </Alert>
+      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          No data available for this session.
+        </Typography>
+      </Box>
     );
   }
-
+  
   return (
     <Stack spacing={1.5} sx={{ width: '100%', minWidth: 0 }}>
       <Box sx={cardSx}>
@@ -332,19 +356,21 @@ export function PortfolioPerformanceCard({
               Total Value
             </Typography>
 
-            <Typography
-              sx={{
-                fontSize: { xs: 28, sm: 34, md: 40 },
-                lineHeight: { xs: '34px', sm: '40px', md: '44px' },
-                fontWeight: 700,
-                color: '#1f2937',
-                wordBreak: 'break-word',
-              }}
-            >
-              {valuesHidden
-                ? `${currencyPrefix}${HIDDEN_VALUE}`
-                : `${currencyPrefix}${formatNumber(displayValue)}`}
-            </Typography>
+            {valuesHidden ? (
+              <LockOutlinedIcon sx={{ fontSize: { xs: 28, sm: 34, md: 40 }, color: MUTED }} />
+            ) : (
+              <Typography
+                sx={{
+                  fontSize: { xs: 28, sm: 34, md: 40 },
+                  lineHeight: { xs: '34px', sm: '40px', md: '44px' },
+                  fontWeight: 700,
+                  color: '#1f2937',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {`${currencyPrefix}${formatNumber(displayValue)}`}
+              </Typography>
+            )}
           </Box>
 
           <Box
@@ -356,39 +382,41 @@ export function PortfolioPerformanceCard({
               flexShrink: 0,
             }}
           >
-            <Typography
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.25,
-                fontSize: { xs: 15, sm: 17 },
-                fontWeight: 700,
-                lineHeight: 1.25,
-                color: performanceColor,
-              }}
-            >
-              {displayPerformance.positive ? (
-                <NorthEastIcon sx={{ fontSize: '1em' }} />
-              ) : (
-                <SouthEastIcon sx={{ fontSize: '1em' }} />
-              )}
-              {valuesHidden
-                ? `${HIDDEN_VALUE}%`
-                : `${Math.abs(displayPerformance.gainPercent).toFixed(2)}%`}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: { xs: 13, sm: 14 },
-                fontWeight: 600,
-                lineHeight: 1.3,
-                color: performanceColor,
-              }}
-            >
-              {valuesHidden
-                ? `${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${HIDDEN_VALUE}`
-                : `${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${formatNumber(Math.abs(displayPerformance.gain))}`}
-            </Typography>
+            {valuesHidden ? (
+              <LockOutlinedIcon sx={{ fontSize: 22, color: MUTED }} />
+            ) : (
+              <>
+                <Typography
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.25,
+                    fontSize: { xs: 15, sm: 17 },
+                    fontWeight: 700,
+                    lineHeight: 1.25,
+                    color: performanceColor,
+                  }}
+                >
+                  {displayPerformance.positive ? (
+                    <NorthEastIcon sx={{ fontSize: '1em' }} />
+                  ) : (
+                    <SouthEastIcon sx={{ fontSize: '1em' }} />
+                  )}
+                  {`${Math.abs(displayPerformance.gainPercent).toFixed(2)}%`}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: { xs: 13, sm: 14 },
+                    fontWeight: 600,
+                    lineHeight: 1.3,
+                    color: performanceColor,
+                  }}
+                >
+                  {`${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${formatNumber(Math.abs(displayPerformance.gain))}`}
+                </Typography>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -411,11 +439,16 @@ export function PortfolioPerformanceCard({
               }
             >
               <PortfolioChart
+                key={`${portfolioId}-${filter}-${interval}`}
                 chartData={chartData}
                 positive={periodEndPerformance.positive}
                 domain={chartDomain}
+                xDomain={xDomain}
+                liveAt={liveAt}
                 onScrub={handleScrub}
                 cursorFormat={isIntraday ? 'time' : 'date'}
+                showBaseline
+                lineType={isIntraday ? 'linear' : 'monotone'}
               />
             </Suspense>
           ) : (
@@ -434,7 +467,7 @@ export function PortfolioPerformanceCard({
             >
               <Typography variant="body2" color="text.secondary" textAlign="center">
                 {isIntraday
-                  ? 'No intraday data available for the latest session.'
+                  ? 'No data available for this session.'
                   : 'No data available for the selected period.'}
               </Typography>
             </Box>

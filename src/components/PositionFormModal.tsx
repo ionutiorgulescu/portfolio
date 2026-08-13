@@ -12,7 +12,9 @@ import {
   FormControl,
   Typography,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import Grid from '@mui/material/Grid';
 import { positionSchema } from '../schemas/positionSchema';
 import type { NewPosition } from '../schemas/positionSchema';
@@ -104,7 +106,19 @@ const PositionFormModal = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isEditMode ? 'Edit Position' : 'Add New Position'}</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {isEditMode ? 'Edit Position' : 'Add New Position'}
+          <IconButton
+            size="small"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            aria-label="Close"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
           <Grid container spacing={2}>
