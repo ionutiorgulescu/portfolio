@@ -377,19 +377,38 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                   </Typography>
                 </Box>
 
-                <Typography
-                  fontWeight={600}
+                <Box
                   sx={{
-                    ...primaryTextSx,
-                    fontSize: 14,
-                    lineHeight: '18px',
-                    whiteSpace: 'nowrap',
-                    fontVariantNumeric: 'tabular-nums',
+                    flexShrink: 0,
+                    textAlign: 'right',
                     px: { xs: 0.5, sm: 2 },
                   }}
                 >
-                  {formatPrice(position.price, position.currency)}
-                </Typography>
+                  <Typography
+                    fontWeight={600}
+                    sx={{
+                      ...primaryTextSx,
+                      fontSize: 14,
+                      lineHeight: '18px',
+                      whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {formatPrice(position.price, position.currency)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      ...mutedTextSx,
+                      fontSize: 12,
+                      lineHeight: '14px',
+                      mt: 0.25,
+                      whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {position.quantity}
+                  </Typography>
+                </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 1.5 }}>
                   <Tooltip title="Edit">
