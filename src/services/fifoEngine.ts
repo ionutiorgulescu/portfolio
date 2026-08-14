@@ -127,10 +127,17 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
   }
 
   const startDate = sorted[0].buy_date;
-  const yesterday = new Date();
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const endDate = toIsoDate(yesterday);
-  const dateRange = buildDateRange(startDate, endDate);
+  const today = toIsoDate(new Date());
+  // Same-day buys must appear immediately; live quotes patch today's mark.
+  if (startDate > today) {
+    return {
+      dailyHoldings: new Map(),
+      dailyCostBasis: new Map(),
+      dailyTickerCost: new Map(),
+      realizedGains: [],
+    };
+  }
+  const dateRange = buildDateRange(startDate, today);
 
   const lotQueues: LotQueues = new Map();
   const dailyHoldings: DailyHoldings = new Map();

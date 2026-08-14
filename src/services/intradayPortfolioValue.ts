@@ -16,6 +16,13 @@ export type IntradayPortfolioOptions = {
   windowStart: number;
   /** Last plotted timestamp: min(now, session close). */
   windowEnd: number;
+  /**
+   * Quote / buy price when a ticker has no session bars yet
+   * (same-day BVB lots, missing Yahoo history).
+   */
+  seedPrices?: Map<string, number>;
+  /** Remaining lot cost (native) — last-resort mark when no quote exists. */
+  tickerCost?: Map<string, number>;
 };
 
 /**
@@ -58,12 +65,15 @@ export function computeIntradayPortfolioValue(
     convertRon = false,
     windowStart,
     windowEnd,
+    seedPrices,
+    tickerCost,
   } = options;
   if (holdings.size === 0 || !(windowEnd >= windowStart)) return [];
 
   const heldTickers = [...holdings.keys()];
   const sortedBars = new Map<string, StockBarWithDate[]>();
   let hasAnyBar = false;
+  let hasAnySeed = false;
 
   for (const ticker of heldTickers) {
     const bars = [...(pricesByTicker.get(ticker) ?? [])]
@@ -71,9 +81,12 @@ export function computeIntradayPortfolioValue(
       .sort((left, right) => left.t - right.t);
     sortedBars.set(ticker, bars);
     if (bars.length > 0) hasAnyBar = true;
+
+    const seed = seedPriceFor(ticker, holdings.get(ticker) ?? 0, seedPrices, tickerCost);
+    if (seed !== undefined) hasAnySeed = true;
   }
 
-  if (!hasAnyBar) return [];
+  if (!hasAnyBar && !hasAnySeed) return [];
 
   const timestampSet = new Set<number>([windowStart, windowEnd]);
   for (const bars of sortedBars.values()) {
@@ -95,7 +108,17 @@ export function computeIntradayPortfolioValue(
       if (bar.t > windowStart) break;
       seedPrice = bar.c;
     }
-    if (seedPrice !== undefined) lastPrice.set(ticker, seedPrice);
+    if (seedPrice !== undefined) {
+      lastPrice.set(ticker, seedPrice);
+    } else {
+      const fallback = seedPriceFor(
+        ticker,
+        holdings.get(ticker) ?? 0,
+        seedPrices,
+        tickerCost,
+      );
+      if (fallback !== undefined) lastPrice.set(ticker, fallback);
+    }
   }
 
   const result: IntradayPortfolioPoint[] = [];
@@ -115,7 +138,10 @@ export function computeIntradayPortfolioValue(
     let pricedAny = false;
 
     for (const [ticker, shares] of holdings) {
-      const price = lastPrice.get(ticker);
+      let price = lastPrice.get(ticker);
+      if (price === undefined || price <= 0) {
+        price = seedPriceFor(ticker, shares, seedPrices, tickerCost);
+      }
       if (price === undefined || price <= 0) continue;
 
       const currency = tickerCurrency?.get(ticker);
@@ -137,6 +163,21 @@ export function computeIntradayPortfolioValue(
   }
 
   return result;
+}
+
+function seedPriceFor(
+  ticker: string,
+  shares: number,
+  seedPrices?: Map<string, number>,
+  tickerCost?: Map<string, number>,
+): number | undefined {
+  const quoted = seedPrices?.get(ticker);
+  if (quoted !== undefined && quoted > 0) return quoted;
+
+  const cost = tickerCost?.get(ticker);
+  if (cost !== undefined && cost > 0 && shares > 0) return cost / shares;
+
+  return undefined;
 }
 
 function formatDate(timestamp: number): string {

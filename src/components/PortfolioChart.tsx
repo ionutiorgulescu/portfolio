@@ -286,7 +286,11 @@ export default function PortfolioChart({
             dataKey="close"
             stroke={stroke}
             strokeWidth={lineType === 'linear' ? 2 : 2.25}
-            dot={false}
+            dot={
+              chartData.length < 2
+                ? { r: 4, fill: stroke, stroke: '#fff', strokeWidth: 2 }
+                : false
+            }
             // Recharts can keep an internal active index after touch-up; only render
             // the scrubber dot while we are actively scrubbing.
             activeDot={

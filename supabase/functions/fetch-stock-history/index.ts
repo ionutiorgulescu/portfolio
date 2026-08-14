@@ -362,7 +362,7 @@ const fetchAllBars = async (
       .filter(isYahooHistoricalRow)
       .map(mapYahooRow)
       .filter((bar): bar is StockBar => bar !== null)
-      .filter((bar) => bar.close > 0 && bar.volume > 0)
+      .filter((bar) => bar.close > 0)
       .sort((left, right) => left.timestamp - right.timestamp);
     // Yahoo's daily `quotes` candle for the most recent session sometimes
     // arrives with a null close before it's fully finalized. Fall back to

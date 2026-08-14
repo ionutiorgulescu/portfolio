@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type {
@@ -151,6 +151,7 @@ export function usePortfolioPerformance(
     queryFn: () => fetchStockHistories(historyTickers),
     enabled: historyTickers.length > 0,
     staleTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const pricesError = (pricesQueryError as Error | null) ?? null;
@@ -173,6 +174,9 @@ export function usePortfolioPerformance(
     dailyTickerCost,
     realizedGains: rawRealizedGains,
   } = useMemo(() => runFifoEngine(transactions), [transactions]);
+
+  const isFirstDayBook = dailyHoldings.size === 1;
+  const waitingForHistory = historyTickers.length > 0 && isLoadingPrices && !isFirstDayBook;
 
   const dateRange = useMemo(() => [...dailyHoldings.keys()], [dailyHoldings]);
 
@@ -319,7 +323,7 @@ export function usePortfolioPerformance(
   const data: PortfolioDataPoint[] = useMemo(() => {
     if (
       isLoadingTransactions ||
-      isLoadingPrices ||
+      waitingForHistory ||
       waitingForRonFx ||
       !hasRonFx
     ) {
@@ -382,7 +386,7 @@ export function usePortfolioPerformance(
     dailyCostBasis,
     dailyTickerCost,
     isLoadingTransactions,
-    isLoadingPrices,
+    waitingForHistory,
     waitingForRonFx,
     hasRonFx,
     latestHoldings,
@@ -402,7 +406,7 @@ export function usePortfolioPerformance(
     years,
     isLoading:
       isLoadingTransactions ||
-      isLoadingPrices ||
+      waitingForHistory ||
       waitingForRonFx,
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? pricesError,

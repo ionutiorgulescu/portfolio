@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type { Transaction } from '../types/performance';
@@ -130,7 +130,7 @@ export function usePortfolioIntradayPerformance(
     [filter, tickerCurrency],
   );
 
-  const { dailyHoldings, dailyCostBasis } = useMemo(
+  const { dailyHoldings, dailyCostBasis, dailyTickerCost } = useMemo(
     () => runFifoEngine(transactions),
     [transactions],
   );
@@ -162,6 +162,7 @@ export function usePortfolioIntradayPerformance(
     queryFn: () => fetchStockIntradayHistories(historyTickers, '5m'),
     enabled: enabled && historyTickers.length > 0,
     staleTime: INTRADAY_STALE_TIME_MS,
+    placeholderData: keepPreviousData,
   });
 
   const quoteTickers = useMemo(
@@ -194,6 +195,8 @@ export function usePortfolioIntradayPerformance(
     return resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
   }, [needsRonConversion, quoteMap]);
 
+  const isFirstDayBook = dailyHoldings.size === 1;
+
   const waitingForRonFx =
     needsRonConversion &&
     (isLoadingPrices || isLoadingQuotes) &&
@@ -201,6 +204,7 @@ export function usePortfolioIntradayPerformance(
 
   const hasRonFx = !needsRonConversion || liveRonToUsd > 0;
   const waitingForQuotes = needsQuotes && !quotes && isLoadingQuotes;
+  const waitingForHistory = historyTickers.length > 0 && isLoadingPrices && !isFirstDayBook;
 
   const sessionMarket = useMemo(
     () => sessionMarketForFilter(filter, transactions),
@@ -213,7 +217,7 @@ export function usePortfolioIntradayPerformance(
       !enabled ||
       !latestHoldings ||
       isLoadingTransactions ||
-      isLoadingPrices ||
+      waitingForHistory ||
       waitingForQuotes ||
       waitingForRonFx ||
       !hasRonFx
@@ -247,6 +251,12 @@ export function usePortfolioIntradayPerformance(
       ? parts.usd + parts.ron * (ronToUsd > 0 ? ronToUsd : 0)
       : parts.usd + parts.ron;
 
+    const seedPrices = new Map<string, number>();
+    for (const ticker of heldTickers) {
+      const livePrice = resolveQuotePrice(quoteMap.get(ticker)).price;
+      if (livePrice > 0) seedPrices.set(ticker, livePrice);
+    }
+
     const series = computeIntradayPortfolioValue(
       latestHoldings.holdings,
       costBasis,
@@ -257,6 +267,8 @@ export function usePortfolioIntradayPerformance(
         convertRon: needsRonConversion,
         windowStart: session.start,
         windowEnd,
+        seedPrices,
+        tickerCost: dailyTickerCost.get(latestHoldings.date),
       },
     );
 
@@ -305,13 +317,14 @@ export function usePortfolioIntradayPerformance(
     enabled,
     latestHoldings,
     isLoadingTransactions,
-    isLoadingPrices,
+    waitingForHistory,
     waitingForQuotes,
     waitingForRonFx,
     hasRonFx,
     heldTickers,
     historyByTicker,
     dailyCostBasis,
+    dailyTickerCost,
     needsRonConversion,
     liveRonToUsd,
     tickerCurrency,
@@ -327,7 +340,7 @@ export function usePortfolioIntradayPerformance(
     isLoading:
       enabled &&
       (isLoadingTransactions ||
-        (historyTickers.length > 0 && isLoadingPrices) ||
+        waitingForHistory ||
         waitingForQuotes ||
         waitingForRonFx),
     isError: isErrorTransactions || isErrorPrices,
