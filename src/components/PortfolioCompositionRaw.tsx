@@ -46,39 +46,73 @@ function formatQuantity(value: number): string {
         : value.toFixed(4).replace(/\.?0+$/, '');
 }
 
-function LivePulseDot({ positive }: { positive: boolean }) {
+function LivePulseDot({
+    positive,
+    changePercent,
+}: {
+    positive: boolean;
+    changePercent: number | null;
+}) {
     const color = positive ? '#27a69a' : '#d92673';
+    const pct =
+        changePercent != null && Number.isFinite(Number(changePercent))
+            ? Number(changePercent)
+            : null;
 
     return (
         <Box
             component="span"
-            aria-hidden
-            title={positive ? 'Up today' : 'Down today'}
             sx={{
-                position: 'relative',
-                display: 'inline-block',
-                width: 7,
-                height: 7,
+                display: 'inline-flex',
+                alignItems: 'center',
+                columnGap: 0.5,
                 ml: 0.75,
-                borderRadius: '50%',
-                bgcolor: color,
-                flexShrink: 0,
                 verticalAlign: 'middle',
-                '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    inset: 0,
+            }}
+        >
+            <Box
+                component="span"
+                aria-hidden
+                title={positive ? 'Up today' : 'Down today'}
+                sx={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    width: 7,
+                    height: 7,
                     borderRadius: '50%',
                     bgcolor: color,
-                    animation: 'compositionLivePulse 1.6s ease-out infinite',
-                },
-                '@keyframes compositionLivePulse': {
-                    '0%': { transform: 'scale(1)', opacity: 0.55 },
-                    '70%': { transform: 'scale(2.4)', opacity: 0 },
-                    '100%': { transform: 'scale(2.4)', opacity: 0 },
-                },
-            }}
-        />
+                    flexShrink: 0,
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: '50%',
+                        bgcolor: color,
+                        animation: 'compositionLivePulse 1.6s ease-out infinite',
+                    },
+                    '@keyframes compositionLivePulse': {
+                        '0%': { transform: 'scale(1)', opacity: 0.55 },
+                        '70%': { transform: 'scale(2.4)', opacity: 0 },
+                        '100%': { transform: 'scale(2.4)', opacity: 0 },
+                    },
+                }}
+            />
+            {pct != null ? (
+                <Box
+                    component="span"
+                    sx={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        lineHeight: '14px',
+                        fontVariantNumeric: 'tabular-nums',
+                        color,
+                    }}
+                >
+                    {positive ? '+' : ''}
+                    {pct.toFixed(2)}%
+                </Box>
+            ) : null}
+        </Box>
     );
 }
 
@@ -362,7 +396,12 @@ export function PortfolioCompositionRow({
                         >
                             {formatCurrency(row.currentPrice, currency)}
                         </Typography>
-                        {showLiveDot ? <LivePulseDot positive={dayChangePositive} /> : null}
+                        {showLiveDot ? (
+                            <LivePulseDot
+                                positive={dayChangePositive}
+                                changePercent={valuesHidden ? null : row.dayChangePercent}
+                            />
+                        ) : null}
                         {row.priceSession ? (
                             <SessionBadge
                                 session={row.priceSession}
