@@ -196,6 +196,40 @@ function firstPositiveClose(bars: StockBarWithDate[]): number | null {
   return null;
 }
 
+function closeRange(bars: StockBarWithDate[]): { min: number; max: number } | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const bar of bars) {
+    if (!Number.isFinite(bar.c) || bar.c <= 0) continue;
+    if (bar.c < min) min = bar.c;
+    if (bar.c > max) max = bar.c;
+  }
+  return min === Infinity ? null : { min, max };
+}
+
+/** Zero for the visible window: prior close if price traded through it, else first print. */
+function seriesBaseline(
+  visible: StockBarWithDate[],
+  history: StockBarWithDate[],
+  quotePreviousClose: number | null,
+): number {
+  const first = firstPositiveClose(visible);
+  if (first == null) {
+    return quotePreviousClose != null && quotePreviousClose > 0 ? quotePreviousClose : 0;
+  }
+
+  const range = closeRange(visible);
+  if (!range) return first;
+
+  const priorFromBars = latestPositiveCloseBefore(history, visible[0].t);
+  const prior =
+    priorFromBars ??
+    (quotePreviousClose != null && quotePreviousClose > 0 ? quotePreviousClose : null);
+
+  if (prior != null && prior >= range.min && prior <= range.max) return prior;
+  return first;
+}
+
 function withLiveTip(
   bars: StockBarWithDate[],
   livePrice: number | null,
@@ -365,40 +399,15 @@ export function TickerChart({
     return sliced.length > 0 ? sliced : sortedDaily;
   }, [interval, isIntraday, sortedDaily, intradayData, sessionLivePrice, session]);
 
-  const baseline = useMemo(() => {
-    if (isIntraday) {
-      if (priceSession === 'PRE') {
-        const priorClose = latestPositiveCloseBefore(intradayData, session.start);
-        if (priorClose != null) return priorClose;
-        const sessionOpen = firstPositiveClose(filteredBars);
-        if (sessionOpen != null) return sessionOpen;
-      } else if (priceSession === 'POST') {
-        if (livePrice != null && livePrice > 0) return livePrice;
-        const sessionOpen = firstPositiveClose(filteredBars);
-        if (sessionOpen != null) return sessionOpen;
-      }
-
-      if (previousClose != null && previousClose > 0) return previousClose;
-    }
-
-    if (!isIntraday && sortedDaily.length > 0 && filteredBars.length > 0) {
-      const firstInRange = filteredBars[0];
-      const prior = sortedDaily.filter((bar) => bar.t < firstInRange.t);
-      const priorClose = prior[prior.length - 1]?.c;
-      if (priorClose != null && priorClose > 0) return priorClose;
-    }
-
-    return filteredBars[0]?.c ?? previousClose ?? 0;
-  }, [
-    isIntraday,
-    priceSession,
-    intradayData,
-    session.start,
-    filteredBars,
-    livePrice,
-    previousClose,
-    sortedDaily,
-  ]);
+  const baseline = useMemo(
+    () =>
+      seriesBaseline(
+        filteredBars,
+        isIntraday ? intradayData : sortedDaily,
+        previousClose,
+      ),
+    [filteredBars, isIntraday, intradayData, sortedDaily, previousClose],
+  );
 
   const chartData = useMemo<PortfolioChartPoint[]>(
     () =>
@@ -445,14 +454,12 @@ export function TickerChart({
     }
 
     const values = chartData.map((point) => point.close);
-    const pinBaseline =
-      baseline > 0 && !(priceSession != null && baseline === previousClose);
-    const minVal = Math.min(...values, pinBaseline ? baseline : values[0]);
-    const maxVal = Math.max(...values, pinBaseline ? baseline : values[0]);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
     const spread = maxVal - minVal;
     const padding = Math.max(spread * 0.18, maxVal * 0.002, 0.01);
     return [minVal - padding, maxVal + padding];
-  }, [chartData, baseline, priceSession, previousClose]);
+  }, [chartData, baseline]);
 
   const xDomain = useMemo((): [number, number] | undefined => {
     if (!isIntraday) return undefined;

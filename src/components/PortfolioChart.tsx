@@ -260,7 +260,7 @@ export default function PortfolioChart({
               stroke={BASELINE_COLOR}
               strokeDasharray="3 4"
               strokeWidth={1}
-              ifOverflow="extendDomain"
+              ifOverflow="hidden"
             />
           ) : null}
 
