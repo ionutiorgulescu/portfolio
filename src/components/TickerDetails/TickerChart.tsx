@@ -178,6 +178,24 @@ function SessionLabel({ session }: { session: PriceSession }) {
   );
 }
 
+function latestPositiveCloseBefore(bars: StockBarWithDate[], beforeT: number): number | null {
+  let close: number | null = null;
+  let latestT = -Infinity;
+  for (const bar of bars) {
+    if (bar.t >= beforeT || bar.t < latestT || !Number.isFinite(bar.c) || bar.c <= 0) continue;
+    latestT = bar.t;
+    close = bar.c;
+  }
+  return close;
+}
+
+function firstPositiveClose(bars: StockBarWithDate[]): number | null {
+  for (const bar of bars) {
+    if (Number.isFinite(bar.c) && bar.c > 0) return bar.c;
+  }
+  return null;
+}
+
 function withLiveTip(
   bars: StockBarWithDate[],
   livePrice: number | null,
@@ -348,7 +366,20 @@ export function TickerChart({
   }, [interval, isIntraday, sortedDaily, intradayData, sessionLivePrice, session]);
 
   const baseline = useMemo(() => {
-    if (isIntraday && previousClose != null && previousClose > 0) return previousClose;
+    if (isIntraday) {
+      if (priceSession === 'PRE') {
+        const priorClose = latestPositiveCloseBefore(intradayData, session.start);
+        if (priorClose != null) return priorClose;
+        const sessionOpen = firstPositiveClose(filteredBars);
+        if (sessionOpen != null) return sessionOpen;
+      } else if (priceSession === 'POST') {
+        if (livePrice != null && livePrice > 0) return livePrice;
+        const sessionOpen = firstPositiveClose(filteredBars);
+        if (sessionOpen != null) return sessionOpen;
+      }
+
+      if (previousClose != null && previousClose > 0) return previousClose;
+    }
 
     if (!isIntraday && sortedDaily.length > 0 && filteredBars.length > 0) {
       const firstInRange = filteredBars[0];
@@ -358,7 +389,16 @@ export function TickerChart({
     }
 
     return filteredBars[0]?.c ?? previousClose ?? 0;
-  }, [isIntraday, previousClose, sortedDaily, filteredBars]);
+  }, [
+    isIntraday,
+    priceSession,
+    intradayData,
+    session.start,
+    filteredBars,
+    livePrice,
+    previousClose,
+    sortedDaily,
+  ]);
 
   const chartData = useMemo<PortfolioChartPoint[]>(
     () =>
@@ -405,12 +445,14 @@ export function TickerChart({
     }
 
     const values = chartData.map((point) => point.close);
-    const minVal = Math.min(...values, baseline > 0 ? baseline : values[0]);
-    const maxVal = Math.max(...values, baseline > 0 ? baseline : values[0]);
+    const pinBaseline =
+      baseline > 0 && !(priceSession != null && baseline === previousClose);
+    const minVal = Math.min(...values, pinBaseline ? baseline : values[0]);
+    const maxVal = Math.max(...values, pinBaseline ? baseline : values[0]);
     const spread = maxVal - minVal;
     const padding = Math.max(spread * 0.18, maxVal * 0.002, 0.01);
     return [minVal - padding, maxVal + padding];
-  }, [chartData, baseline]);
+  }, [chartData, baseline, priceSession, previousClose]);
 
   const xDomain = useMemo((): [number, number] | undefined => {
     if (!isIntraday) return undefined;
