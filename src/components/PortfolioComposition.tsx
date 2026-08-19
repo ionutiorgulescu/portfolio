@@ -139,6 +139,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
             onTogglePercent={() => setShowPercent(prev => !prev)}
             onLogoClick={handleLogoClick}
             logoUrl={logosByTicker.get(row.ticker)}
+            compositionFilter={filter}
           />
         ))
       )}

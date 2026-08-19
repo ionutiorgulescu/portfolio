@@ -6,6 +6,11 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  isCompositionFilter,
+  rememberCompositionFilter,
+  type CompositionFilter,
+} from '../components/FilterControl';
 import { TickerChart } from '../components/TickerDetails/TickerChart';
 import { TickerFundamentals } from '../components/TickerDetails/TickerFundamentals';
 import { useRegisterPullToRefresh } from '../contexts/PullToRefreshContext';
@@ -15,6 +20,7 @@ import { useTickerFundamentals } from '../hooks/useTickerFundamentals';
 type LocationState = {
   name?: string;
   currency?: string;
+  compositionFilter?: CompositionFilter;
 };
 
 const primaryTextSx = {
@@ -135,11 +141,18 @@ const TickerDetailsPage = () => {
   useRegisterPullToRefresh(handleRefresh);
 
   const handleBack = () => {
+    if (isCompositionFilter(state.compositionFilter)) {
+      rememberCompositionFilter(state.compositionFilter);
+    }
     if (location.key !== 'default') {
       navigate(-1);
       return;
     }
-    navigate('/dashboard');
+    navigate('/dashboard', {
+      state: isCompositionFilter(state.compositionFilter)
+        ? { compositionFilter: state.compositionFilter }
+        : undefined,
+    });
   };
 
   const name = data?.name || state.name || ticker;

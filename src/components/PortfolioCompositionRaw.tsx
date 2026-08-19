@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import type { CompositionFilter } from "./FilterControl";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
 import chartPieIcon from "../assets/chart-pie.svg";
@@ -306,6 +307,7 @@ export function PortfolioCompositionRow({
     onTogglePercent,
     onLogoClick,
     logoUrl,
+    compositionFilter,
 }: {
     row: TickerComposition;
     currency: 'USD' | 'RON';
@@ -313,6 +315,7 @@ export function PortfolioCompositionRow({
     onTogglePercent: () => void;
     onLogoClick?: (row: TickerComposition) => void;
     logoUrl?: string | null;
+    compositionFilter?: CompositionFilter;
 }) {
     const { valuesHidden } = useValuesVisibility();
     const gainPositive = row.gainLoss >= 0;
@@ -365,7 +368,11 @@ export function PortfolioCompositionRow({
                     <Typography
                         component={Link}
                         to={`/ticker/${encodeURIComponent(row.ticker)}`}
-                        state={{ name: row.assetName, currency: row.currency }}
+                        state={{
+                            name: row.assetName,
+                            currency: row.currency,
+                            compositionFilter,
+                        }}
                         aria-label={`View details for ${row.assetName}`}
                         onMouseEnter={() => {
                             void import('../pages/TickerDetails');

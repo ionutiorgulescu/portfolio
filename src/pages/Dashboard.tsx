@@ -3,13 +3,32 @@ import Box from '@mui/material/Box';
 import { useQueryClient } from '@tanstack/react-query';
 import { PortfolioPerformanceCard } from '../components/PortfolioPerformanceCard';
 import { PortfolioComposition } from '../components/PortfolioComposition';
-import { FilterControl } from '../components/FilterControl';
-import type { CompositionFilter } from '../components/FilterControl';
+import {
+  FilterControl,
+  getRememberedCompositionFilter,
+  isCompositionFilter,
+  rememberCompositionFilter,
+  type CompositionFilter,
+} from '../components/FilterControl';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
 import { useRegisterPullToRefresh } from '../contexts/PullToRefreshContext';
+import { useLocation } from 'react-router-dom';
 
 const Dashboard = () => {
-  const [filter, setFilter] = useState<CompositionFilter>('stock');
+  const location = useLocation();
+  const [filter, setFilter] = useState<CompositionFilter>(() => {
+    const fromTicker = (location.state as { compositionFilter?: unknown } | null)?.compositionFilter;
+    if (isCompositionFilter(fromTicker)) {
+      rememberCompositionFilter(fromTicker);
+      return fromTicker;
+    }
+    return getRememberedCompositionFilter();
+  });
+
+  const handleFilterChange = (next: CompositionFilter) => {
+    rememberCompositionFilter(next);
+    setFilter(next);
+  };
   const { selectedPortfolioId } = usePortfolioContext();
   const queryClient = useQueryClient();
 
@@ -47,7 +66,7 @@ const Dashboard = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 0 },
       }}>
-        <FilterControl value={filter} onChange={setFilter} />
+        <FilterControl value={filter} onChange={handleFilterChange} />
       </Box>
       <PortfolioPerformanceCard
         filter={filter}

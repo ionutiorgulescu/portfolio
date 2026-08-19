@@ -9,6 +9,22 @@ import AppsIcon from '@mui/icons-material/Apps';
 
 export type CompositionFilter = 'all' | 'stock' | 'crypto' | 'bvb';
 
+const COMPOSITION_FILTERS: readonly CompositionFilter[] = ['all', 'stock', 'crypto', 'bvb'];
+
+let rememberedCompositionFilter: CompositionFilter = 'stock';
+
+export function isCompositionFilter(value: unknown): value is CompositionFilter {
+  return COMPOSITION_FILTERS.includes(value as CompositionFilter);
+}
+
+export function getRememberedCompositionFilter(): CompositionFilter {
+  return rememberedCompositionFilter;
+}
+
+export function rememberCompositionFilter(filter: CompositionFilter): void {
+  rememberedCompositionFilter = filter;
+}
+
 const SELECTED_BG = '#E8F7F3';
 const SELECTED_BORDER = '#C5EDE3';
 const SELECTED_ICON_BG = '#D4F0E8';
