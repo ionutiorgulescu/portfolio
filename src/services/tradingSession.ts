@@ -6,6 +6,11 @@ export type TradingSessionWindow = {
   timeZone: string;
 };
 
+export type ResolveTradingSessionOptions = {
+  /** US 1D window includes pre-market (04:00) and after-hours (to 20:00 ET). */
+  includeExtendedHours?: boolean;
+};
+
 type CivilDate = {
   year: number;
   month: number;
@@ -116,14 +121,29 @@ function windowOn(
   };
 }
 
+function usExtendedSessionForDate(
+  date: Pick<CivilDate, 'year' | 'month' | 'day'>,
+): TradingSessionWindow {
+  return windowOn(US_TZ, date, 4, 0, 20, 0);
+}
+
 function usSessionForDate(
   date: Pick<CivilDate, 'year' | 'month' | 'day'>,
   now: number,
+  includeExtendedHours = false,
 ): TradingSessionWindow {
   const preOpen = zonedLocalToUtc(US_TZ, date.year, date.month, date.day, 4, 0);
   const regularOpen = zonedLocalToUtc(US_TZ, date.year, date.month, date.day, 9, 30);
   const regularClose = zonedLocalToUtc(US_TZ, date.year, date.month, date.day, 16, 0);
   const postClose = zonedLocalToUtc(US_TZ, date.year, date.month, date.day, 20, 0);
+
+  if (includeExtendedHours) {
+    // Always include pre-market; extend through after-hours once it has started.
+    if (now <= regularClose) {
+      return { start: preOpen, end: regularClose, timeZone: US_TZ };
+    }
+    return { start: preOpen, end: postClose, timeZone: US_TZ };
+  }
 
   if (now < regularOpen) {
     return { start: preOpen, end: regularOpen, timeZone: US_TZ };
@@ -170,16 +190,19 @@ function sessionDay(market: SessionMarket, now: number): CivilDate {
  * 1D chart window: session open → session close.
  * Before the open (or on weekends) this is the previous completed regular session.
  * US premarket uses 04:00–09:30 ET; regular 09:30–16:00; after-hours extends to 20:00.
+ * Pass `includeExtendedHours` to always plot the full US 04:00–20:00 window.
  */
 export function resolveTradingSession(
   market: SessionMarket,
   now: number,
   latestBarT?: number,
+  options?: ResolveTradingSessionOptions,
 ): TradingSessionWindow {
+  const includeExtendedHours = options?.includeExtendedHours === true;
   const date = sessionDay(market, now);
   const session =
     market === 'us'
-      ? usSessionForDate(date, now)
+      ? usSessionForDate(date, now, includeExtendedHours)
       : market === 'bvb'
         ? bvbSessionForDate(date)
         : cryptoSessionForDate(date);
@@ -194,11 +217,23 @@ export function resolveTradingSession(
   const barDate = { year: barDay.year, month: barDay.month, day: barDay.day };
   const barSession =
     market === 'us'
-      ? windowOn(US_TZ, barDate, 9, 30, 16, 0)
+      ? includeExtendedHours
+        ? usExtendedSessionForDate(barDate)
+        : windowOn(US_TZ, barDate, 9, 30, 16, 0)
       : market === 'bvb'
         ? bvbSessionForDate(barDate)
         : cryptoSessionForDate(barDate);
 
   if (barSession.end < session.start && now > session.end) return barSession;
   return session;
+}
+
+/** Live US extended-hours phase, or null during regular hours / weekends / overnight. */
+export function resolveUsPriceSession(now: number): 'PRE' | 'POST' | null {
+  const parts = zonedParts(now, US_TZ);
+  if (parts.weekday === 0 || parts.weekday === 6) return null;
+  const mins = minutesOfDay(parts.hour, parts.minute);
+  if (mins >= minutesOfDay(4, 0) && mins < minutesOfDay(9, 30)) return 'PRE';
+  if (mins >= minutesOfDay(16, 0) && mins < minutesOfDay(20, 0)) return 'POST';
+  return null;
 }

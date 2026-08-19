@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Box, CircularProgress, Container, Paper } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
@@ -11,6 +12,16 @@ import Transactions from './pages/Transactions';
 import { PortfolioProvider } from './contexts/PortfolioContext';
 import { ValuesVisibilityProvider } from './contexts/ValuesVisibilityContext';
 import Plan from './pages/Plan';
+
+const TickerDetails = lazy(() => import('./pages/TickerDetails'));
+
+function RouteFallback() {
+  return (
+    <Box sx={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+      <CircularProgress />
+    </Box>
+  );
+}
 
 function App() {
   const { user, loading } = useAuthSession();
@@ -52,6 +63,14 @@ function App() {
             <Route path="markets" element={<Markets />} />
             <Route path="goal" element={<Goal />} />
             <Route path="plan" element={<Plan />} />
+            <Route
+              path="ticker/:symbol"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <TickerDetails />
+                </Suspense>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

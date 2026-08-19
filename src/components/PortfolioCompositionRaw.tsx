@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
 import chartPieIcon from "../assets/chart-pie.svg";
@@ -362,6 +363,16 @@ export function PortfolioCompositionRow({
                     }}
                 >
                     <Typography
+                        component={Link}
+                        to={`/ticker/${encodeURIComponent(row.ticker)}`}
+                        state={{ name: row.assetName, currency: row.currency }}
+                        aria-label={`View details for ${row.assetName}`}
+                        onMouseEnter={() => {
+                            void import('../pages/TickerDetails');
+                        }}
+                        onFocus={() => {
+                            void import('../pages/TickerDetails');
+                        }}
                         fontWeight={700}
                         sx={{
                             ...primaryTextSx,
@@ -370,6 +381,16 @@ export function PortfolioCompositionRow({
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            textDecoration: 'none',
+                            display: 'block',
+                            width: 'fit-content',
+                            maxWidth: '100%',
+                            cursor: 'pointer',
+                            '&:visited': { color: '#393a36' },
+                            '&:hover': {
+                                textDecoration: 'underline',
+                                textUnderlineOffset: '3px',
+                            },
                         }}
                     >
                         {row.assetName}
