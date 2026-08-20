@@ -81,7 +81,7 @@ function PriceSpan({
       <Typography sx={{ ...mutedTextSx, fontSize: 13, lineHeight: '16px', fontWeight: 500 }}>
         {label}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', columnGap: { xs: 2.5, sm: 2 } }}>
         <Typography
           sx={{
             ...primaryTextSx,
@@ -89,7 +89,8 @@ function PriceSpan({
             lineHeight: '16px',
             fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
-            minWidth: 64,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           {formatPrice(low, currency)}
@@ -97,6 +98,7 @@ function PriceSpan({
         <Box
           sx={{
             flex: 1,
+            minWidth: 0,
             position: 'relative',
             height: 18,
             display: 'flex',
@@ -116,11 +118,14 @@ function PriceSpan({
               aria-hidden
               sx={{
                 position: 'absolute',
-                left: `${pct}%`,
+                left: {
+                  xs: `clamp(4px, ${pct}%, calc(100% - 4px))`,
+                  sm: `clamp(18px, ${pct}%, calc(100% - 18px))`,
+                },
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: 36,
-                height: 7,
+                width: { xs: 8, sm: 36 },
+                height: { xs: 8, sm: 7 },
                 bgcolor: '#1c1c1a',
                 borderRadius: 999,
               }}
@@ -134,7 +139,8 @@ function PriceSpan({
             lineHeight: '16px',
             fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
-            minWidth: 64,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
             textAlign: 'right',
           }}
         >

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { CompositionFilter } from "./FilterControl";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
+import { bvbFaviconUrls, isBvbListing } from "../utils/bvbFavicon";
 import chartPieIcon from "../assets/chart-pie.svg";
 import sunriseIcon from "../assets/sunrise.svg";
 import sunsetIcon from "../assets/sunset.svg";
@@ -23,10 +24,6 @@ const mutedTextSx = {
     color: "#9a9a96",
     fontFamily: '"Open Sans", sans-serif',
 };
-
-function buildLogoCandidates(logoUrl?: string | null): string[] {
-    return logoUrl ? [logoUrl] : [];
-}
 
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
 const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
@@ -195,21 +192,28 @@ function SessionBadge({
 
 function TickerAvatar({
     ticker,
+    assetName,
+    currency,
     logoUrl,
     onClick,
 }: {
     ticker: string;
+    assetName?: string;
+    currency?: string;
     logoUrl?: string | null;
     onClick?: () => void;
 }) {
-    const candidates = buildLogoCandidates(logoUrl);
+    const candidates = isBvbListing(ticker, currency)
+        ? bvbFaviconUrls(assetName ?? '', ticker)
+        : (logoUrl ? [logoUrl] : []);
+    const sourcesKey = candidates.join('|');
     const [attempt, setAttempt] = useState(0);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         setAttempt(0);
         setLoaded(false);
-    }, [ticker, logoUrl]);
+    }, [ticker, sourcesKey]);
 
     const src = candidates[attempt] ?? null;
     const exhausted = attempt >= candidates.length;
@@ -278,7 +282,14 @@ function TickerAvatar({
                     src={src}
                     alt={`${ticker} logo`}
                     referrerPolicy="no-referrer"
-                    onLoad={() => setLoaded(true)}
+                    onLoad={(event) => {
+                        if (event.currentTarget.naturalWidth <= 16) {
+                            setLoaded(false);
+                            setAttempt((current) => current + 1);
+                            return;
+                        }
+                        setLoaded(true);
+                    }}
                     onError={() => {
                         setLoaded(false);
                         setAttempt((current) => current + 1);
@@ -342,6 +353,8 @@ export function PortfolioCompositionRow({
         >
             <TickerAvatar
                 ticker={row.ticker}
+                assetName={row.assetName}
+                currency={row.currency}
                 logoUrl={logoUrl}
                 onClick={onLogoClick ? () => onLogoClick(row) : undefined}
             />

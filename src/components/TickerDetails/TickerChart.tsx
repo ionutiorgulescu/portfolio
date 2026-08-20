@@ -138,42 +138,29 @@ function sessionPrintPrice(quote: QuoteResult, session: PriceSession | null): nu
   return null;
 }
 
-function SessionLabel({ session }: { session: PriceSession }) {
+function SessionIcon({ session }: { session: PriceSession }) {
   const isPre = session === 'PRE';
-  const label = isPre ? 'Pre-market' : 'Post-market';
   return (
     <Box
       component="span"
-      title={label}
+      title={isPre ? 'Pre-market' : 'Post-market'}
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        columnGap: 0.5,
-        mt: 0.75,
-        px: 0.75,
-        py: 0.25,
+        justifyContent: 'center',
+        width: 24,
+        height: 24,
         borderRadius: '4px',
         bgcolor: '#e9eef6',
+        flexShrink: 0,
       }}
     >
       <Box
         component="img"
         src={isPre ? sunriseIcon : sunsetIcon}
         alt=""
-        sx={{ width: 12, height: 12, opacity: 0.7 }}
+        sx={{ width: 14, height: 14, opacity: 0.7 }}
       />
-      <Typography
-        component="span"
-        sx={{
-          color: MUTED,
-          fontFamily: FONT,
-          fontSize: 11,
-          fontWeight: 600,
-          lineHeight: '14px',
-        }}
-      >
-        {label}
-      </Typography>
     </Box>
   );
 }
@@ -518,27 +505,50 @@ export function TickerChart({
           }}
         >
           {priceParts ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                columnGap: 1,
+                minWidth: 0,
+              }}
+            >
+              {isLiveMarket ? (
+                <LiveDot positive={displayPositive} pulse={isIntraday && !scrubbedPoint} />
+              ) : null}
               <Box
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
-                  columnGap: 1,
+                  alignItems: 'baseline',
+                  columnGap: 0.75,
                   minWidth: 0,
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {isLiveMarket ? (
-                  <LiveDot positive={displayPositive} pulse={isIntraday && !scrubbedPoint} />
-                ) : null}
-                <Box
+                <Typography
+                  component="span"
                   sx={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    columnGap: 0.75,
-                    minWidth: 0,
-                    fontVariantNumeric: 'tabular-nums',
+                    ...primaryTextSx,
+                    fontSize: { xs: 22, sm: 26 },
+                    fontWeight: 700,
+                    lineHeight: 1,
                   }}
                 >
+                  {symbol}
+                </Typography>
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'baseline' }}>
+                  <Typography
+                    component="span"
+                    sx={{
+                      ...primaryTextSx,
+                      fontSize: { xs: 36, sm: 44 },
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      letterSpacing: '-0.03em',
+                    }}
+                  >
+                    {priceParts.integer}
+                  </Typography>
                   <Typography
                     component="span"
                     sx={{
@@ -548,39 +558,12 @@ export function TickerChart({
                       lineHeight: 1,
                     }}
                   >
-                    {symbol}
+                    .{priceParts.decimal}
                   </Typography>
-                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'baseline' }}>
-                    <Typography
-                      component="span"
-                      sx={{
-                        ...primaryTextSx,
-                        fontSize: { xs: 36, sm: 44 },
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        letterSpacing: '-0.03em',
-                      }}
-                    >
-                      {priceParts.integer}
-                    </Typography>
-                    <Typography
-                      component="span"
-                      sx={{
-                        ...primaryTextSx,
-                        fontSize: { xs: 22, sm: 26 },
-                        fontWeight: 700,
-                        lineHeight: 1,
-                      }}
-                    >
-                      .{priceParts.decimal}
-                    </Typography>
-                  </Box>
                 </Box>
               </Box>
               {isIntraday && !scrubbedPoint && priceSession ? (
-                <Box sx={{ ml: 2 }}>
-                  <SessionLabel session={priceSession} />
-                </Box>
+                <SessionIcon session={priceSession} />
               ) : null}
             </Box>
           ) : isLoading ? (

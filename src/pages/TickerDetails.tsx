@@ -3,7 +3,7 @@ import IconButton from '@mui/material/IconButton';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -16,6 +16,7 @@ import { TickerFundamentals } from '../components/TickerDetails/TickerFundamenta
 import { useRegisterPullToRefresh } from '../contexts/PullToRefreshContext';
 import { useStockLogos } from '../hooks/useStockLogos';
 import { useTickerFundamentals } from '../hooks/useTickerFundamentals';
+import { bvbFaviconUrls, isBvbListing } from '../utils/bvbFavicon';
 
 type LocationState = {
   name?: string;
@@ -36,17 +37,21 @@ const mutedTextSx = {
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
 const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
 
-function TickerLogo({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
-  const [failed, setFailed] = useState(false);
+function TickerLogo({ ticker, logoUrls }: { ticker: string; logoUrls: string[] }) {
+  const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
+  const sourcesKey = logoUrls.join('|');
+
   useEffect(() => {
-    setFailed(false);
+    setAttempt(0);
     setLoaded(false);
-  }, [ticker, logoUrl]);
+  }, [ticker, sourcesKey]);
 
   const invertLogo = INVERT_LOGO_TICKERS.has(ticker.toUpperCase());
-  const showImage = Boolean(logoUrl) && !failed;
+  const logoUrl = logoUrls[attempt] ?? null;
+  const exhausted = attempt >= logoUrls.length;
+  const showImage = Boolean(logoUrl) && !exhausted;
 
   return (
     <Box
@@ -85,10 +90,18 @@ function TickerLogo({ ticker, logoUrl }: { ticker: string; logoUrl?: string | nu
           src={logoUrl ?? undefined}
           alt={`${ticker} logo`}
           referrerPolicy="no-referrer"
-          onLoad={() => setLoaded(true)}
+          onLoad={(event) => {
+            // Google's missing-favicon placeholder is a 16×16 globe.
+            if (event.currentTarget.naturalWidth <= 16) {
+              setLoaded(false);
+              setAttempt((current) => current + 1);
+              return;
+            }
+            setLoaded(true);
+          }}
           onError={() => {
             setLoaded(false);
-            setFailed(true);
+            setAttempt((current) => current + 1);
           }}
           sx={{
             position: 'absolute',
@@ -116,7 +129,8 @@ const TickerDetailsPage = () => {
   const ticker = symbol.trim().toUpperCase();
 
   const { data, isLoading, error } = useTickerFundamentals(ticker);
-  const { logosByTicker } = useStockLogos(ticker ? [ticker] : []);
+  const isBvb = isBvbListing(ticker, data?.currency || state.currency);
+  const { logosByTicker } = useStockLogos(isBvb || !ticker ? [] : [ticker]);
   const pageRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -159,7 +173,17 @@ const TickerDetailsPage = () => {
 
   const name = data?.name || state.name || ticker;
   const currency = data?.currency || state.currency || 'USD';
-  const logoUrl = logosByTicker.get(ticker);
+  const remoteLogo = logosByTicker.get(ticker) ?? null;
+  const logoUrls = useMemo(() => {
+    if (isBvb) {
+      const sourceName = data?.name || state.name;
+      if (!sourceName || sourceName.trim().toUpperCase() === ticker) {
+        return bvbFaviconUrls('', ticker);
+      }
+      return bvbFaviconUrls(sourceName, ticker);
+    }
+    return remoteLogo ? [remoteLogo] : [];
+  }, [data?.name, isBvb, remoteLogo, state.name, ticker]);
 
   return (
     <Box
@@ -186,11 +210,12 @@ const TickerDetailsPage = () => {
             ml: -1,
             color: '#393a36',
             flexShrink: 0,
+            p: 0,
           }}
         >
           <ChevronLeftIcon />
         </IconButton>
-        <TickerLogo ticker={ticker} logoUrl={logoUrl} />
+        <TickerLogo ticker={ticker} logoUrls={logoUrls} />
         <Box sx={{ minWidth: 0, flex: 1 }}>
           {isLoading && !data && !state.name ? (
             <>

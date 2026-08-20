@@ -11,6 +11,7 @@ import {
 } from '../hooks/usePortfolioComposition';
 import { useStockLogos } from '../hooks/useStockLogos';
 import type { NewPosition } from '../schemas/positionSchema';
+import { isBvbListing } from '../utils/bvbFavicon';
 import type { CompositionFilter } from './FilterControl';
 import PositionFormModal from './PositionFormModal';
 import { PortfolioCompositionRow } from './PortfolioCompositionRaw';
@@ -70,7 +71,9 @@ const secondaryTextSx = {
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
   const queryClient = useQueryClient();
   const { composition, tickers, loading, error } = usePortfolioComposition(filter, portfolioId);
-  const { logosByTicker, loading: logosLoading } = useStockLogos(tickers);
+  const { logosByTicker, loading: logosLoading } = useStockLogos(
+    tickers.filter((ticker) => !isBvbListing(ticker)),
+  );
   const createPositionMutation = useCreatePosition(portfolioId);
   const currency = filter === 'bvb' ? 'RON' : 'USD';
   const [showPercent, setShowPercent] = useState(false);
