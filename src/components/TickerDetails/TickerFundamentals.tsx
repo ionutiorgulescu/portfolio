@@ -193,9 +193,13 @@ function FundamentalsSkeleton() {
 
 function metricsFromData(data: TickerFundamentalsData) {
   const currency = data.currency || 'USD';
+  const isRegularHours = (data.marketState ?? '').toUpperCase() === 'REGULAR';
   return [
     { label: 'Open', value: formatPrice(data.open, currency) },
-    { label: 'Close', value: formatPrice(data.previousClose, currency) },
+    {
+      label: isRegularHours ? 'Prev Close' : 'Close',
+      value: formatPrice(isRegularHours ? data.previousClose : data.price, currency),
+    },
     { label: 'Market Cap', value: formatCompactMoney(data.marketCap, currency) },
     { label: 'EPS (TTM)', value: formatPrice(data.epsTtm, currency) },
     { label: 'Free Float', value: formatCompactNumber(data.floatShares) },

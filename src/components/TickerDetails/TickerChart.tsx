@@ -467,6 +467,9 @@ export function TickerChart({
   }, [isIntraday, session.start, session.end]);
 
   const liveAt = isIntraday && latestPoint ? latestPoint.t : undefined;
+  const isLiveMarket =
+    Date.now() <= session.end &&
+    (market === 'crypto' || quote.isMarketOpen || quote.session != null);
   const symbol = currencySymbol(currency);
   const priceParts = displayPrice != null && Number.isFinite(displayPrice) ? splitAmount(displayPrice) : null;
   const chartHeight = { xs: 200, sm: 240 };
@@ -524,7 +527,9 @@ export function TickerChart({
                   minWidth: 0,
                 }}
               >
-                <LiveDot positive={displayPositive} pulse={isIntraday && !scrubbedPoint} />
+                {isLiveMarket ? (
+                  <LiveDot positive={displayPositive} pulse={isIntraday && !scrubbedPoint} />
+                ) : null}
                 <Box
                   sx={{
                     display: 'flex',
