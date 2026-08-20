@@ -76,10 +76,14 @@ const FILLER_TOKENS = new Set(['com', 'part', 'prod']);
 /** Known BVB issuers whose website cannot be deduced from the Yahoo name. */
 const DOMAIN_OVERRIDES_BY_TICKER: Record<string, string> = {
   'TVBETETF.RO': 'patriafonduri.ro',
+  'WINE.RO': 'chateau-purcari.com',
 };
 
 const DOMAIN_OVERRIDES_BY_NAME: Record<string, string> = {
   'fdi etf bet patria tradeville': 'patriafonduri.ro',
+  'purcari wineries': 'chateau-purcari.com',
+  'purcari wineries pcl': 'chateau-purcari.com',
+  'purcari wineries public company limited': 'chateau-purcari.com',
 };
 
 export function isBvbListing(ticker: string, currency?: string): boolean {
