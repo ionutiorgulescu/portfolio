@@ -94,7 +94,10 @@ export function PortfolioPerformanceCard({
   } = usePortfolioIntradayPerformance(filter, portfolioId, isIntraday);
   const { valuesHidden } = useValuesVisibility();
 
-  const isLoading = isIntraday ? isLoadingIntraday : isLoadingDaily;
+  // 1D still needs the daily series so the headline Total Value matches 1W+.
+  const isLoading = isIntraday
+    ? isLoadingIntraday || (isLoadingDaily && allData.length === 0)
+    : isLoadingDaily;
   const isError = isIntraday ? isErrorIntraday : isErrorDaily;
   const error = isIntraday ? intradayError : dailyError;
 
@@ -184,7 +187,12 @@ export function PortfolioPerformanceCard({
   const startPoint = chartData.length > 0 ? chartData[0] : null;
   const activePoint = scrubbedPoint ?? latestPoint;
 
-  const displayValue = activePoint?.rawValue ?? 0;
+  // Always show the live daily mark so 1D matches 1W/1M/… after hours.
+  // The 1D series last print can still be the prior session close.
+  const liveTotalValue =
+    allData.length > 0 ? allData[allData.length - 1].value : undefined;
+  const displayValue =
+    scrubbedPoint?.rawValue ?? liveTotalValue ?? activePoint?.rawValue ?? 0;
 
   const periodEndPerformance = useMemo(() => {
     if (!startPoint || !latestPoint) {
