@@ -507,6 +507,10 @@ export function PortfolioCompositionRow({
                                 height: 12,
                                 opacity: 0.55,
                                 flexShrink: 0,
+                                '[data-theme="dark"] &': {
+                                    filter: 'invert(1)',
+                                    opacity: 0.7,
+                                },
                             }}
                         />
                         {valuesHidden ? (
