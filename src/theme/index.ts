@@ -35,14 +35,14 @@ const theme = createTheme({
         success: { main: '#3dccc0' },
         error: { main: '#f04890' },
         background: {
-          default: '#141413',
-          paper: '#1e1e1c',
+          default: '#151521',
+          paper: '#1f1e2c',
         },
         text: {
           primary: '#f2f2ef',
           secondary: '#b0b0aa',
         },
-        divider: '#3a3a36',
+        divider: '#35354c',
       },
     },
   },
