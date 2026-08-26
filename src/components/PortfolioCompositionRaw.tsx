@@ -341,8 +341,7 @@ export function PortfolioCompositionRow({
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 '&:last-child': { borderBottom: 'none' },
-                '&:hover': { bgcolor: color.bgHover },
-                transition: 'background-color 0.15s ease',
+                WebkitTapHighlightColor: 'transparent',
             }}
         >
             <TickerAvatar
