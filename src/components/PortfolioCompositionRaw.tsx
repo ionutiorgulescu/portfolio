@@ -9,21 +9,11 @@ import { bvbFaviconUrls, isBvbListing } from "../utils/bvbFavicon";
 import chartPieIcon from "../assets/chart-pie.svg";
 import sunriseIcon from "../assets/sunrise.svg";
 import sunsetIcon from "../assets/sunset.svg";
+import { color, shadow, textSx } from "../theme/cssVars";
 
-const primaryTextSx = {
-    color: "#393a36",
-    fontFamily: '"Open Sans", sans-serif',
-};
-
-const secondaryTextSx = {
-    color: "#61615e",
-    fontFamily: '"Open Sans", sans-serif',
-};
-
-const mutedTextSx = {
-    color: "#9a9a96",
-    fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
+const secondaryTextSx = textSx.secondary;
+const mutedTextSx = textSx.muted;
 
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
 const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
@@ -52,7 +42,7 @@ function LivePulseDot({
     positive: boolean;
     changePercent: number | null;
 }) {
-    const color = positive ? '#27a69a' : '#d92673';
+    const pulseColor = positive ? color.gain : color.loss;
     const pct =
         changePercent != null && Number.isFinite(Number(changePercent))
             ? Number(changePercent)
@@ -79,14 +69,14 @@ function LivePulseDot({
                     width: 7,
                     height: 7,
                     borderRadius: '50%',
-                    bgcolor: color,
+                    bgcolor: pulseColor,
                     flexShrink: 0,
                     '&::after': {
                         content: '""',
                         position: 'absolute',
                         inset: 0,
                         borderRadius: '50%',
-                        bgcolor: color,
+                        bgcolor: pulseColor,
                         animation: 'compositionLivePulse 1.6s ease-out infinite',
                     },
                     '@keyframes compositionLivePulse': {
@@ -104,7 +94,7 @@ function LivePulseDot({
                         fontWeight: 600,
                         lineHeight: '14px',
                         fontVariantNumeric: 'tabular-nums',
-                        color,
+                        color: pulseColor,
                     }}
                 >
                     {positive ? '+' : ''}
@@ -143,7 +133,7 @@ function SessionBadge({
                 pr: '8px',
                 py: '4px',
                 borderRadius: '4px',
-                bgcolor: '#e9eef6',
+                bgcolor: color.bgAccentSoft,
                 verticalAlign: 'middle',
             }}
         >
@@ -153,7 +143,7 @@ function SessionBadge({
                     width: 18,
                     height: 18,
                     borderRadius: '50%',
-                    bgcolor: 'white',
+                    bgcolor: color.bgSurface,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -168,6 +158,10 @@ function SessionBadge({
                         width: 12,
                         height: 12,
                         opacity: 0.7,
+                        '[data-theme="dark"] &': {
+                            filter: 'invert(1)',
+                            opacity: 0.9,
+                        },
                     }}
                 />
             </Box>
@@ -179,7 +173,7 @@ function SessionBadge({
                         fontWeight: 600,
                         lineHeight: '14px',
                         fontVariantNumeric: 'tabular-nums',
-                        color: positive ? '#27a69a' : '#d92673',
+                        color: positive ? color.gain : color.loss,
                     }}
                 >
                     {positive ? '+' : ''}
@@ -240,9 +234,9 @@ function TickerAvatar({
                 width: 44,
                 height: 44,
                 borderRadius: '10px',
-                bgcolor: 'white',
+                bgcolor: color.bgLogo,
                 border: '1px solid',
-                borderColor: 'grey.200',
+                borderColor: color.borderLogo,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -253,8 +247,8 @@ function TickerAvatar({
                 ...(onClick
                     ? {
                         '&:hover': {
-                            bgcolor: '#e6e6e3',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                            bgcolor: color.bgNeutral,
+                            boxShadow: shadow.idle,
                         },
                     }
                     : null),
@@ -347,7 +341,7 @@ export function PortfolioCompositionRow({
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 '&:last-child': { borderBottom: 'none' },
-                '&:hover': { bgcolor: 'grey.50' },
+                '&:hover': { bgcolor: color.bgHover },
                 transition: 'background-color 0.15s ease',
             }}
         >
@@ -406,7 +400,7 @@ export function PortfolioCompositionRow({
                             width: 'fit-content',
                             maxWidth: '100%',
                             cursor: 'pointer',
-                            '&:visited': { color: '#393a36' },
+                            '&:visited': { color: color.textPrimary },
                             '&:hover': {
                                 textDecoration: 'underline',
                                 textUnderlineOffset: '3px',
@@ -478,7 +472,7 @@ export function PortfolioCompositionRow({
                     }}
                 >
                     {valuesHidden ? (
-                        <LockOutlinedIcon sx={{ fontSize: 18, color: '#9ca3af' }} />
+                        <LockOutlinedIcon sx={{ fontSize: 18, color: color.textSubtle }} />
                     ) : (
                         <Typography
                             fontWeight={600}
@@ -486,7 +480,7 @@ export function PortfolioCompositionRow({
                                 fontFamily: '"Open Sans", sans-serif',
                                 fontSize: 14,
                                 lineHeight: '18px',
-                                color: gainPositive ? '#27a69a' : '#d92673',
+                                color: gainPositive ? color.gain : color.loss,
                                 whiteSpace: 'nowrap',
                                 fontVariantNumeric: 'tabular-nums',
                             }}
@@ -517,7 +511,7 @@ export function PortfolioCompositionRow({
                             }}
                         />
                         {valuesHidden ? (
-                            <LockOutlinedIcon sx={{ fontSize: 14, color: '#9ca3af' }} />
+                            <LockOutlinedIcon sx={{ fontSize: 14, color: color.textSubtle }} />
                         ) : (
                             <Typography
                                 sx={{

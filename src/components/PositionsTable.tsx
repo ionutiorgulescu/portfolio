@@ -20,6 +20,7 @@ import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type { Position } from '../types/positions';
+import { color, font, shadow, textSx } from '../theme/cssVars';
 
 type PositionsTableProps = {
   positions: Position[];
@@ -32,20 +33,9 @@ type TypeFilter = 'all' | 'stock' | 'crypto' | 'bvb';
 
 const PAGE_SIZE = 10;
 
-const primaryTextSx = {
-  color: '#393a36',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const secondaryTextSx = {
-  color: '#61615e',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const mutedTextSx = {
-  color: '#9a9a96',
-  fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
+const secondaryTextSx = textSx.secondary;
+const mutedTextSx = textSx.muted;
 
 type FilterOption<T extends string> = {
   label: string;
@@ -100,15 +90,16 @@ const navButtonSx = {
   width: 32,
   height: 32,
   borderRadius: '8px',
-  bgcolor: 'white',
-  color: '#111827',
-  border: '1px solid #111827',
+  bgcolor: color.bgSurface,
+  color: color.textStrong,
+  border: '1px solid',
+  borderColor: color.borderInverse,
   '&.Mui-disabled': {
-    bgcolor: '#F3F4F6',
-    color: '#D1D5DB',
+    bgcolor: color.bgMuted,
+    color: color.borderStrong,
     borderColor: 'transparent',
   },
-  '&:hover': { bgcolor: '#F9FAFB' },
+  '&:hover': { bgcolor: color.bgHover },
 };
 
 function FilterPills<T extends string>({
@@ -148,9 +139,9 @@ function FilterPills<T extends string>({
               height: { xs: 40, sm: 44 },
               px: { xs: 0.75, sm: 1.5 },
               borderRadius: '10px',
-              bgcolor: selected ? '#111827' : '#F3F4F6',
-              color: selected ? '#fff' : '#393a36',
-              fontFamily: '"Open Sans", sans-serif',
+              bgcolor: selected ? color.bgInverse : color.bgMuted,
+              color: selected ? color.textInverse : color.textPrimary,
+              fontFamily: font.sans,
               fontSize: { xs: 12, sm: 13 },
               fontWeight: 600,
               lineHeight: 1,
@@ -158,7 +149,7 @@ function FilterPills<T extends string>({
               transition: 'background-color 0.15s ease, color 0.15s ease',
               '& .MuiSvgIcon-root': { fontSize: { xs: 20, sm: 22 } },
               '&:hover': {
-                bgcolor: selected ? '#111827' : '#E5E7EB',
+                bgcolor: selected ? color.bgInverse : color.chartBase,
               },
             }}
           >
@@ -223,9 +214,9 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
   return (
     <Box
       sx={{
-        bgcolor: 'white',
+        bgcolor: color.bgSurface,
         borderRadius: '16px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        boxShadow: shadow.cardSoft,
         overflow: 'hidden',
         px: { xs: 2, sm: 2.5 },
         py: { xs: 2, sm: 2.5 },
@@ -248,7 +239,7 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ color: '#9CA3AF', fontSize: 20 }} />
+                <SearchIcon sx={{ color: color.textSubtle, fontSize: 20 }} />
               </InputAdornment>
             ),
           }}
@@ -258,7 +249,7 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
-              bgcolor: '#F3F4F6',
+              bgcolor: color.bgMuted,
               borderRadius: '12px',
               boxShadow: 'none',
               WebkitTapHighlightColor: 'transparent',
@@ -271,14 +262,14 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
             },
             '& .MuiInputBase-input': {
               py: 1.25,
-              fontFamily: '"Open Sans", sans-serif',
+              fontFamily: font.sans,
               // iOS zooms (and shifts the layout) when focused inputs are under 16px.
               fontSize: 16,
-              color: '#393a36',
+              color: color.textPrimary,
               outline: 'none',
               WebkitAppearance: 'none',
               '&:focus': { outline: 'none' },
-              '&::placeholder': { color: '#9a9a96', opacity: 1 },
+              '&::placeholder': { color: color.textMuted, opacity: 1 },
             },
           }}
         />
@@ -324,7 +315,7 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                   gap: 1.5,
                   py: 1.75,
                   borderBottom: '1px solid',
-                  borderColor: '#F0F0F0',
+                  borderColor: color.borderSubtle,
                 }}
               >
                 <Box
@@ -337,8 +328,8 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: isBuy ? '#E7F6EE' : '#FDECEC',
-                    color: isBuy ? '#1B7A4A' : '#B42318',
+                    bgcolor: isBuy ? color.buyBg : color.sellBg,
+                    color: isBuy ? color.gainFg : color.lossFg,
                   }}
                 >
                   {isBuy ? (
@@ -416,7 +407,7 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                       size="small"
                       onClick={() => onEdit(position)}
                       aria-label={`Edit ${position.ticker_symbol}`}
-                      sx={{ color: '#9CA3AF' }}
+                      sx={{ color: color.textSubtle }}
                     >
                       <EditNoteOutlinedIcon fontSize="small" />
                     </IconButton>
@@ -426,7 +417,7 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                       size="small"
                       onClick={() => onDelete(position)}
                       aria-label={`Delete ${position.ticker_symbol}`}
-                      sx={{ color: '#D95D39' }}
+                      sx={{ color: color.danger }}
                     >
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
@@ -481,13 +472,13 @@ const PositionsTable = ({ positions, onEdit, onDelete }: PositionsTableProps) =>
                   width: 32,
                   height: 32,
                   borderRadius: '8px',
-                  fontFamily: '"Open Sans", sans-serif',
+                  fontFamily: font.sans,
                   fontSize: 13,
                   fontWeight: item === safePage ? 700 : 500,
-                  bgcolor: item === safePage ? '#111827' : 'transparent',
-                  color: item === safePage ? '#fff' : '#61615e',
+                  bgcolor: item === safePage ? color.bgInverse : 'transparent',
+                  color: item === safePage ? color.textInverse : color.textSecondary,
                   '&:hover': {
-                    bgcolor: item === safePage ? '#111827' : 'rgba(0,0,0,0.04)',
+                    bgcolor: item === safePage ? color.bgInverse : color.bgOverlay,
                   },
                 }}
               >

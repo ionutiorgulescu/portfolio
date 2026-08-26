@@ -15,6 +15,7 @@ import { isBvbListing } from '../utils/bvbFavicon';
 import type { CompositionFilter } from './FilterControl';
 import PositionFormModal from './PositionFormModal';
 import { PortfolioCompositionRow } from './PortfolioCompositionRaw';
+import { color, shadow, textSx } from '../theme/cssVars';
 
 function RowSkeleton() {
   return (
@@ -51,22 +52,16 @@ type PortfolioCompositionProps = {
   portfolioId: string;
 };
 
-const primaryTextSx = {
-  color: '#393a36',
-  fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
 
 const TitleSx = {
   fontSize: { xs: 16, sm: 18, md: 20 },
   lineHeight: { xs: '24px', sm: '26px', md: '28px' },
-  color: '#393a36',
+  color: color.textPrimary,
   fontWeight: 600,
 };
 
-const secondaryTextSx = {
-  color: '#61615e',
-  fontFamily: '"Open Sans", sans-serif',
-};
+const secondaryTextSx = textSx.secondary;
 
 export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositionProps) {
   const queryClient = useQueryClient();
@@ -107,7 +102,7 @@ export function PortfolioComposition({ filter, portfolioId }: PortfolioCompositi
   const showRowsLoading = loading || logosLoading;
 
   return (
-    <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+    <Box sx={{ bgcolor: color.bgSurface, borderRadius: '16px', p: 3, boxShadow: shadow.card }}>
       <Typography
         sx={{
           ...primaryTextSx,

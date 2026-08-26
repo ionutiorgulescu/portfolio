@@ -30,6 +30,8 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import CallMadeIcon from '@mui/icons-material/CallMade';
 import CallMadeOutlinedIcon from '@mui/icons-material/CallMadeOutlined';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -40,6 +42,8 @@ import { ValuesPinModal } from '../components/ValuesPinModal';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 import { PullToRefreshProvider } from '../contexts/PullToRefreshContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { useColorScheme } from '../theme';
+import { color, shadow } from '../theme/cssVars';
 
 type RefreshHandler = () => void | Promise<void>;
 
@@ -47,10 +51,10 @@ const drawerWidthOpen = 240;
 const drawerWidthClosed = 72;
 const PULL_THRESHOLD = 72;
 const MOBILE_BOTTOM_NAV_HEIGHT = 76;
-const MOBILE_NAV_ACTIVE_BG = '#E6F4F1';
-const MOBILE_NAV_ACTIVE_FG = '#0A4F46';
-const MOBILE_NAV_INACTIVE_FG = '#8B909A';
-const PORTFOLIO_SELECT_SELECTED_BG = 'rgb(230, 244, 241)';
+const MOBILE_NAV_ACTIVE_BG = color.navActiveBg;
+const MOBILE_NAV_ACTIVE_FG = color.navActiveFg;
+const MOBILE_NAV_INACTIVE_FG = color.navInactiveFg;
+const PORTFOLIO_SELECT_SELECTED_BG = color.navActiveBg;
 const portfolioSelectMenuItemSx = {
   '&.Mui-selected': {
     backgroundColor: `${PORTFOLIO_SELECT_SELECTED_BG} !important`,
@@ -61,6 +65,27 @@ const portfolioSelectMenuItemSx = {
   '&.Mui-selected.Mui-focusVisible': {
     backgroundColor: `${PORTFOLIO_SELECT_SELECTED_BG} !important`,
   },
+};
+
+const ColorSchemeToggle = () => {
+  const { mode, setMode } = useColorScheme();
+  const isDark = mode === 'dark';
+
+  return (
+    <IconButton
+      size="small"
+      onClick={() => setMode(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      color="inherit"
+    >
+      {isDark ? (
+        <LightModeOutlinedIcon fontSize="small" />
+      ) : (
+        <DarkModeOutlinedIcon fontSize="small" />
+      )}
+    </IconButton>
+  );
 };
 
 const menuItems = [
@@ -190,7 +215,7 @@ const AppShell = () => {
           transition: theme.transitions.create(['margin', 'width'], {
             duration: theme.transitions.duration.standard,
           }),
-          backgroundColor: 'white',
+          backgroundColor: 'background.paper',
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
@@ -228,7 +253,7 @@ const AppShell = () => {
                 sx={{
                   minWidth: 140,
                   borderRadius: '12px',
-                  bgcolor: 'white',
+                  bgcolor: 'background.paper',
                   fontSize: 14,
                   fontWeight: 600,
                   '& .MuiSelect-select': {
@@ -269,6 +294,7 @@ const AppShell = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <ColorSchemeToggle />
             <IconButton
               size="small"
               onClick={() => {
@@ -335,7 +361,7 @@ const AppShell = () => {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          backgroundColor: 'grey.100',
+          backgroundColor: 'background.default',
         }}
       >
         <Toolbar sx={{ flexShrink: 0 }} />
@@ -414,12 +440,13 @@ const AppShell = () => {
             minHeight: MOBILE_BOTTOM_NAV_HEIGHT,
             px: 1,
             py: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.82)',
+            bgcolor: color.navGlass,
             backdropFilter: 'blur(20px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-            border: '1px solid rgba(15, 23, 42, 0.08)',
+            border: '1px solid',
+            borderColor: color.navBorder,
             borderRadius: '26px',
-            boxShadow: '0 12px 40px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08)',
+            boxShadow: shadow.nav,
           }}
         >
           {menuItems.map((item) => (

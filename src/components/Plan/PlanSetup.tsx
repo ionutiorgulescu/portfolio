@@ -21,6 +21,7 @@ import {
     CartesianGrid,
 } from "recharts";
 import { usePlan, type PlanParams } from "../../hooks/usePlan";
+import { color, font, shadow } from "../../theme/cssVars";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -88,22 +89,22 @@ function monthDiff(fromKey: string, toKey: string): number {
 const textInputSx = {
     "& .MuiOutlinedInput-root": {
         height: 32,
-        bgcolor: "#f5f5f5",
+        bgcolor: color.bgInput,
         fontSize: 14,
         borderRadius: "4px",
-        color: "#61615e",
+        color: color.textSecondary,
     },
-    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#888986" },
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: color.borderInput },
     "& .MuiInputBase-input": { py: "6px", px: "8px" },
 };
 
 const dropdownSx = {
     height: 32,
-    bgcolor: "#fff",
+    bgcolor: color.bgSurface,
     fontSize: 14,
     borderRadius: "4px",
-    color: "#393a36",
-    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#393a36" },
+    color: color.textPrimary,
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: color.textPrimary },
     "& .MuiSelect-select": { py: "6px", px: "8px" },
 };
 
@@ -167,9 +168,9 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
     const deltaToExpected = data ? data.stats.totalInvested - expectedByNow : 0;
     const isAhead = data?.stats.scheduleStatus === "ahead";
     const aheadChipColors = {
-        bg: "#edf9f8",
-        border: "#9ed9d4",
-        text: "#27a69a",
+        bg: color.gainBg,
+        border: color.gainBorder,
+        text: color.gain,
     };
 
     const projectedFinishLabel = data?.stats.projectedFinishMonth
@@ -178,7 +179,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
 
     const statCardSx = {
         borderRadius: "16px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.10)",
+        boxShadow: shadow.card,
         p: 3,
         display: "flex",
         flexDirection: "column",
@@ -201,10 +202,10 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
     };
 
     return (
-        <Box sx={{ bgcolor: "#f4f4f4", minHeight: "100vh", pb: 5 }}>
+        <Box sx={{ bgcolor: color.bgPage, minHeight: "100vh", pb: 5 }}>
 
             {/* Setup Card */}
-            <Card elevation={0} sx={{ mx: 2, borderRadius: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+            <Card elevation={0} sx={{ mx: 2, borderRadius: 3, boxShadow: shadow.cardSoft }}>
                 <CardContent sx={{ p: 2.5, "&:last-child": { pb: 3 } }}>
 
                     {/* Fields */}
@@ -215,7 +216,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                         alignItems: { xs: "stretch", md: "flex-end" },
                     }}>
                         <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#393a36", lineHeight: "20px" }}>
+                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: color.textPrimary, lineHeight: "20px" }}>
                                 Start Date
                             </Typography>
                             <TextField
@@ -227,7 +228,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                             />
                         </Box>
                         <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#393a36", lineHeight: "20px" }}>
+                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: color.textPrimary, lineHeight: "20px" }}>
                                 Desired investments
                             </Typography>
                             <Select<string>
@@ -244,7 +245,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                             </Select>
                         </Box>
                         <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#393a36", lineHeight: "20px" }}>
+                            <Typography sx={{ fontSize: 16, fontWeight: 600, color: color.textPrimary, lineHeight: "20px" }}>
                                 Timeframe
                             </Typography>
                             <Select<string>
@@ -268,7 +269,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                 height: 32,
                                 px: { xs: 0, md: 2 },
                                 borderRadius: "4px",
-                                bgcolor: "#393a36",
+                                bgcolor: color.button,
                                 fontWeight: 600,
                                 fontSize: 14,
                                 textTransform: "none",
@@ -277,8 +278,8 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                 flexShrink: 0,
                                 width: { xs: "100%", md: 200 },
                                 mt: { xs: 0.5, md: "28px" },
-                                "&:hover": { bgcolor: "#55564f", boxShadow: "none" },
-                                "&.Mui-disabled": { bgcolor: "#ccc", color: "#fff" },
+                                "&:hover": { bgcolor: color.buttonHover, boxShadow: "none" },
+                                "&.Mui-disabled": { bgcolor: color.buttonDisabled, color: color.textInverse },
                             }}
                         >
                             Calculate plan
@@ -294,31 +295,31 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     {data && (
                         <Box sx={{ mx: 2, mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, 1fr)" }, gap: 1.5 }}>
                             <Card elevation={0} sx={statCardSx}>
-                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#393a36", fontFamily: '"Open Sans", sans-serif', fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textPrimary, fontFamily: font.sans, fontWeight: 600 }}>
                                     Overall progress
                                 </Typography>
                                 <Box>
-                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: "#393a36" }}>
+                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: color.textPrimary }}>
                                         ${data.stats.totalInvested.toLocaleString()}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#61615e", mt: 1.5 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textSecondary, mt: 1.5 }}>
                                         of ${form.targetValue}
                                     </Typography>
                                 </Box>
-                                <Box sx={{ ...chipSxBase, bgcolor: "#f6f3fa", borderColor: "#ae93d0", color: "#6c3baa" }}>
+                                <Box sx={{ ...chipSxBase, bgcolor: color.planBg, borderColor: color.planBorder, color: color.plan }}>
                                     {data.stats.currentProgress}% complete
                                 </Box>
                             </Card>
 
                             <Card elevation={0} sx={statCardSx}>
-                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#393a36", fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textPrimary, fontWeight: 600 }}>
                                     Schedule
                                 </Typography>
                                 <Box>
-                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: "#393a36" }}>
+                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: color.textPrimary }}>
                                         {data.stats.scheduleStatus === "on-track" ? "On track" : data.stats.scheduleStatus === "ahead" ? "Ahead" : "Behind"}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#61615e", mt: 1.5 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textSecondary, mt: 1.5 }}>
                                         {data.stats.scheduleStatus === "on-track"
                                             ? `on target at M${data.stats.monthsTracked}`
                                             : `$${scheduleGap.toLocaleString()} ${data.stats.scheduleStatus === "ahead" ? "ahead" : "gap"} at M${data.stats.monthsTracked}`}
@@ -327,9 +328,9 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                 <Box
                                     sx={{
                                         ...chipSxBase,
-                                        bgcolor: data.stats.scheduleStatus === "ahead" ? aheadChipColors.bg : "#fdf2f7",
-                                        borderColor: data.stats.scheduleStatus === "ahead" ? aheadChipColors.border : "#ea88b2",
-                                        color: data.stats.scheduleStatus === "ahead" ? aheadChipColors.text : "#d92673",
+                                        bgcolor: data.stats.scheduleStatus === "ahead" ? aheadChipColors.bg : color.lossBg,
+                                        borderColor: data.stats.scheduleStatus === "ahead" ? aheadChipColors.border : color.lossBorder,
+                                        color: data.stats.scheduleStatus === "ahead" ? aheadChipColors.text : color.loss,
                                     }}
                                 >
                                     {(data.stats.scheduleStatus === "ahead" ? "▲ " : data.stats.scheduleStatus === "on-track" ? "" : "▼ ")}
@@ -340,23 +341,23 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                             </Card>
 
                             <Card elevation={0} sx={statCardSx}>
-                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#393a36", fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textPrimary, fontWeight: 600 }}>
                                     Monthly average
                                 </Typography>
                                 <Box>
-                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: "#393a36" }}>
+                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: color.textPrimary }}>
                                         ${data.stats.avgMonthly.toLocaleString()}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#61615e", mt: 1.5 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textSecondary, mt: 1.5 }}>
                                         target ${data.stats.targetPerMonth.toLocaleString()}/month
                                     </Typography>
                                 </Box>
                                 <Box
                                     sx={{
                                         ...chipSxBase,
-                                        bgcolor: monthlyDelta >= 0 ? aheadChipColors.bg : "#fdf2f7",
-                                        borderColor: monthlyDelta >= 0 ? aheadChipColors.border : "#ea88b2",
-                                        color: monthlyDelta >= 0 ? aheadChipColors.text : "#d92673",
+                                        bgcolor: monthlyDelta >= 0 ? aheadChipColors.bg : color.lossBg,
+                                        borderColor: monthlyDelta >= 0 ? aheadChipColors.border : color.lossBorder,
+                                        color: monthlyDelta >= 0 ? aheadChipColors.text : color.loss,
                                     }}
                                 >
                                     {monthlyDelta >= 0 ? "▲ " : "▼ "}
@@ -367,25 +368,25 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                             </Card>
 
                             <Card elevation={0} sx={statCardSx}>
-                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#393a36", fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textPrimary, fontWeight: 600 }}>
                                     Expected finish
                                 </Typography>
                                 <Box>
-                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: "#393a36" }}>
+                                    <Typography sx={{ fontSize: 40, lineHeight: "40px", fontWeight: 700, color: color.textPrimary }}>
                                         {data.stats.projectedFinishMonth
                                             ? new Date(`${data.stats.projectedFinishMonth}-01`).toLocaleDateString("en-US", { month: "short", year: "numeric" })
                                             : "—"}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: "#61615e", mt: 1.5 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", color: color.textSecondary, mt: 1.5 }}>
                                         at current pace
                                     </Typography>
                                 </Box>
                                 <Box
                                     sx={{
                                         ...chipSxBase,
-                                        bgcolor: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.bg : "#fdf2f7",
-                                        borderColor: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.border : "#ea88b2",
-                                        color: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.text : "#d92673",
+                                        bgcolor: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.bg : color.lossBg,
+                                        borderColor: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.border : color.lossBorder,
+                                        color: (finishVarianceMonths ?? 0) <= 0 ? aheadChipColors.text : color.loss,
                                     }}
                                 >
                                     {(finishVarianceMonths ?? 0) <= 0 ? "▲ " : "▼ "}
@@ -402,45 +403,45 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                     )}
 
                     {/* Trajectory Chart */}
-                    <Card elevation={0} sx={{ mx: 2, mt: 2, borderRadius: "16px", boxShadow: "0 2px 4px rgba(0,0,0,0.10)" }}>
+                    <Card elevation={0} sx={{ mx: 2, mt: 2, borderRadius: "16px", boxShadow: shadow.card }}>
                         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-                            <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: "#393a36", mb: 0.5 }}>
+                            <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: color.textPrimary, mb: 0.5 }}>
                                 Investment trajectory · {formatMonthYearFromKey(form.startDate.slice(0, 7))} – {addYearsToDate(form.startDate, Number(form.targetYears || 0))}
                             </Typography>
-                            <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 400, color: "#61615e", mb: 3 }}>
+                            <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 400, color: color.textSecondary, mb: 3 }}>
                                 Actual cumulative vs. ${data?.stats.targetPerMonth.toLocaleString()}/mo flat target
                             </Typography>
 
                             {isFetching ? (
                                 <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-                                    <CircularProgress size={28} sx={{ color: "#111" }} />
+                                    <CircularProgress size={28} sx={{ color: color.textStrong }} />
                                 </Box>
                             ) : error ? (
-                                <Typography sx={{ fontSize: 13, color: "#ef4444", textAlign: "center", py: 4 }}>
+                                <Typography sx={{ fontSize: 13, color: color.error, textAlign: "center", py: 4 }}>
                                     Failed to load data
                                 </Typography>
                             ) : data ? (
                                 <ResponsiveContainer width="100%" height={320}>
                                     <LineChart data={data.trajectory} margin={{ top: 12, right: 16, bottom: 10, left: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#ebebeb" vertical={false} />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={color.borderChart} vertical={false} />
                                         <XAxis
                                             dataKey="key"
                                             tickFormatter={formatMonthYearFromKey}
-                                            tick={{ fontSize: 14, fill: "#393a36" }}
-                                            tickLine={{ stroke: "#b0b0af", strokeWidth: 2, dy: 6 }}
-                                            axisLine={{ stroke: "#b0b0af", strokeWidth: 2 }}
+                                            tick={{ fontSize: 14, fill: color.textPrimary }}
+                                            tickLine={{ stroke: color.borderAxis, strokeWidth: 2, dy: 6 }}
+                                            axisLine={{ stroke: color.borderAxis, strokeWidth: 2 }}
                                             interval="preserveStartEnd"
                                             minTickGap={28}
                                         />
                                         <YAxis
                                             tickFormatter={formatDollar}
-                                            tick={{ fontSize: 14, fill: "#393a36" }}
+                                            tick={{ fontSize: 14, fill: color.textPrimary }}
                                             tickLine={false}
-                                            axisLine={{ stroke: "#b0b0af", strokeWidth: 2 }}
+                                            axisLine={{ stroke: color.borderAxis, strokeWidth: 2 }}
                                             width={52}
                                         />
                                         <Tooltip
-                                            cursor={{ stroke: "#b0b0af", strokeWidth: 1.5 }}
+                                            cursor={{ stroke: color.borderAxis, strokeWidth: 1.5 }}
                                             formatter={(value) => `$${Number(value).toLocaleString()}`}
                                             labelFormatter={(value) => formatMonthYearFromKey(String(value))}
                                             content={({ active, payload, label }) => {
@@ -456,14 +457,14 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                                         elevation={0}
                                                         sx={{
                                                             borderRadius: "4px",
-                                                            border: "1px solid #ebebeb",
-                                                            boxShadow: "0 2px 4px rgba(0,0,0,0.10)",
+                                                            border: `1px solid ${color.borderChart}`,
+                                                            boxShadow: shadow.card,
                                                             px: 1,
                                                             py: 1,
                                                             minWidth: 164,
                                                         }}
                                                     >
-                                                        <Typography sx={{ fontWeight: 600, fontSize: 14, lineHeight: "18px", mb: 1, color: "#393a36", textAlign: "center" }}>
+                                                        <Typography sx={{ fontWeight: 600, fontSize: 14, lineHeight: "18px", mb: 1, color: color.textPrimary, textAlign: "center" }}>
                                                             {formatMonthYearFromKey(String(label))}
                                                         </Typography>
                                                         {actual?.value !== null && actual?.value !== undefined && (
@@ -473,14 +474,14 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                                                         width: 8,
                                                                         height: 8,
                                                                         borderRadius: "50%",
-                                                                        bgcolor: isAhead ? "#27a69a" : "#ec4899",
+                                                                        bgcolor: isAhead ? color.gain : color.lossBright,
                                                                     }}
                                                                 />
                                                                 <Typography
                                                                     sx={{
                                                                         fontSize: 14,
                                                                         lineHeight: "18px",
-                                                                        color: "#393a36",
+                                                                        color: color.textPrimary,
                                                                     }}
                                                                 >
                                                                     Actual: {Number(actual.value).toLocaleString()}{actualPct}
@@ -489,8 +490,8 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                                         )}
                                                         {target?.value !== null && target?.value !== undefined && (
                                                             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                                                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#7c3aed" }} />
-                                                                <Typography sx={{ fontSize: 14, lineHeight: "18px", color: "#393a36" }}>
+                                                                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: color.planLine }} />
+                                                                <Typography sx={{ fontSize: 14, lineHeight: "18px", color: color.textPrimary }}>
                                                                     Target: {Number(target.value).toLocaleString()}{targetPct}
                                                                 </Typography>
                                                             </Box>
@@ -502,7 +503,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                         <Line
                                             type="monotone"
                                             dataKey="target"
-                                            stroke="#7c3aed"
+                                            stroke={color.planLine}
                                             strokeWidth={2}
                                             strokeDasharray="2 3"
                                             dot={false}
@@ -511,10 +512,10 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                         <Line
                                             type="monotone"
                                             dataKey="actual"
-                                            stroke={isAhead ? "#27a69a" : "#ec4899"}
+                                            stroke={isAhead ? color.gain : color.lossBright}
                                             strokeWidth={2}
                                             dot={false}
-                                            activeDot={{ r: 4, fill: isAhead ? "#27a69a" : "#ec4899" }}
+                                            activeDot={{ r: 4, fill: isAhead ? color.gain : color.lossBright }}
                                             connectNulls={false}
                                         />
                                     </LineChart>
@@ -533,17 +534,17 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                 gap: 1.5,
                             }}
                         >
-                            <Card elevation={0} sx={{ borderRadius: "16px", boxShadow: "0 2px 4px rgba(0,0,0,0.10)" }}>
+                            <Card elevation={0} sx={{ borderRadius: "16px", boxShadow: shadow.card }}>
                                 <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: "#393a36", mb: 3 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: color.textPrimary, mb: 3 }}>
                                         Goal progress · Month {data.stats.monthsTracked} of {data.stats.monthsTotal}
                                     </Typography>
 
                                     <Box sx={{ position: "relative", mb: 2 }}>
                                         <Box sx={{ display: "flex", width: "100%", height: 36, borderRadius: "999px", overflow: "hidden" }}>
-                                            <Box sx={{ width: `${investedPct}%`, bgcolor: "#6c3baa" }} />
-                                            <Box sx={{ width: `${progressExpectedGapPct}%`, bgcolor: "#ccbae1" }} />
-                                            <Box sx={{ width: `${progressRemainingPct}%`, bgcolor: "#ebebeb" }} />
+                                            <Box sx={{ width: `${investedPct}%`, bgcolor: color.plan }} />
+                                            <Box sx={{ width: `${progressExpectedGapPct}%`, bgcolor: color.planMuted }} />
+                                            <Box sx={{ width: `${progressRemainingPct}%`, bgcolor: color.bgProgressTrack }} />
                                         </Box>
                                         <Box
                                             sx={{
@@ -553,7 +554,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                                 transform: "translateX(-50%)",
                                                 width: "1px",
                                                 height: 36,
-                                                bgcolor: "#f3ebff",
+                                                bgcolor: color.planSoft,
                                             }}
                                         />
                                         <Box
@@ -566,21 +567,21 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                                 height: 0,
                                                 borderLeft: "6px solid transparent",
                                                 borderRight: "6px solid transparent",
-                                                borderBottom: "8px solid #ccbae1",
+                                                borderBottom: `8px solid ${color.planMuted}`,
                                             }}
                                         />
                                     </Box>
 
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#6c3baa" }} />
-                                            <Typography sx={{ fontSize: 14, lineHeight: "18px", color: "#61615e", fontWeight: 600 }}>
+                                            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: color.plan }} />
+                                            <Typography sx={{ fontSize: 14, lineHeight: "18px", color: color.textSecondary, fontWeight: 600 }}>
                                                 Invested: ${data.stats.totalInvested.toLocaleString()} ({investedPct.toFixed(1)}%)
                                             </Typography>
                                         </Box>
                                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#ccbae1" }} />
-                                            <Typography sx={{ fontSize: 14, lineHeight: "18px", color: "#61615e", fontWeight: 600 }}>
+                                            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: color.planMuted }} />
+                                            <Typography sx={{ fontSize: 14, lineHeight: "18px", color: color.textSecondary, fontWeight: 600 }}>
                                                 Expected at this point: ${Math.round(expectedByNow).toLocaleString()} ({expectedPct.toFixed(1)}%)
                                             </Typography>
                                         </Box>
@@ -588,23 +589,23 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                 </CardContent>
                             </Card>
 
-                            <Card elevation={0} sx={{ borderRadius: "16px", boxShadow: "0 2px 4px rgba(0,0,0,0.10)" }}>
+                            <Card elevation={0} sx={{ borderRadius: "16px", boxShadow: shadow.card }}>
                                 <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: "#393a36", mb: 3 }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 600, color: color.textPrimary, mb: 3 }}>
                                         {data.stats.scheduleStatus === "ahead"
                                             ? "Ahead Schedule"
                                             : data.stats.scheduleStatus === "on-track"
                                                 ? "On Schedule"
                                                 : "Behind Schedule"}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 400, color: "#61615e" }}>
+                                    <Typography sx={{ fontSize: 20, lineHeight: "28px", fontWeight: 400, color: color.textSecondary }}>
                                         {data.stats.scheduleStatus === "ahead" ? (
                                             <>
                                                 You are ${Math.abs(Math.round(deltaToExpected)).toLocaleString()} ahead of the month {data.stats.monthsTracked} target. At this pace, you could reach ${numericTargetValue.toLocaleString()} by{" "}
-                                                <Box component="span" sx={{ color: "#61615e", fontWeight: 700 }}>
+                                                <Box component="span" sx={{ color: color.textSecondary, fontWeight: 700 }}>
                                                     {projectedFinishLabel ?? "—"}
                                                 </Box>{" "}
-                                                <Box component="span" sx={{ color: "#6c3baa", fontWeight: 700 }}>
+                                                <Box component="span" sx={{ color: color.plan, fontWeight: 700 }}>
                                                     {(finishVarianceMonths ?? 0) < 0
                                                         ? `${Math.abs(finishVarianceMonths ?? 0)} months early.`
                                                         : (finishVarianceMonths ?? 0) === 0
@@ -615,7 +616,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                         ) : data.stats.scheduleStatus === "on-track" ? (
                                             <>
                                                 You are right on the month {data.stats.monthsTracked} target of ${Math.round(expectedByNow).toLocaleString()}. Keeping a pace around{" "}
-                                                <Box component="span" sx={{ color: "#6c3baa", fontWeight: 700 }}>
+                                                <Box component="span" sx={{ color: color.plan, fontWeight: 700 }}>
                                                     ${data.stats.targetPerMonth.toLocaleString()}/mo
                                                 </Box>{" "}
                                                 keeps the plan on track.
@@ -623,7 +624,7 @@ export default function PlanSetup({ portfolioId, existingPlan = null }: PlanSetu
                                         ) : (
                                             <>
                                                 You are ${Math.abs(Math.round(deltaToExpected)).toLocaleString()} below the month {data.stats.monthsTracked} target of ${Math.round(expectedByNow).toLocaleString()}. Increasing to{" "}
-                                                <Box component="span" sx={{ color: "#6c3baa", fontWeight: 700 }}>
+                                                <Box component="span" sx={{ color: color.plan, fontWeight: 700 }}>
                                                     ${neededPerMonth.toLocaleString()}/mo
                                                 </Box>{" "}
                                                 would put you back on track.

@@ -2,6 +2,7 @@ import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import type { GoalStats, RangeOption } from '../../hooks/useMonthlyGoal';
+import { color, shadow, textSx } from '../../theme/cssVars';
 
 interface GoalMetricsProps {
     stats: GoalStats;
@@ -19,20 +20,13 @@ interface MetricCardProps {
     variant?: Variant;
 }
 
-const primaryTextSx = {
-    color: '#393a36',
-    fontFamily: '"Open Sans", sans-serif',
-};
-
-const secondaryTextSx = {
-    color: '#61615e',
-    fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
+const secondaryTextSx = textSx.secondary;
 
 const variantColor: Record<Variant, string | undefined> = {
-    default: '#393a36',
-    success: '#27a69a',
-    danger: '#d92673',
+    default: color.textPrimary,
+    success: color.gain,
+    danger: color.loss,
 };
 
 const gridSx = {
@@ -46,10 +40,10 @@ const gridSx = {
 };
 
 const cardSx = {
-    bgcolor: 'white',
+    bgcolor: color.bgSurface,
     borderRadius: '16px',
     p: { xs: 2, sm: 3 },
-    boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+    boxShadow: shadow.card,
     minWidth: 0,
 };
 
@@ -134,12 +128,12 @@ function ProgressCard({ label, current, total, fmt }: ProgressCardProps) {
                     {pct}%
                 </Typography>
             </Box>
-            <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'grey.100', overflow: 'hidden' }}>
+            <Box sx={{ height: 6, borderRadius: 3, bgcolor: color.bgMuted, overflow: 'hidden' }}>
                 <Box sx={{
                     height: '100%',
                     width: `${pct}%`,
                     borderRadius: 3,
-                    background: 'linear-gradient(90deg, #7c3aed, #059669)',
+                    background: color.planProgress,
                     transition: 'width 0.4s ease',
                 }} />
             </Box>

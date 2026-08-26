@@ -13,11 +13,12 @@ import {
 import BackspaceOutlinedIcon from '@mui/icons-material/BackspaceOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { color } from '../theme/cssVars';
 
-const TEXT = '#111827';
-const MUTED = '#9ca3af';
-const ACCENT = '#27a69a';
-const ERROR = '#d92673';
+const TEXT = color.textStrong;
+const MUTED = color.textSubtle;
+const ACCENT = color.gain;
+const ERROR = color.loss;
 const PIN_LENGTH = 4;
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'] as const;
 
@@ -223,8 +224,8 @@ export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModal
                   height: 60,
                   borderRadius: 2,
                   border: '1.5px solid',
-                  borderColor: error ? ERROR : active ? ACCENT : '#e5e7eb',
-                  bgcolor: filled ? '#f3f4f6' : 'white',
+                  borderColor: error ? ERROR : active ? ACCENT : color.border,
+                  bgcolor: filled ? color.bgMuted : color.bgSurface,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -292,11 +293,11 @@ export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModal
                   fontSize: 22,
                   fontWeight: 600,
                   color: TEXT,
-                  bgcolor: '#f3f4f6',
+                  bgcolor: color.bgMuted,
                   WebkitTapHighlightColor: 'transparent',
                   touchAction: 'manipulation',
                   '&:active': {
-                    bgcolor: '#e5e7eb',
+                    bgcolor: color.chartBase,
                   },
                 }}
               >

@@ -12,6 +12,18 @@
     <meta name="apple-mobile-web-app-title" content="Portfolio" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-v2.png" />
     <title>Portfolio</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('portfolio-color-scheme');
+          if (stored) stored = stored.replace(/"/g, '');
+          var mode = stored === 'dark' ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

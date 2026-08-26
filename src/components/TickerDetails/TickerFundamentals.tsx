@@ -3,16 +3,10 @@ import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import type { TickerFundamentals as TickerFundamentalsData } from '../../hooks/useTickerFundamentals';
+import { color, textSx } from '../../theme/cssVars';
 
-const primaryTextSx = {
-  color: '#393a36',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const mutedTextSx = {
-  color: '#9a9a96',
-  fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
+const mutedTextSx = textSx.muted;
 
 function formatPrice(value: number | null | undefined, currency = 'USD'): string {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -109,7 +103,7 @@ function PriceSpan({
             sx={{
               width: '100%',
               height: 3,
-              bgcolor: '#e6e6e3',
+              bgcolor: color.bgNeutral,
               borderRadius: 999,
             }}
           />
@@ -126,7 +120,7 @@ function PriceSpan({
                 transform: 'translate(-50%, -50%)',
                 width: { xs: 8, sm: 36 },
                 height: { xs: 8, sm: 7 },
-                bgcolor: '#1c1c1a',
+                bgcolor: color.bgInverse,
                 borderRadius: 999,
               }}
             />

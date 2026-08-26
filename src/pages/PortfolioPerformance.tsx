@@ -28,18 +28,19 @@ import { useValuesVisibility } from '../contexts/ValuesVisibilityContext';
 import { usePortfolioPerformance } from '../hooks/usePortfolioPerformance';
 import { computeXirrPercent } from '../services/irr';
 import { computeTtwrorPercent } from '../services/performanceSeries';
+import { color } from '../theme/cssVars';
 import type {
   CashFlowPoint,
   PortfolioDataPoint,
   RealizedGainPoint,
 } from '../types/performance';
 
-const GAIN_COLOR = '#27a69a';
-const LOSS_COLOR = '#d92673';
-const BASE_BAR_COLOR = '#e5e7eb';
-const MUTED = '#9ca3af';
-const TEXT = '#111827';
-const CHIP_BG = '#f3f4f6';
+const GAIN_COLOR = color.gain;
+const LOSS_COLOR = color.loss;
+const BASE_BAR_COLOR = color.chartBase;
+const MUTED = color.textSubtle;
+const TEXT = color.textStrong;
+const CHIP_BG = color.bgMuted;
 
 const INVESTED_CAPITAL_DEFINITION =
   'Invested capital refers to the initial amount of money or assets that an investor puts into an investment. It represents the principal or the original value of the investment.';
@@ -432,7 +433,7 @@ function PeriodSelector({
               bgcolor: selected ? CHIP_BG : 'transparent',
               transition: 'background-color 0.15s ease',
               '&:hover': {
-                bgcolor: selected ? CHIP_BG : 'rgba(0,0,0,0.04)',
+                bgcolor: selected ? CHIP_BG : color.bgOverlay,
               },
             }}
           >
@@ -554,7 +555,7 @@ function PerformanceBarChart({
             }}
           />
           <YAxis hide domain={[maxBelow - pad, maxAbove + pad]} />
-          <ReferenceLine y={0} stroke="#e5e7eb" strokeWidth={1} />
+          <ReferenceLine y={0} stroke={color.chartBase} strokeWidth={1} />
           <Bar
             dataKey="above"
             stackId="perf"
@@ -651,7 +652,7 @@ function MetricInfoSheet({
           width: 40,
           height: 4,
           borderRadius: 999,
-          bgcolor: '#d1d5db',
+          bgcolor: color.borderStrong,
           mx: 'auto',
           mb: 2.5,
         }}
@@ -671,7 +672,7 @@ function MetricInfoSheet({
         sx={{
           fontSize: 15,
           lineHeight: 1.55,
-          color: '#4b5563',
+          color: color.intervalDefaultText,
           pb: 1,
         }}
       >
@@ -717,7 +718,7 @@ function MetricRow({
         py: disableVerticalPadding ? 0 : 1.25,
         pb: disableVerticalPadding ? 1.25 : 0,
         borderBottom: '1px solid',
-        borderColor: 'rgba(0,0,0,0.06)',
+        borderColor: color.borderSubtle,
         '&:last-of-type': { borderBottom: 'none' },
       }}
     >
@@ -1014,7 +1015,7 @@ const PortfolioPerformance = () => {
                 justifyContent: 'space-between',
                 py: 0,
                 borderBottom: '1px solid',
-                borderColor: 'rgba(0,0,0,0.06)',
+                borderColor: color.borderSubtle,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -1053,7 +1054,7 @@ const PortfolioPerformance = () => {
                 justifyContent: 'space-between',
                 py: 1.25,
                 borderBottom: '1px solid',
-                borderColor: 'rgba(0,0,0,0.06)',
+                borderColor: color.borderSubtle,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -1089,7 +1090,7 @@ const PortfolioPerformance = () => {
                 justifyContent: 'space-between',
                 py: 1.25,
                 borderBottom: '1px solid',
-                borderColor: 'rgba(0,0,0,0.06)',
+                borderColor: color.borderSubtle,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -1126,7 +1127,7 @@ const PortfolioPerformance = () => {
                   justifyContent: 'space-between',
                   py: 1.25,
                   borderBottom: '1px solid',
-                  borderColor: 'rgba(0,0,0,0.06)',
+                  borderColor: color.borderSubtle,
                 }}
               >
                 <Typography sx={{ fontSize: { xs: 15, sm: 16 }, fontWeight: 700, color: TEXT }}>
@@ -1152,7 +1153,7 @@ const PortfolioPerformance = () => {
                   justifyContent: 'space-between',
                   py: 1.25,
                   borderBottom: '1px solid',
-                  borderColor: 'rgba(0,0,0,0.06)',
+                  borderColor: color.borderSubtle,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -1192,7 +1193,7 @@ const PortfolioPerformance = () => {
                   justifyContent: 'space-between',
                   py: 1.25,
                   borderBottom: '1px solid',
-                  borderColor: 'rgba(0,0,0,0.06)',
+                  borderColor: color.borderSubtle,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>

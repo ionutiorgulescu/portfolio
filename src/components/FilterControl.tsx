@@ -6,6 +6,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AppsIcon from '@mui/icons-material/Apps';
+import { color, shadow } from '../theme/cssVars';
 
 export type CompositionFilter = 'all' | 'stock' | 'crypto' | 'bvb';
 
@@ -25,13 +26,13 @@ export function rememberCompositionFilter(filter: CompositionFilter): void {
   rememberedCompositionFilter = filter;
 }
 
-const SELECTED_BG = '#E8F7F3';
-const SELECTED_BORDER = '#C5EDE3';
-const SELECTED_ICON_BG = '#D4F0E8';
-const SELECTED_TEXT = '#1A5C4A';
-const IDLE_BORDER = '#EDEDED';
-const IDLE_ICON_BORDER = '#E8E8E8';
-const IDLE_ICON_COLOR = '#9CA3AF';
+const SELECTED_BG = color.selectedBg;
+const SELECTED_BORDER = color.selectedBorder;
+const SELECTED_ICON_BG = color.selectedIconBg;
+const SELECTED_TEXT = color.selectedFg;
+const IDLE_BORDER = color.borderMuted;
+const IDLE_ICON_BORDER = color.border;
+const IDLE_ICON_COLOR = color.textSubtle;
 
 const FILTER_OPTIONS: {
   label: string;
@@ -83,13 +84,11 @@ export function FilterControl({ value, onChange, exclude }: FilterControlProps) 
                 backgroundColor: selected ? SELECTED_BG : 'background.paper',
                 border: '1px solid',
                 borderColor: selected ? SELECTED_BORDER : IDLE_BORDER,
-                boxShadow: selected
-                  ? '0 6px 16px rgba(18,165,148,0.14)'
-                  : '0 1px 2px rgba(15,38,32,0.04)',
+                boxShadow: selected ? shadow.selected : shadow.idle,
                 transform: selected ? 'translateY(-2px)' : 'none',
                 transition: 'all 220ms cubic-bezier(0.65,0,0.35,1)',
                 '&:hover': {
-                  backgroundColor: selected ? SELECTED_BG : 'grey.50',
+                  backgroundColor: selected ? SELECTED_BG : color.bgHover,
                 },
               }}
             >

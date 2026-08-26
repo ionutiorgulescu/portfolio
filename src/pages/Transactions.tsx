@@ -22,6 +22,7 @@ import type { NewPosition } from '../schemas/positionSchema';
 import type { Position } from '../types/positions';
 import { parseXlsxFile } from '../utils/xlsxParser';
 import type { RowError } from '../utils/xlsxParser';
+import { color } from '../theme/cssVars';
 
 type ImportResult = {
   imported: number;
@@ -158,11 +159,11 @@ const Transactions = () => {
             sx={{
               ...pillButtonSx,
               bgcolor: 'background.paper',
-              borderColor: 'var(--color-border-2)',
+              borderColor: color.borderStrong,
               color: 'text.primary',
               '&:hover': {
-                bgcolor: 'grey.50',
-                borderColor: 'var(--color-border-2)',
+                bgcolor: color.bgHover,
+                borderColor: color.borderStrong,
               },
             }}
           >
@@ -177,7 +178,7 @@ const Transactions = () => {
               bgcolor: 'text.primary',
               color: 'background.paper',
               '&:hover': {
-                bgcolor: 'grey.800',
+                bgcolor: color.buttonHover,
                 boxShadow: 'none',
               },
             }}

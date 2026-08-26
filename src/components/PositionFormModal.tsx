@@ -20,6 +20,7 @@ import { positionSchema } from '../schemas/positionSchema';
 import type { NewPosition } from '../schemas/positionSchema';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { Position } from '../types/positions';
+import { color } from '../theme/cssVars';
 
 type PositionDefaults = Partial<
   Pick<NewPosition, 'ticker_symbol' | 'asset_name' | 'price' | 'currency' | 'transaction_type'>
@@ -298,7 +299,7 @@ const PositionFormModal = ({
                 type="submit"
                 variant="contained"
                 fullWidth
-                sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' }, mt: 2 }}
+                sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: color.buttonHover }, mt: 2 }}
                 disabled={isSubmitting}
                 startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
               >

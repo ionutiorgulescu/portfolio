@@ -10,12 +10,13 @@ import { useMonthlyGoal, aggregateMonthlyData, type RangeOption } from '../hooks
 import { MonthlyGoalChart } from '../components/GoalTracker/MonthlyGoalChart';
 import { GoalMetrics } from '../components/GoalTracker/GoalMetrics';
 import { usePortfolioContext } from '../contexts/PortfolioContext';
+import { color } from '../theme/cssVars';
 
-const SELECTED_BG = '#E8F7F3';
-const SELECTED_BORDER = '#C5EDE3';
-const SELECTED_TEXT = '#1A5C4A';
-const IDLE_BORDER = '#E0E0E0';
-const IDLE_ICON_COLOR = '#6B7280';
+const SELECTED_BG = color.selectedBg;
+const SELECTED_BORDER = color.selectedBorder;
+const SELECTED_TEXT = color.selectedFg;
+const IDLE_BORDER = color.border;
+const IDLE_ICON_COLOR = color.textTertiary;
 
 const _currentYear = new Date().getFullYear();
 const RANGES: { label: string; value: RangeOption }[] = Array.from(
@@ -83,7 +84,7 @@ const Goal = () => {
                   borderColor: selected ? SELECTED_BORDER : IDLE_BORDER,
                   transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                   '&:hover': {
-                    backgroundColor: selected ? SELECTED_BG : 'grey.50',
+                    backgroundColor: selected ? SELECTED_BG : color.bgHover,
                   },
                 }}
               >

@@ -27,6 +27,7 @@ import {
   returnOnCostPercent,
   toCumulativeReturnPercent,
 } from '../services/performanceSeries';
+import { color, shadow } from '../theme/cssVars';
 
 const PortfolioChart = lazy(() => import('./PortfolioChart'));
 
@@ -37,13 +38,13 @@ const FILTER_LABELS: Record<CompositionFilter, string> = {
   bvb: 'BVB',
 };
 
-const GAIN_COLOR = '#27a69a';
-const LOSS_COLOR = '#d92673';
-const MUTED = '#9ca3af';
+const GAIN_COLOR = color.gain;
+const LOSS_COLOR = color.loss;
+const MUTED = color.textSubtle;
 
 const cardSx = {
   borderRadius: { xs: '16px', sm: '20px' },
-  boxShadow: '0 2px 8px rgba(15, 38, 32, 0.06)',
+  boxShadow: shadow.cardRaised,
   bgcolor: 'background.paper',
   p: { xs: 2, sm: 2.5, md: 3 },
   width: '100%',
@@ -254,7 +255,7 @@ export function PortfolioPerformanceCard({
         pt: { xs: 1.25, sm: 1.5 },
         mt: { xs: 0.5, sm: 0.75 },
         borderTop: '1px dotted',
-        borderColor: '#e5e7eb',
+        borderColor: color.border,
       }}
     >
       <IntervalSelector
@@ -323,7 +324,7 @@ export function PortfolioPerformanceCard({
 
   if (!isIntraday && allData.length === 0) {
     return (
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+      <Box sx={{ bgcolor: color.bgSurface, borderRadius: '16px', p: 3, boxShadow: shadow.card }}>
         <Typography variant="body2" color="text.secondary" textAlign="center">
           No transactions found to show performance.
         </Typography>
@@ -333,7 +334,7 @@ export function PortfolioPerformanceCard({
 
   if (isIntraday && allData.length === 0 && intradayData.length === 0 && !isLoadingDaily) {
     return (
-      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 3, boxShadow: '0 2px 4px rgba(0,0,0,0.10)' }}>
+      <Box sx={{ bgcolor: color.bgSurface, borderRadius: '16px', p: 3, boxShadow: shadow.card }}>
         <Typography variant="body2" color="text.secondary" textAlign="center">
           No data available for this session.
         </Typography>
@@ -372,7 +373,7 @@ export function PortfolioPerformanceCard({
                   fontSize: { xs: 28, sm: 34, md: 40 },
                   lineHeight: { xs: '34px', sm: '40px', md: '44px' },
                   fontWeight: 700,
-                  color: '#1f2937',
+                  color: color.textStrong,
                   wordBreak: 'break-word',
                 }}
               >
@@ -469,7 +470,7 @@ export function PortfolioPerformanceCard({
                 border: '1px dashed',
                 borderColor: 'divider',
                 borderRadius: 2,
-                bgcolor: 'grey.50',
+                bgcolor: color.bgHover,
                 px: 2,
               }}
             >

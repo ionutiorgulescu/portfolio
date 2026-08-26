@@ -1,0 +1,18 @@
+@import "./light.css";
+@import "./dark.css";
+
+/*
+  Aliases kept so existing `var(--color-*)` usages keep working.
+  They resolve against the active theme because var() is computed on the element.
+*/
+:root {
+  --color-portfolio-value: var(--color-gain);
+  --color-portfolio-cost: var(--color-loss);
+  --color-border-2: var(--color-border-strong);
+  --color-border-3: var(--color-border-subtle);
+  --color-text-3: var(--color-text-subtle);
+  --color-surface-raised: var(--color-bg-surface);
+  --color-shadow: var(--shadow-card);
+  --color-goal-met: var(--color-gain);
+  --color-goal-in-progress: var(--color-gain);
+}

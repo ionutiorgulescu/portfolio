@@ -22,6 +22,7 @@ import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import { color } from '../theme/cssVars';
 import { useCreatePortfolio } from '../hooks/useCreatePortfolio';
 import { useDeletePortfolio } from '../hooks/useDeletePortfolio';
 import { useUpdatePortfolio } from '../hooks/useUpdatePortfolio';
@@ -158,7 +159,7 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
                         size="small"
                         onClick={() => handleStartEdit(portfolio.id, portfolio.name)}
                         aria-label={`Edit ${portfolio.name}`}
-                        sx={{ color: '#9CA3AF' }}
+                        sx={{ color: color.textSubtle }}
                       >
                         <EditNoteOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -167,7 +168,7 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
                         onClick={() => setDeletingId(portfolio.id)}
                         disabled={portfolios.length === 1}
                         aria-label={`Delete ${portfolio.name}`}
-                        sx={{ color: '#D95D39' }}
+                        sx={{ color: color.danger }}
                       >
                         <DeleteOutlineIcon fontSize="small" />
                       </IconButton>
@@ -196,7 +197,7 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
                 variant="contained"
                 onClick={handleCreate}
                 disabled={!newName.trim() || createMutation.isPending}
-                sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: 'grey.800' }, whiteSpace: 'nowrap' }}
+                sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: color.buttonHover }, whiteSpace: 'nowrap' }}
               >
                 {createMutation.isPending ? <CircularProgress size={16} /> : 'Create'}
               </Button>

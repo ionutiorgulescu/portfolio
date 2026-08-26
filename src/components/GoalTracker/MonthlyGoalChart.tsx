@@ -14,6 +14,7 @@ import {
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import type { MonthlyData } from '../../hooks/useMonthlyGoal';
+import { color, shadow } from '../../theme/cssVars';
 
 interface MonthlyGoalChartProps {
   months: MonthlyData[];
@@ -31,11 +32,11 @@ interface ChartEntry extends MonthlyData {
   currencySymbol: string;
 }
 
-const GAIN_COLOR = '#27a69a';
-const SHORTFALL_COLOR = '#B4EEE5';
-const BASE_BAR_COLOR = '#e5e7eb';
-const MUTED = '#9ca3af';
-const TEXT = '#111827';
+const GAIN_COLOR = color.gain;
+const SHORTFALL_COLOR = color.goalRemaining;
+const BASE_BAR_COLOR = color.chartBase;
+const MUTED = color.textSubtle;
+const TEXT = color.textStrong;
 
 const LEGEND = [
   { color: GAIN_COLOR, label: 'Goal met' },
@@ -100,14 +101,14 @@ function CustomTooltip({ active, payload, label }: TooltipContentProps<ValueType
   return (
     <Box
       sx={{
-        bgcolor: 'white',
+        bgcolor: color.bgSurface,
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
         px: 1.5,
         py: 1.25,
         minWidth: 150,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        boxShadow: shadow.tooltip,
       }}
     >
       <Typography
@@ -222,7 +223,7 @@ export function MonthlyGoalChart({ months, goal, loading, currencySymbol }: Mont
             <YAxis hide domain={[0, maxValue + pad]} />
             <Tooltip
               content={CustomTooltip}
-              cursor={{ fill: '#000000', opacity: 0.03 }}
+              cursor={{ fill: color.textStrong, opacity: 0.03 }}
             />
             <ReferenceLine
               y={goal}

@@ -8,7 +8,7 @@ import {
   setupResumeDeployCheck,
   setupStaleChunkReload,
 } from './utils/reloadOnStaleChunk'
-import './index.css'
+import './styles/index.css'
 
 let swRegistration: ServiceWorkerRegistration | undefined
 

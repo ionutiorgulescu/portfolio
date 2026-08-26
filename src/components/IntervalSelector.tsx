@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
+import { color } from '../theme/cssVars';
 import { intervalOptions } from './stockMarket.types';
 import type { ChartInterval } from './stockMarket.types';
 
@@ -52,7 +53,7 @@ export function IntervalSelector({
                 sx={{
                   fontWeight: selected ? 700 : 500,
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                  color: selected ? '#1f2937' : '#9ca3af',
+                  color: selected ? color.textStrong : color.textSubtle,
                   lineHeight: 1,
                   userSelect: 'none',
                   whiteSpace: 'nowrap',
@@ -65,7 +66,7 @@ export function IntervalSelector({
                   width: 18,
                   height: 3,
                   borderRadius: 999,
-                  bgcolor: selected ? 'var(--color-portfolio-value)' : 'transparent',
+                  bgcolor: selected ? color.gain : 'transparent',
                   transition: 'background-color 0.15s ease',
                 }}
               />
@@ -99,10 +100,10 @@ export function IntervalSelector({
               px: { xs: 1, sm: 1.25 },
               py: { xs: 0.75, sm: 0.85 },
               minWidth: 0,
-              backgroundColor: selected ? '#eceff1' : 'transparent',
+              backgroundColor: selected ? color.intervalSelectedBg : 'transparent',
               transition: 'background-color 0.15s ease',
               '&:hover': {
-                backgroundColor: selected ? '#eceff1' : 'rgba(0,0,0,0.04)',
+                backgroundColor: selected ? color.intervalSelectedBg : color.bgOverlay,
               },
             }}
           >
@@ -111,7 +112,7 @@ export function IntervalSelector({
               sx={{
                 fontWeight: selected ? 700 : 500,
                 fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                color: selected ? '#111827' : '#6b7280',
+                color: selected ? color.textStrong : color.textTertiary,
                 lineHeight: 1,
                 userSelect: 'none',
                 whiteSpace: 'nowrap',

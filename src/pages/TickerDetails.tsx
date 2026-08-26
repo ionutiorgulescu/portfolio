@@ -17,6 +17,7 @@ import { useRegisterPullToRefresh } from '../contexts/PullToRefreshContext';
 import { useStockLogos } from '../hooks/useStockLogos';
 import { useTickerFundamentals } from '../hooks/useTickerFundamentals';
 import { bvbFaviconUrls, isBvbListing } from '../utils/bvbFavicon';
+import { color, shadow, textSx } from '../theme/cssVars';
 
 type LocationState = {
   name?: string;
@@ -24,15 +25,8 @@ type LocationState = {
   compositionFilter?: CompositionFilter;
 };
 
-const primaryTextSx = {
-  color: '#393a36',
-  fontFamily: '"Open Sans", sans-serif',
-};
-
-const mutedTextSx = {
-  color: '#9a9a96',
-  fontFamily: '"Open Sans", sans-serif',
-};
+const primaryTextSx = textSx.primary;
+const mutedTextSx = textSx.muted;
 
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
 const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
@@ -60,9 +54,9 @@ function TickerLogo({ ticker, logoUrls }: { ticker: string; logoUrls: string[] }
         width: 44,
         height: 44,
         borderRadius: '10px',
-        bgcolor: 'white',
+        bgcolor: color.bgLogo,
         border: '1px solid',
-        borderColor: 'grey.200',
+        borderColor: color.borderLogo,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -189,10 +183,10 @@ const TickerDetailsPage = () => {
     <Box
       ref={pageRef}
       sx={{
-        bgcolor: 'white',
+        bgcolor: color.bgSurface,
         borderRadius: '16px',
         p: { xs: 2.5, sm: 3 },
-        boxShadow: '0 2px 4px rgba(0,0,0,0.10)',
+        boxShadow: shadow.card,
       }}
     >
       <Box
@@ -208,7 +202,7 @@ const TickerDetailsPage = () => {
           onClick={handleBack}
           sx={{
             ml: -1,
-            color: '#393a36',
+            color: color.textPrimary,
             flexShrink: 0,
             p: 0,
           }}

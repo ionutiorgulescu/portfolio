@@ -18,6 +18,7 @@ import {
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatChartCursorDate, formatChartCursorTime } from './stockMarket.types';
+import { color } from '../theme/cssVars';
 
 export type PortfolioChartPoint = {
   t: number;
@@ -46,10 +47,10 @@ type Props = {
   lineType?: 'monotone' | 'linear';
 };
 
-const GAIN_COLOR = '#27a69a';
-const LOSS_COLOR = '#d92673';
-const BASELINE_COLOR = '#d1d5db';
-const CURSOR_COLOR = '#c4c4c4';
+const GAIN_COLOR = color.gain;
+const LOSS_COLOR = color.loss;
+const BASELINE_COLOR = color.borderStrong;
+const CURSOR_COLOR = color.chartCursor;
 const CHART_MARGIN = { top: 22, right: 4, left: 4, bottom: 4 };
 
 function DateCursorTooltip({
@@ -73,7 +74,7 @@ function DateCursorTooltip({
   return (
     <div
       style={{
-        color: '#9ca3af',
+        color: color.textSubtle,
         fontSize: 12,
         fontWeight: 500,
         lineHeight: 1.2,
@@ -288,7 +289,7 @@ export default function PortfolioChart({
             strokeWidth={lineType === 'linear' ? 2 : 2.25}
             dot={
               chartData.length < 2
-                ? { r: 4, fill: stroke, stroke: '#fff', strokeWidth: 2 }
+                ? { r: 4, fill: stroke, stroke: color.bgSurface, strokeWidth: 2 }
                 : false
             }
             // Recharts can keep an internal active index after touch-up; only render
@@ -298,7 +299,7 @@ export default function PortfolioChart({
                 ? {
                     r: 4,
                     fill: stroke,
-                    stroke: '#fff',
+                    stroke: color.bgSurface,
                     strokeWidth: 2,
                   }
                 : false

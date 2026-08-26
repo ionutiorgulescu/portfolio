@@ -22,19 +22,16 @@ import {
 import { resolveQuotePrice, type PriceSession, type QuoteResult } from '../../utils/resolveQuotePrice';
 import sunriseIcon from '../../assets/sunrise.svg';
 import sunsetIcon from '../../assets/sunset.svg';
+import { color, font, textSx } from '../../theme/cssVars';
 
 const PortfolioChart = lazy(() => import('../PortfolioChart'));
 
-const GAIN_COLOR = '#27a69a';
-const LOSS_COLOR = '#d92673';
-const MUTED = '#9a9a96';
-const PRIMARY = '#393a36';
-const FONT = '"Open Sans", sans-serif';
+const GAIN_COLOR = color.gain;
+const LOSS_COLOR = color.loss;
+const MUTED = color.textMuted;
+const FONT = font.sans;
 
-const primaryTextSx = {
-  color: PRIMARY,
-  fontFamily: FONT,
-};
+const primaryTextSx = textSx.primary;
 
 type Props = {
   ticker: string;
@@ -93,7 +90,7 @@ function formatChangeAmount(value: number, currency: string): string {
 }
 
 function LiveDot({ positive, pulse }: { positive: boolean; pulse: boolean }) {
-  const color = positive ? GAIN_COLOR : LOSS_COLOR;
+  const accent = positive ? GAIN_COLOR : LOSS_COLOR;
   return (
     <Box
       component="span"
@@ -104,7 +101,7 @@ function LiveDot({ positive, pulse }: { positive: boolean; pulse: boolean }) {
         width: 8,
         height: 8,
         borderRadius: '50%',
-        bgcolor: color,
+        bgcolor: accent,
         flexShrink: 0,
         ...(pulse
           ? {
@@ -113,7 +110,7 @@ function LiveDot({ positive, pulse }: { positive: boolean; pulse: boolean }) {
                 position: 'absolute',
                 inset: 0,
                 borderRadius: '50%',
-                bgcolor: color,
+                bgcolor: accent,
                 animation: 'tickerLivePulse 1.6s ease-out infinite',
               },
               '@keyframes tickerLivePulse': {
@@ -151,7 +148,7 @@ function SessionIcon({ session }: { session: PriceSession }) {
         width: 24,
         height: 24,
         borderRadius: '4px',
-        bgcolor: '#e9eef6',
+        bgcolor: color.bgAccentSoft,
         flexShrink: 0,
       }}
     >
@@ -159,7 +156,15 @@ function SessionIcon({ session }: { session: PriceSession }) {
         component="img"
         src={isPre ? sunriseIcon : sunsetIcon}
         alt=""
-        sx={{ width: 14, height: 14, opacity: 0.7 }}
+        sx={{
+          width: 14,
+          height: 14,
+          opacity: 0.7,
+          '[data-theme="dark"] &': {
+            filter: 'invert(1)',
+            opacity: 0.9,
+          },
+        }}
       />
     </Box>
   );
@@ -673,7 +678,7 @@ export function TickerChart({
               border: '1px dashed',
               borderColor: 'divider',
               borderRadius: 2,
-              bgcolor: 'grey.50',
+              bgcolor: color.bgHover,
               px: 2,
             }}
           >

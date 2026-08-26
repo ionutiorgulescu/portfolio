@@ -14,6 +14,7 @@ import {
 } from '../stockMarket.types';
 import type { ChartInterval, ChartPoint } from '../stockMarket.types';
 import { Box } from '@mui/material';
+import { color, shadow } from '../../theme/cssVars';
 
 const StockChart = lazy(() => import('./StockChart'));
 
@@ -160,7 +161,16 @@ const Market = () => {
   const activeLoading = isIntraday ? isLoadingIntraday : isLoading;
 
   return (
-    <section className="w-full rounded-xl bg-white p-6 shadow-sm">
+    <Box
+      component="section"
+      sx={{
+        width: '100%',
+        borderRadius: '12px',
+        bgcolor: color.bgSurface,
+        p: 3,
+        boxShadow: shadow.cardSoft,
+      }}
+    >
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <StockTickerForm
           inputTicker={inputTicker}
@@ -170,36 +180,69 @@ const Market = () => {
       </div>
 
       {activeLoading ? (
-        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+        <Box
+          sx={{
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: color.border,
+            bgcolor: color.bgMuted,
+            p: 1.5,
+            fontSize: 14,
+            color: color.textSecondary,
+          }}
+        >
           Loading stock history...
-        </div>
+        </Box>
       ) : null}
 
       {!activeLoading && activeError ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <Box
+          component="p"
+          sx={{
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: color.lossBorder,
+            bgcolor: color.lossBg,
+            p: 1.5,
+            fontSize: 14,
+            color: color.lossFg,
+            m: 0,
+          }}
+        >
           Failed to load stock history: {activeError}
-        </p>
+        </Box>
       ) : null}
 
       {!activeLoading && !activeError ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="m-0 text-lg font-semibold leading-normal text-gray-900">
+            <Box
+              component="h2"
+              sx={{ m: 0, fontSize: 18, fontWeight: 600, lineHeight: 1.4, color: color.textStrong }}
+            >
               Price - {ticker}
-            </h2>
-            <span
-              className={`rounded-full px-3 py-1 text-sm font-semibold text-white ${percentChange < 0 ? 'bg-red-300' : 'bg-emerald-500'
-                }`}
+            </Box>
+            <Box
+              component="span"
+              sx={{
+                borderRadius: 999,
+                px: 1.5,
+                py: 0.5,
+                fontSize: 14,
+                fontWeight: 600,
+                color: color.textInverse,
+                bgcolor: percentChange < 0 ? color.loss : color.gain,
+              }}
             >
               {`${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}%`}
-            </span>
+            </Box>
           </div>
 
           <Box
             sx={{
               display: 'inline-flex',
               borderRadius: '12px',
-              backgroundColor: 'grey.200',
+              backgroundColor: color.chartBase,
               padding: '4px',
               gap: '2px',
               width: 'fit-content',
@@ -209,13 +252,22 @@ const Market = () => {
             <IntervalSelector interval={interval} onChange={setInterval} />
           </Box>
 
-          <div className="h-[380px] min-h-[380px] w-full rounded-xl bg-white p-2">
+          <Box
+            sx={{
+              height: 380,
+              minHeight: 380,
+              width: '100%',
+              borderRadius: '12px',
+              bgcolor: color.bgSurface,
+              p: 1,
+            }}
+          >
             {chartData.length > 0 ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                  <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: color.textMuted }}>
                     Loading chart...
-                  </div>
+                  </Box>
                 }
               >
                 <StockChart
@@ -225,16 +277,31 @@ const Market = () => {
                 />
               </Suspense>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
+              <Box
+                sx={{
+                  display: 'flex',
+                  height: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '8px',
+                  border: '1px dashed',
+                  borderColor: color.border,
+                  bgcolor: color.bgHover,
+                  px: 2,
+                  textAlign: 'center',
+                  fontSize: 14,
+                  color: color.textMuted,
+                }}
+              >
                 No stock history available for {ticker}. Try another ticker symbol.
-              </div>
+              </Box>
             )}
-          </div>
+          </Box>
 
           <StockStats latestBar={latestBar} totalDays={sortedData.length} />
         </div>
       ) : null}
-    </section>
+    </Box>
   );
 };
 
