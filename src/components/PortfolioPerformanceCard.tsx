@@ -96,8 +96,9 @@ export function PortfolioPerformanceCard({
   const { valuesHidden } = useValuesVisibility();
 
   // 1D still needs the daily series so the headline Total Value matches 1W+.
+  // Wait for quotes to patch that last daily point — otherwise the number flashes.
   const isLoading = isIntraday
-    ? isLoadingIntraday || (isLoadingDaily && allData.length === 0)
+    ? isLoadingIntraday || isLoadingDaily
     : isLoadingDaily;
   const isError = isIntraday ? isErrorIntraday : isErrorDaily;
   const error = isIntraday ? intradayError : dailyError;

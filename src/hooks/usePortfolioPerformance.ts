@@ -232,7 +232,7 @@ export function usePortfolioPerformance(
     staleTime: 5 * 60 * 1000,
   });
 
-  const waitingForQuotes = needsQuotes && isLoadingQuotes;
+  const waitingForQuotes = needsQuotes && !quotes && isLoadingQuotes;
 
   const quoteMap = useMemo(
     () => new Map((quotes ?? []).map((q) => [q.symbol, q])),
@@ -324,6 +324,7 @@ export function usePortfolioPerformance(
     if (
       isLoadingTransactions ||
       waitingForHistory ||
+      waitingForQuotes ||
       waitingForRonFx ||
       !hasRonFx
     ) {
@@ -387,6 +388,7 @@ export function usePortfolioPerformance(
     dailyTickerCost,
     isLoadingTransactions,
     waitingForHistory,
+    waitingForQuotes,
     waitingForRonFx,
     hasRonFx,
     latestHoldings,
@@ -407,6 +409,7 @@ export function usePortfolioPerformance(
     isLoading:
       isLoadingTransactions ||
       waitingForHistory ||
+      waitingForQuotes ||
       waitingForRonFx,
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? pricesError,
