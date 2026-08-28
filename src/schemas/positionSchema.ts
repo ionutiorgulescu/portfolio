@@ -69,4 +69,26 @@ export const positionSchema = z.object({
   portfolio_id: z.string().uuid('Invalid portfolio ID'),
 });
 
+/** Caps sell quantity to current holdings. `getMaxSellQuantity` is read at validate time. */
+export const createPositionSchema = (getMaxSellQuantity: () => number) =>
+  positionSchema.superRefine((data, ctx) => {
+    if (data.status !== PositionStatus.Sell) return;
+    if (!data.ticker_symbol.trim()) return;
+
+    const quantity = Number(data.quantity);
+    if (!Number.isFinite(quantity)) return;
+
+    const maxSellQuantity = getMaxSellQuantity();
+    if (quantity <= maxSellQuantity + 1e-8) return;
+
+    ctx.addIssue({
+      code: 'custom',
+      path: ['quantity'],
+      message:
+        maxSellQuantity <= 0
+          ? 'You have no shares of this ticker to sell'
+          : `Quantity cannot exceed your holding of ${maxSellQuantity}`,
+    });
+  });
+
 export type NewPosition = z.infer<typeof positionSchema>;

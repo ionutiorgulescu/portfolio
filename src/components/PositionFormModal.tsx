@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogTitle } from '@mui/material';
-import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useEffect, useMemo, useRef } from 'react';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   TextField,
@@ -13,14 +13,46 @@ import {
   Typography,
   CircularProgress,
   IconButton,
+  InputAdornment,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import Grid from '@mui/material/Grid';
-import { positionSchema } from '../schemas/positionSchema';
+import { createPositionSchema } from '../schemas/positionSchema';
 import type { NewPosition } from '../schemas/positionSchema';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { Position } from '../types/positions';
+import { usePositions } from '../hooks/usePositions';
 import { color } from '../theme/cssVars';
+
+const QUANTITY_SCALE = 1e8;
+
+function roundQuantity(value: number): number {
+  return Math.round(value * QUANTITY_SCALE) / QUANTITY_SCALE;
+}
+
+function formatHoldingQuantity(value: number): string {
+  const rounded = roundQuantity(value);
+  if (!Number.isFinite(rounded) || rounded <= 0) return '0';
+  return String(rounded);
+}
+
+function getAvailableSellQuantity(
+  positions: Position[],
+  tickerSymbol: string,
+  excludePositionId?: string,
+): number {
+  const ticker = tickerSymbol.trim().toUpperCase();
+  if (!ticker) return 0;
+
+  let quantity = 0;
+  for (const held of positions) {
+    if (excludePositionId && held.id === excludePositionId) continue;
+    if (held.ticker_symbol.trim().toUpperCase() !== ticker) continue;
+    quantity += held.status === PositionStatus.Buy ? held.quantity : -held.quantity;
+  }
+
+  return Math.max(0, roundQuantity(quantity));
+}
 
 type PositionDefaults = Partial<
   Pick<NewPosition, 'ticker_symbol' | 'asset_name' | 'price' | 'currency' | 'transaction_type'>
@@ -63,14 +95,21 @@ const PositionFormModal = ({
   onClose,
 }: PositionFormModalProps) => {
   const isEditMode = Boolean(position);
+  const { data: positions = [] } = usePositions(portfolioId);
+  const availableQuantityRef = useRef(0);
+  const resolver = useMemo(
+    () => zodResolver(createPositionSchema(() => availableQuantityRef.current)),
+    [],
+  );
 
   const {
     control,
     handleSubmit,
     reset,
+    trigger,
     formState: { errors },
   } = useForm<NewPosition>({
-    resolver: zodResolver(positionSchema),
+    resolver,
     // Re-initialise whenever the dialog opens with a different position / defaults
     values: position
       ? {
@@ -91,6 +130,20 @@ const PositionFormModal = ({
           portfolio_id: portfolioId,
         },
   });
+
+  const status = useWatch({ control, name: 'status' });
+  const tickerSymbol = useWatch({ control, name: 'ticker_symbol' });
+  const isSell = status === PositionStatus.Sell;
+  const availableQuantity = useMemo(
+    () => getAvailableSellQuantity(positions, tickerSymbol ?? '', position?.id),
+    [positions, tickerSymbol, position?.id],
+  );
+  availableQuantityRef.current = availableQuantity;
+
+  useEffect(() => {
+    if (!open || !isSell) return;
+    void trigger('quantity');
+  }, [open, isSell, availableQuantity, trigger]);
 
   // Clear form state whenever the modal closes
   useEffect(() => {
@@ -167,8 +220,47 @@ const PositionFormModal = ({
                     type="number"
                     fullWidth
                     error={!!errors.quantity}
-                    helperText={errors.quantity?.message}
+                    helperText={
+                      errors.quantity?.message ??
+                      (isSell && tickerSymbol
+                        ? `Available: ${formatHoldingQuantity(availableQuantity)}`
+                        : undefined)
+                    }
                     margin="normal"
+                    onChange={(event) => {
+                      field.onChange(event);
+                      if (isSell) void trigger('quantity');
+                    }}
+                    InputProps={
+                      isSell
+                        ? {
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <Button
+                                  type="button"
+                                  size="small"
+                                  onClick={() => {
+                                    field.onChange(formatHoldingQuantity(availableQuantity));
+                                    void trigger('quantity');
+                                  }}
+                                  disabled={availableQuantity <= 0 || isSubmitting}
+                                  aria-label="Use all available quantity"
+                                  sx={{
+                                    minWidth: 'auto',
+                                    px: 0.75,
+                                    py: 0.25,
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  All
+                                </Button>
+                              </InputAdornment>
+                            ),
+                          }
+                        : undefined
+                    }
                   />
                 )}
               />
