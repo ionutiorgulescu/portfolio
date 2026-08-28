@@ -107,6 +107,7 @@ const PositionFormModal = ({
     handleSubmit,
     reset,
     trigger,
+    clearErrors,
     formState: { errors },
   } = useForm<NewPosition>({
     resolver,
@@ -141,9 +142,13 @@ const PositionFormModal = ({
   availableQuantityRef.current = availableQuantity;
 
   useEffect(() => {
-    if (!open || !isSell) return;
-    void trigger('quantity');
-  }, [open, isSell, availableQuantity, trigger]);
+    if (!open) return;
+    if (isSell) {
+      void trigger('quantity');
+      return;
+    }
+    clearErrors('quantity');
+  }, [open, isSell, availableQuantity, trigger, clearErrors]);
 
   // Clear form state whenever the modal closes
   useEffect(() => {
