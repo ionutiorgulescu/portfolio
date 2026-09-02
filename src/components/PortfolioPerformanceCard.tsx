@@ -392,40 +392,38 @@ export function PortfolioPerformanceCard({
               flexShrink: 0,
             }}
           >
+            <Typography
+              component="span"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.25,
+                fontSize: { xs: 15, sm: 17 },
+                fontWeight: 700,
+                lineHeight: 1.25,
+                color: performanceColor,
+              }}
+            >
+              {displayPerformance.positive ? (
+                <NorthEastIcon sx={{ fontSize: '1em' }} />
+              ) : (
+                <SouthEastIcon sx={{ fontSize: '1em' }} />
+              )}
+              {`${Math.abs(displayPerformance.gainPercent).toFixed(2)}%`}
+            </Typography>
             {valuesHidden ? (
-              <LockOutlinedIcon sx={{ fontSize: 22, color: MUTED }} />
+              <LockOutlinedIcon sx={{ fontSize: 18, color: MUTED }} />
             ) : (
-              <>
-                <Typography
-                  component="span"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.25,
-                    fontSize: { xs: 15, sm: 17 },
-                    fontWeight: 700,
-                    lineHeight: 1.25,
-                    color: performanceColor,
-                  }}
-                >
-                  {displayPerformance.positive ? (
-                    <NorthEastIcon sx={{ fontSize: '1em' }} />
-                  ) : (
-                    <SouthEastIcon sx={{ fontSize: '1em' }} />
-                  )}
-                  {`${Math.abs(displayPerformance.gainPercent).toFixed(2)}%`}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: { xs: 13, sm: 14 },
-                    fontWeight: 600,
-                    lineHeight: 1.3,
-                    color: performanceColor,
-                  }}
-                >
-                  {`${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${formatNumber(Math.abs(displayPerformance.gain))}`}
-                </Typography>
-              </>
+              <Typography
+                sx={{
+                  fontSize: { xs: 13, sm: 14 },
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                  color: performanceColor,
+                }}
+              >
+                {`${displayPerformance.gain >= 0 ? '' : '-'}${currencyPrefix}${formatNumber(Math.abs(displayPerformance.gain))}`}
+              </Typography>
             )}
           </Box>
         </Box>

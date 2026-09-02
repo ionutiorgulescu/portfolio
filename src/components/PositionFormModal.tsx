@@ -1,8 +1,11 @@
-import { Dialog, DialogContent, DialogTitle } from '@mui/material';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Autocomplete,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   TextField,
   Button,
   MenuItem,
@@ -22,6 +25,8 @@ import type { NewPosition } from '../schemas/positionSchema';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { Position } from '../types/positions';
 import { usePositions } from '../hooks/usePositions';
+import { useTickerSearch } from '../hooks/useTickerSearch';
+import type { TickerSearchResult } from '../hooks/useTickerSearch';
 import { color } from '../theme/cssVars';
 
 const QUANTITY_SCALE = 1e8;
@@ -34,6 +39,14 @@ function formatHoldingQuantity(value: number): string {
   const rounded = roundQuantity(value);
   if (!Number.isFinite(rounded) || rounded <= 0) return '0';
   return String(rounded);
+}
+
+function inferCurrency(symbol: string): Currency {
+  return symbol.toUpperCase().endsWith('.RO') ? Currency.RON : Currency.USD;
+}
+
+function inferTransactionType(quoteType: string): TransactionType {
+  return quoteType === 'CRYPTOCURRENCY' ? TransactionType.Crypto : TransactionType.Stock;
 }
 
 function getAvailableSellQuantity(
@@ -106,6 +119,7 @@ const PositionFormModal = ({
     control,
     handleSubmit,
     reset,
+    setValue,
     trigger,
     clearErrors,
     formState: { errors },
@@ -134,7 +148,24 @@ const PositionFormModal = ({
 
   const status = useWatch({ control, name: 'status' });
   const tickerSymbol = useWatch({ control, name: 'ticker_symbol' });
+  const { results, isFetching, isError: isSearchError } = useTickerSearch(
+    open ? (tickerSymbol ?? '') : '',
+  );
   const isSell = status === PositionStatus.Sell;
+
+  const applySearchResult = (result: TickerSearchResult) => {
+    setValue('ticker_symbol', result.symbol, { shouldValidate: true, shouldDirty: true });
+    setValue('asset_name', result.name, { shouldValidate: true, shouldDirty: true });
+    setValue('currency', inferCurrency(result.symbol), { shouldDirty: true });
+    setValue('transaction_type', inferTransactionType(result.quoteType), { shouldDirty: true });
+  };
+
+  const clearSearchResult = () => {
+    setValue('ticker_symbol', '', { shouldValidate: true, shouldDirty: true });
+    setValue('asset_name', '', { shouldValidate: true, shouldDirty: true });
+    setValue('currency', Currency.USD, { shouldDirty: true });
+    setValue('transaction_type', TransactionType.Stock, { shouldDirty: true });
+  };
   const availableQuantity = useMemo(
     () => getAvailableSellQuantity(positions, tickerSymbol ?? '', position?.id),
     [positions, tickerSymbol, position?.id],
@@ -180,20 +211,141 @@ const PositionFormModal = ({
       </DialogTitle>
       <DialogContent>
         <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
+            <Grid size={{ xs: hideCurrencyAndType ? 12 : 6 }}>
+              <FormControl fullWidth margin="dense" error={!!errors.status}>
+                <InputLabel id="status-label">Buy or Sell</InputLabel>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select {...field} labelId="status-label" label="Buy or Sell">
+                      {Object.values(PositionStatus).map((s) => (
+                        <MenuItem key={s} value={s}>
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
+                />
+                {errors.status && (
+                  <Typography color="error" variant="caption">
+                    {errors.status.message}
+                  </Typography>
+                )}
+              </FormControl>
+            </Grid>
+            {!hideCurrencyAndType && (
+              <Grid size={{ xs: 6 }}>
+                <FormControl fullWidth margin="dense" error={!!errors.transaction_type}>
+                  <InputLabel id="type-label">Type</InputLabel>
+                  <Controller
+                    name="transaction_type"
+                    control={control}
+                    render={({ field }) => (
+                      <Select {...field} labelId="type-label" label="Type">
+                        {Object.values(TransactionType).map((t) => (
+                          <MenuItem key={t} value={t}>
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  {errors.transaction_type && (
+                    <Typography color="error" variant="caption">
+                      {errors.transaction_type.message}
+                    </Typography>
+                  )}
+                </FormControl>
+              </Grid>
+            )}
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
                 name="ticker_symbol"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Ticker Symbol"
-                    fullWidth
-                    error={!!errors.ticker_symbol}
-                    helperText={errors.ticker_symbol?.message}
-                    margin="normal"
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  <Autocomplete
+                    freeSolo
+                    autoHighlight
+                    filterOptions={(options) => options}
+                    options={results}
+                    getOptionLabel={(option) =>
+                      typeof option === 'string' ? option : option.symbol
+                    }
+                    inputValue={field.value}
+                    onInputChange={(_event, value, reason) => {
+                      if (reason === 'reset') return;
+                      field.onChange(value.toUpperCase());
+                    }}
+                    onChange={(_event, option, reason) => {
+                      if (reason === 'clear') {
+                        clearSearchResult();
+                        return;
+                      }
+                      if (!option) {
+                        field.onChange('');
+                        return;
+                      }
+                      if (typeof option === 'string') {
+                        field.onChange(option.toUpperCase());
+                        return;
+                      }
+                      applySearchResult(option);
+                    }}
+                    loading={isFetching}
+                    disabled={isSubmitting}
+                    noOptionsText={
+                      (field.value ?? '').trim().length < 2
+                        ? 'Type a ticker or company name'
+                        : 'No matching stocks'
+                    }
+                    slotProps={{
+                      popper: { sx: { zIndex: 1400 } },
+                    }}
+                    renderOption={(props, option) => {
+                      const { key, ...optionProps } = props;
+                      return (
+                        <Box
+                          key={key}
+                          component="li"
+                          {...optionProps}
+                          sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+                        >
+                          <Typography variant="body2" fontWeight={600}>
+                            {option.symbol}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {[option.name, option.exchange].filter(Boolean).join(' · ')}
+                          </Typography>
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Search by Ticker"
+                        fullWidth
+                        inputRef={field.ref}
+                        error={!!errors.ticker_symbol}
+                        helperText={
+                          errors.ticker_symbol?.message ??
+                          (isSearchError
+                            ? 'Search unavailable — type the ticker manually'
+                            : '')
+                        }
+                        margin="dense"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {isFetching ? <CircularProgress color="inherit" size={16} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
                   />
                 )}
               />
@@ -209,12 +361,12 @@ const PositionFormModal = ({
                     fullWidth
                     error={!!errors.asset_name}
                     helperText={errors.asset_name?.message}
-                    margin="normal"
+                    margin="dense"
                   />
                 )}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 6 }}>
               <Controller
                 name="quantity"
                 control={control}
@@ -231,7 +383,7 @@ const PositionFormModal = ({
                         ? `Available: ${formatHoldingQuantity(availableQuantity)}`
                         : undefined)
                     }
-                    margin="normal"
+                    margin="dense"
                     onChange={(event) => {
                       field.onChange(event);
                       if (isSell) void trigger('quantity');
@@ -270,7 +422,7 @@ const PositionFormModal = ({
                 )}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 6 }}>
               <Controller
                 name="price"
                 control={control}
@@ -282,7 +434,7 @@ const PositionFormModal = ({
                     fullWidth
                     error={!!errors.price}
                     helperText={errors.price?.message}
-                    margin="normal"
+                    margin="dense"
                   />
                 )}
               />
@@ -300,7 +452,7 @@ const PositionFormModal = ({
                     InputLabelProps={{ shrink: true }}
                     error={!!errors.buy_date}
                     helperText={errors.buy_date?.message}
-                    margin="normal"
+                    margin="dense"
                   />
                 )}
               />
@@ -331,7 +483,7 @@ const PositionFormModal = ({
                       fullWidth
                       error={!!errors.currency}
                       helperText={errors.currency?.message}
-                      margin="normal"
+                      margin="dense"
                     >
                       {Object.values(Currency).map((c) => (
                         <MenuItem key={c} value={c}>
@@ -341,54 +493,6 @@ const PositionFormModal = ({
                     </TextField>
                   )}
                 />
-              </Grid>
-            )}
-            <Grid size={{ xs: 12 }}>
-              <FormControl fullWidth margin="normal" error={!!errors.status}>
-                <InputLabel id="status-label">Status</InputLabel>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select {...field} labelId="status-label" label="Status">
-                      {Object.values(PositionStatus).map((s) => (
-                        <MenuItem key={s} value={s}>
-                          {s.charAt(0).toUpperCase() + s.slice(1)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
-                {errors.status && (
-                  <Typography color="error" variant="caption">
-                    {errors.status.message}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
-            {!hideCurrencyAndType && (
-              <Grid size={{ xs: 12 }}>
-                <FormControl fullWidth margin="normal" error={!!errors.transaction_type}>
-                  <InputLabel id="type-label">Type</InputLabel>
-                  <Controller
-                    name="transaction_type"
-                    control={control}
-                    render={({ field }) => (
-                      <Select {...field} labelId="type-label" label="Type">
-                        {Object.values(TransactionType).map((t) => (
-                          <MenuItem key={t} value={t}>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    )}
-                  />
-                  {errors.transaction_type && (
-                    <Typography color="error" variant="caption">
-                      {errors.transaction_type.message}
-                    </Typography>
-                  )}
-                </FormControl>
               </Grid>
             )}
             <Grid size={{ xs: 12 }}>

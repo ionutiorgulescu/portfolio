@@ -513,21 +513,17 @@ export function PortfolioCompositionRow({
                                 },
                             }}
                         />
-                        {valuesHidden ? (
-                            <LockOutlinedIcon sx={{ fontSize: 14, color: color.textSubtle }} />
-                        ) : (
-                            <Typography
-                                sx={{
-                                    ...secondaryTextSx,
-                                    fontSize: 12,
-                                    lineHeight: '14px',
-                                    fontVariantNumeric: 'tabular-nums',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {formatPercent(row.weight)}
-                            </Typography>
-                        )}
+                        <Typography
+                            sx={{
+                                ...secondaryTextSx,
+                                fontSize: 12,
+                                lineHeight: '14px',
+                                fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {formatPercent(row.weight)}
+                        </Typography>
                     </Box>
                 </Box>
             </Box>
