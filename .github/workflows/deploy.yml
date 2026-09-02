@@ -8,6 +8,7 @@ on:
 jobs:
   web-deploy:
     name: 🎉 Deploy
+    needs: oci-api-deploy
     runs-on: ubuntu-latest
     environment: Prod 
 
@@ -47,3 +48,57 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./dist/
         server-dir: ./public_html/
+
+  # OCI API deploy. Set these GitHub secrets (repo or Prod environment):
+  #   SSH_HOST         — VM hostname or IP
+  #   SSH_USER         — SSH username
+  #   SSH_PRIVATE_KEY  — private key authorized on the VM
+  oci-api-deploy:
+    name: 🚀 Deploy API to OCI
+    runs-on: ubuntu-latest
+    environment: Prod
+
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v3
+
+    - name: 🔐 Sync server/ over SSH and restart portfolio-api
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USER: ${{ secrets.SSH_USER }}
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        set -euo pipefail
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+        SSH_CMD="ssh -i ${HOME}/.ssh/deploy_key -o IdentitiesOnly=yes"
+
+        $SSH_CMD "${SSH_USER}@${SSH_HOST}" 'mkdir -p ~/portfolio-server'
+
+        rsync -az --delete \
+          --exclude node_modules \
+          --exclude data \
+          --exclude .env \
+          --exclude '*.db' \
+          --exclude '*.db-wal' \
+          --exclude '*.db-shm' \
+          -e "$SSH_CMD" \
+          ./server/ "${SSH_USER}@${SSH_HOST}:~/portfolio-server/"
+
+        $SSH_CMD "${SSH_USER}@${SSH_HOST}" bash -s << 'REMOTE'
+        set -euo pipefail
+        cd ~/portfolio-server
+        yarn install --frozen-lockfile || yarn install
+        yarn db:migrate
+        if [ ! -f /etc/systemd/system/portfolio-api.service ]; then
+          sudo cp ~/portfolio-server/portfolio-api.service /etc/systemd/system/portfolio-api.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now portfolio-api
+        else
+          sudo systemctl restart portfolio-api
+        fi
+        REMOTE
