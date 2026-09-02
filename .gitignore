@@ -30,3 +30,6 @@ supabase/functions/.env
 supabase/.env
 supabase/snippets/*
 skills-lock.json
+
+# SQLite (Hono server)
+server/data/

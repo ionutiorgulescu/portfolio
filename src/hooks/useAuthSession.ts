@@ -1,49 +1,45 @@
 import { useEffect, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../api/supabase';
+import { backend, type AuthUser } from '../api/backend';
 
 export const useAuthSession = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadSession = async () => {
-      const {
-        data: { session: currentSession },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (error) {
+    const loadUser = async () => {
+      try {
+        const currentUser = await backend.getUser();
+        if (!isMounted) {
+          return;
+        }
+        setUser(currentUser);
+      } catch (error) {
         console.error('Failed to get auth session:', error);
+        if (!isMounted) {
+          return;
+        }
+        setUser(null);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-
-      setSession(currentSession ?? null);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
     };
 
-    void loadSession();
+    void loadUser();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
+    const unsubscribe = backend.onAuthChange((nextUser) => {
+      setUser(nextUser);
       setLoading(false);
     });
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
-  return { session, user, loading };
+  return { user, loading };
 };

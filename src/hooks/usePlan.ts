@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../api/supabase';
+import { backend } from '../api/backend';
 import { Currency, TransactionType, PositionStatus, type Position } from '../types/positions';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 
@@ -77,38 +77,16 @@ async function fetchPositionsFromStart(
   portfolioId: string,
   startDate: string,
 ): Promise<Position[]> {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const positions = await backend.listPositions(
+    portfolioId === ALL_PORTFOLIOS_ID ? undefined : portfolioId,
+  );
 
-  if (userError) {
-    if (userError.message === 'Auth session missing!') {
-      throw new Error('Your session has expired. Please sign in again.');
-    }
-    throw userError;
-  }
-
-  if (!user) {
-    throw new Error('You must be signed in to view your positions.');
-  }
-
-  let query = supabase
-    .from('positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('transaction_type', TransactionType.Stock)
-    .eq('currency', Currency.USD)
-    .gte('buy_date', startDate)
-    .order('buy_date', { ascending: true });
-
-  if (portfolioId !== ALL_PORTFOLIOS_ID) {
-    query = query.eq('portfolio_id', portfolioId);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Position[];
+  return positions.filter(
+    (pos) =>
+      pos.transaction_type === TransactionType.Stock &&
+      pos.currency === Currency.USD &&
+      pos.buy_date >= startDate,
+  );
 }
 
 // ─── Aggregator ──────────────────────────────────────────────────────────────

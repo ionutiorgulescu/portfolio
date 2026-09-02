@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../api/supabase';
+import { backend } from '../api/backend';
 import { Currency, TransactionType, PositionStatus, type Position } from '../types/positions';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
 
@@ -83,43 +83,17 @@ const fetchMonthlyPositions = async (
     portfolioId: string,
     range: RangeOption,
 ): Promise<Position[]> => {
-    const {
-        data: { user },
-        error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError) {
-        if (userError.message === 'Auth session missing!') {
-            throw new Error('Your session has expired. Please sign in again.');
-        }
-        throw userError;
-    }
-
-    if (!user) {
-        throw new Error('You must be signed in to view your positions.');
-    }
-
-    let query = supabase
-        .from('positions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('buy_date', { ascending: true });
-
-
-    query = query.eq('transaction_type', TransactionType.Stock).eq('currency', Currency.USD);
-
-    if (portfolioId !== ALL_PORTFOLIOS_ID) {
-        query = query.eq('portfolio_id', portfolioId);
-    }
+    const positions = await backend.listPositions(
+        portfolioId === ALL_PORTFOLIOS_ID ? undefined : portfolioId,
+    );
 
     const dates = getRangeDates(range);
-    if (dates) {
-        query = query.gte('buy_date', dates.from).lte('buy_date', dates.to);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []) as Position[];
+    return positions.filter((pos) => {
+        if (pos.transaction_type !== TransactionType.Stock) return false;
+        if (pos.currency !== Currency.USD) return false;
+        if (dates && (pos.buy_date < dates.from || pos.buy_date > dates.to)) return false;
+        return true;
+    });
 };
 
 export function aggregateMonthlyData(

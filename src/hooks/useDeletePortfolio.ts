@@ -1,20 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../api/supabase';
-
-const deletePortfolio = async (portfolioId: string) => {
-  const { error } = await supabase
-    .from('portfolios')
-    .delete()
-    .eq('id', portfolioId);
-
-  if (error) throw error;
-};
+import { backend } from '../api/backend';
 
 export const useDeletePortfolio = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deletePortfolio,
+    mutationFn: (portfolioId: string) => backend.deletePortfolio(portfolioId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolios'] });
       queryClient.invalidateQueries({ queryKey: ['positions'] });

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { backend } from '../api/backend';
 import { supabase } from '../api/supabase';
 import { Currency, PositionStatus, TransactionType } from '../types/positions';
 import type {
@@ -22,39 +23,13 @@ import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice'
 const RON_USD_TICKER = 'RONUSD=X';
 
 const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transaction[]> => {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const positions = await backend.listPositions(
+    portfolioId === ALL_PORTFOLIOS_ID ? undefined : portfolioId,
+  );
 
-  if (userError) {
-    if (userError.message === 'Auth session missing!') {
-      throw new Error('Your session has expired. Please sign in again.');
-    }
-    throw userError;
-  }
-
-  if (!user) {
-    throw new Error('You must be signed in to view portfolio performance.');
-  }
-
-  let query = supabase
-    .from('positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .in('status', [PositionStatus.Buy, PositionStatus.Sell])
-    .order('buy_date', { ascending: true })
-    .order('created_at', { ascending: true });
-
-  if (portfolioId !== ALL_PORTFOLIOS_ID) {
-    query = query.eq('portfolio_id', portfolioId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) throw error;
-
-  return (data ?? []) as Transaction[];
+  return positions.filter(
+    (pos) => pos.status === PositionStatus.Buy || pos.status === PositionStatus.Sell,
+  );
 };
 
 export function usePortfolioPerformance(

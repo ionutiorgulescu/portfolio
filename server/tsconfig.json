@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["index.ts", "auth.ts", "env.ts", "portfolios.ts", "positions.ts", "import-supabase.ts", "db/**/*.ts", "drizzle.config.ts"]
+}

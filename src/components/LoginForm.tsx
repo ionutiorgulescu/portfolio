@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { AuthError } from '@supabase/supabase-js';
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
-import { supabase } from '../api/supabase';
+import { backend } from '../api/backend';
 
-const getSignInErrorMessage = (error: AuthError) => {
-  const normalizedMessage = error.message.toLowerCase();
+const getSignInErrorMessage = (error: unknown) => {
+  const normalizedMessage = error instanceof Error ? error.message.toLowerCase() : '';
 
   if (normalizedMessage.includes('invalid login credentials') || normalizedMessage.includes('invalid credentials')) {
     return 'Incorrect email or password. Please try again.';
@@ -34,16 +33,13 @@ const LoginForm = () => {
     setErrorMessage(null);
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    if (error) {
+    try {
+      await backend.login(email.trim(), password);
+    } catch (error) {
       setErrorMessage(getSignInErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
