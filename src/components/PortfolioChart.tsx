@@ -65,11 +65,17 @@ function DateCursorTooltip({
   if (!active || label == null) return null;
 
   const isLive = liveAt != null && Number(label) === liveAt;
+  const timestamp = Number(label);
+  const date = new Date(timestamp);
+  const isMidnightUtc =
+    date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
   const text = isLive
     ? 'Live'
     : cursorFormat === 'time'
-      ? formatChartCursorTime(Number(label))
-      : formatChartCursorDate(Number(label));
+      ? formatChartCursorTime(timestamp)
+      : isMidnightUtc
+        ? formatChartCursorDate(timestamp)
+        : `${formatChartCursorDate(timestamp)} ${formatChartCursorTime(timestamp)}`;
 
   return (
     <div

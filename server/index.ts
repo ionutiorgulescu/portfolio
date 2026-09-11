@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { authenticate, clearSessionCookie, getSessionUser, seedUser, setSessionCookie } from './auth'
+import { authenticate, clearSession, getSessionUser, seedUser, setAuthCookies } from './auth'
 import { env } from './env'
 import { portfolioRoutes } from './portfolios'
 import { positionRoutes } from './positions'
@@ -42,13 +42,21 @@ app.post('/auth/login', async (c) => {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
-  await setSessionCookie(c, user.id)
+  await setAuthCookies(c, user.id)
   return c.json({ user })
 })
 
-app.post('/auth/logout', (c) => {
-  clearSessionCookie(c)
+app.post('/auth/logout', async (c) => {
+  await clearSession(c)
   return c.json({ ok: true })
+})
+
+app.post('/auth/refresh', async (c) => {
+  const user = await getSessionUser(c)
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  return c.json({ user })
 })
 
 app.get('/auth/me', async (c) => {

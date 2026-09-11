@@ -29,6 +29,19 @@ import { useTickerSearch } from '../hooks/useTickerSearch';
 import type { TickerSearchResult } from '../hooks/useTickerSearch';
 import { color } from '../theme/cssVars';
 
+const pillButtonSx = {
+  borderRadius: '12px',
+  textTransform: 'none',
+  fontWeight: 500,
+  px: 2.25,
+  py: 1,
+  boxShadow: 'none',
+  whiteSpace: 'nowrap',
+  '& .MuiButton-startIcon': {
+    mr: 0.75,
+  },
+} as const;
+
 const QUANTITY_SCALE = 1e8;
 
 function roundQuantity(value: number): number {
@@ -210,7 +223,16 @@ const PositionFormModal = ({
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+        <Box
+          component="form"
+          onSubmit={handleSubmit(onSubmit)}
+          sx={{
+            mt: 1,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+            },
+          }}
+        >
           <Grid container spacing={1}>
             <Grid size={{ xs: hideCurrencyAndType ? 12 : 6 }}>
               <FormControl fullWidth margin="dense" error={!!errors.status}>
@@ -500,7 +522,17 @@ const PositionFormModal = ({
                 type="submit"
                 variant="contained"
                 fullWidth
-                sx={{ bgcolor: 'text.primary', '&:hover': { bgcolor: color.buttonHover }, mt: 2 }}
+                sx={{
+                  ...pillButtonSx,
+                  bgcolor: 'text.primary',
+                  color: 'background.paper',
+                  mt: 2,
+                  'p': '16.5px 14px',
+                  '&:hover': {
+                    bgcolor: color.buttonHover,
+                    boxShadow: 'none',
+                  },
+                }}
                 disabled={isSubmitting}
                 startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
               >

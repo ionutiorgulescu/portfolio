@@ -1024,42 +1024,6 @@ Deno.serve(async (request) => {
     return errorResponse(405, "method_not_allowed", "Use GET or POST for this endpoint.");
   }
 
-  // ✅ Auth guard — prefer local JWT claims (no Auth HTTP round-trip).
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader) {
-    return errorResponse(401, "unauthorized", "Missing Authorization header.");
-  }
-
-  const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
-  if (!jwt) {
-    return errorResponse(401, "unauthorized", "Missing Authorization header.");
-  }
-
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-  );
-
-  let isAuthenticated = false;
-  try {
-    if (typeof supabaseClient.auth.getClaims === "function") {
-      const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(jwt);
-      if (!claimsError && claimsData?.claims?.sub) {
-        isAuthenticated = true;
-      }
-    }
-  } catch {
-    // Fall through to getUser.
-  }
-
-  if (!isAuthenticated) {
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(jwt);
-    if (authError || !user) {
-      return errorResponse(401, "unauthorized", "Invalid or expired token.");
-    }
-  }
-
-  // ✅ User is authenticated, proceed
   const url = new URL(request.url);
   const body = request.method === "POST" ? await parseRequestBody(request) : null;
   const tickers = getTickersFromBody(body, url);

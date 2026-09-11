@@ -19,6 +19,15 @@ yarn --cwd server db:migrate
 yarn --cwd server dev
 ```
 
+Copy the live OCI SQLite file to `server/data/portfolio.db`. Snapshots on the VM with Python’s backup API (API can keep running), refuses the copy if `integrity_check` is not `ok`, and deletes local `-wal`/`-shm` first so they cannot corrupt the new file.
+
+```sh
+OCI_SSH_HOST=your.vm.ip yarn --cwd server db:pull
+# optional: OCI_SSH_USER=ubuntu OCI_SSH_KEY=~/.ssh/id_ed25519
+yarn --cwd server db:migrate
+yarn --cwd server dev
+```
+
 Copy one Supabase user's portfolios and positions into SQLite. `SEED_EMAIL` must match `auth.users.email`. UUIDs are preserved; `users.id` is that auth user id; the password is the `SEED_PASSWORD` hash. Price history and logos are skipped.
 
 ```sh

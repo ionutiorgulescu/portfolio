@@ -245,6 +245,7 @@ export const supabaseBackend: Backend = {
 
 const HONO_AUTH_POLL_MS = 30_000;
 const honoListeners = new Set<(user: AuthUser | null) => void>();
+let inFlightGetUser: Promise<AuthUser | null> | null = null;
 
 const notifyHonoListeners = (user: AuthUser | null) => {
   for (const listener of honoListeners) {
@@ -268,15 +269,23 @@ export const honoBackend: Backend = {
   },
 
   getUser: async () => {
-    try {
-      const { user } = await http<{ user: AuthUser }>('/auth/me');
-      return user;
-    } catch (error) {
-      if (error instanceof HttpError && error.status === 401) {
-        return null;
-      }
-      throw error;
+    if (!inFlightGetUser) {
+      inFlightGetUser = (async () => {
+        try {
+          const { user } = await http<{ user: AuthUser }>('/auth/me');
+          return user;
+        } catch (error) {
+          if (error instanceof HttpError && error.status === 401) {
+            return null;
+          }
+          throw error;
+        } finally {
+          inFlightGetUser = null;
+        }
+      })();
     }
+
+    return inFlightGetUser;
   },
 
   onAuthChange: (callback) => {

@@ -16,7 +16,31 @@ export type HttpOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
 };
 
+let inFlightRefresh: Promise<boolean> | null = null;
+
+function isAuthPath(path: string): boolean {
+  const pathname = path.split('?')[0] ?? path;
+  return pathname === '/auth' || pathname.startsWith('/auth/');
+}
+
+async function refreshAuthCookies(): Promise<boolean> {
+  if (!inFlightRefresh) {
+    inFlightRefresh = request<{ user: unknown }>('/auth/refresh', { method: 'POST' }, true)
+      .then(() => true)
+      .catch(() => false)
+      .finally(() => {
+        inFlightRefresh = null;
+      });
+  }
+
+  return inFlightRefresh;
+}
+
 export async function http<T = unknown>(path: string, options: HttpOptions = {}): Promise<T> {
+  return request<T>(path, options, false);
+}
+
+async function request<T>(path: string, options: HttpOptions, isRetry: boolean): Promise<T> {
   const { body, headers: headersInit, ...rest } = options;
   const headers = new Headers(headersInit);
 
@@ -47,6 +71,12 @@ export async function http<T = unknown>(path: string, options: HttpOptions = {})
   const parsed = await parseJsonBody(response);
 
   if (!response.ok) {
+    if (response.status === 401 && !isRetry && !isAuthPath(path)) {
+      const refreshed = await refreshAuthCookies();
+      if (refreshed) {
+        return request<T>(path, options, true);
+      }
+    }
     throw new HttpError(response.status, parsed);
   }
 

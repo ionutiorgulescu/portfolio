@@ -30,6 +30,13 @@ export const useAuthSession = () => {
 
     void loadUser();
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadUser();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     const unsubscribe = backend.onAuthChange((nextUser) => {
       setUser(nextUser);
       setLoading(false);
@@ -37,6 +44,7 @@ export const useAuthSession = () => {
 
     return () => {
       isMounted = false;
+      document.removeEventListener('visibilitychange', onVisible);
       unsubscribe();
     };
   }, []);

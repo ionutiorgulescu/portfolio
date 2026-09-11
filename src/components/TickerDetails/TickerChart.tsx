@@ -18,6 +18,7 @@ import {
   resolveTradingSession,
   resolveUsPriceSession,
   type SessionMarket,
+  type TradingSessionWindow,
 } from '../../services/tradingSession';
 import { resolveQuotePrice, type PriceSession, type QuoteResult } from '../../utils/resolveQuotePrice';
 import sunriseIcon from '../../assets/sunrise.svg';
@@ -181,6 +182,17 @@ function latestPositiveCloseBefore(bars: StockBarWithDate[], beforeT: number): n
   return close;
 }
 
+function latestPositiveCloseOnOrBefore(bars: StockBarWithDate[], atOrBeforeT: number): number | null {
+  let close: number | null = null;
+  let latestT = -Infinity;
+  for (const bar of bars) {
+    if (bar.t > atOrBeforeT || bar.t < latestT || !Number.isFinite(bar.c) || bar.c <= 0) continue;
+    latestT = bar.t;
+    close = bar.c;
+  }
+  return close;
+}
+
 function firstPositiveClose(bars: StockBarWithDate[]): number | null {
   for (const bar of bars) {
     if (Number.isFinite(bar.c) && bar.c > 0) return bar.c;
@@ -188,38 +200,61 @@ function firstPositiveClose(bars: StockBarWithDate[]): number | null {
   return null;
 }
 
-function closeRange(bars: StockBarWithDate[]): { min: number; max: number } | null {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const bar of bars) {
-    if (!Number.isFinite(bar.c) || bar.c <= 0) continue;
-    if (bar.c < min) min = bar.c;
-    if (bar.c > max) max = bar.c;
-  }
-  return min === Infinity ? null : { min, max };
+function utcToday(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-/** Zero for the visible window: prior close if price traded through it, else first print. */
+/** Inclusive start of 1W/1M/1Y/YTD. `null` for 1D and MAX. */
+function periodStartDate(interval: ChartInterval): Date | null {
+  if (interval === '1D' || interval === 'MAX') return null;
+  if (interval === 'YTD') {
+    return new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  }
+  const selected = intervalOptions.find((option) => option.key === interval);
+  if (!selected?.days) return null;
+  const start = utcToday();
+  start.setUTCDate(start.getUTCDate() - selected.days);
+  return start;
+}
+
+/**
+ * Start price for the selected period.
+ * 1D: previous close (quote if bars don't include yesterday).
+ * YTD: last close of the prior year.
+ * 1W/1M/1Y: close on (or last trading day before) the lookback date.
+ * MAX: first print — never yesterday's close, or all-time % collapses to ~1 day.
+ */
 function seriesBaseline(
   visible: StockBarWithDate[],
   history: StockBarWithDate[],
   quotePreviousClose: number | null,
+  isIntraday: boolean,
+  interval: ChartInterval,
+  startDate: Date | null,
 ): number {
   const first = firstPositiveClose(visible);
   if (first == null) {
     return quotePreviousClose != null && quotePreviousClose > 0 ? quotePreviousClose : 0;
   }
 
-  const range = closeRange(visible);
-  if (!range) return first;
+  if (isIntraday) {
+    const prior =
+      visible.length > 0 ? latestPositiveCloseBefore(history, visible[0].t) : null;
+    if (prior != null && prior > 0) return prior;
+    if (quotePreviousClose != null && quotePreviousClose > 0) return quotePreviousClose;
+    return first;
+  }
 
-  const priorFromBars = latestPositiveCloseBefore(history, visible[0].t);
-  const prior =
-    priorFromBars ??
-    (quotePreviousClose != null && quotePreviousClose > 0 ? quotePreviousClose : null);
+  if (interval === 'MAX' || !startDate) return first;
 
-  if (prior != null && prior >= range.min && prior <= range.max) return prior;
-  return first;
+  const startT = startDate.getTime();
+  const reference =
+    interval === 'YTD'
+      ? latestPositiveCloseBefore(history, startT)
+      : latestPositiveCloseOnOrBefore(history, startT);
+
+  return reference != null && reference > 0 ? reference : first;
 }
 
 function withLiveTip(
@@ -251,6 +286,66 @@ function withLiveTip(
   return bars;
 }
 
+function zonedIsoDate(ms: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
+}
+
+function barsInSession(
+  bars: StockBarWithDate[],
+  start: number,
+  end: number,
+): StockBarWithDate[] {
+  return [...bars]
+    .filter((bar) => bar.t >= start && bar.t <= end && Number.isFinite(bar.c) && bar.c > 0)
+    .sort((left, right) => left.t - right.t);
+}
+
+/** Replace today's daily candle with the current session's 5m prints (plus live tip). */
+function withCurrentSession(
+  daily: StockBarWithDate[],
+  sessionBars: StockBarWithDate[],
+  livePrice: number | null,
+  now: number,
+  session: TradingSessionWindow,
+): StockBarWithDate[] {
+  const sessionDay = zonedIsoDate(session.start, session.timeZone);
+  const history = daily.filter((bar) => bar.date !== sessionDay && bar.t < session.start);
+
+  if (sessionBars.length > 0) {
+    return withLiveTip([...history, ...sessionBars], livePrice, now, session.end);
+  }
+
+  const todayBars = daily.filter((bar) => bar.date === sessionDay || bar.t >= session.start);
+  if (livePrice == null || !Number.isFinite(livePrice) || livePrice <= 0) {
+    return todayBars.length > 0 ? [...history, ...todayBars] : history;
+  }
+
+  const existing = todayBars[todayBars.length - 1];
+  const tipT = now < session.start ? session.start : Math.min(now, session.end);
+  if (existing) {
+    return [...history, { ...existing, c: livePrice, t: Math.max(existing.t, tipT) }];
+  }
+  if (now < session.start) return history;
+
+  return [
+    ...history,
+    {
+      t: tipT,
+      o: livePrice,
+      h: livePrice,
+      l: livePrice,
+      c: livePrice,
+      v: 0,
+      date: sessionDay,
+    },
+  ];
+}
+
 export function TickerChart({
   ticker,
   currency,
@@ -275,7 +370,7 @@ export function TickerChart({
     data: intradayData,
     error: intradayError,
     isLoading: isLoadingIntraday,
-  } = useStockIntradayData(ticker, '5m', isIntraday);
+  } = useStockIntradayData(ticker, '5m', true);
 
   const isLoading = isIntraday ? isLoadingIntraday : isLoadingDaily;
   const error = isIntraday ? intradayError : dailyError;
@@ -361,35 +456,26 @@ export function TickerChart({
     livePrice,
   ]);
 
+  const sessionBars = useMemo(
+    () => barsInSession(intradayData, session.start, session.end),
+    [intradayData, session.start, session.end],
+  );
+
   const filteredBars = useMemo(() => {
     if (isIntraday) {
-      const inSession = [...intradayData]
-        .filter((bar) => bar.t >= session.start && bar.t <= session.end && Number.isFinite(bar.c))
-        .sort((left, right) => left.t - right.t);
-      return withLiveTip(inSession, sessionLivePrice, Date.now(), session.end);
+      return withLiveTip(sessionBars, sessionLivePrice, Date.now(), session.end);
     }
 
-    if (sortedDaily.length === 0) return [];
+    if (sortedDaily.length === 0 && sessionBars.length === 0) return [];
 
-    const latestDate = parseIsoDate(sortedDaily[sortedDaily.length - 1].date);
-    let startDate: Date | null = null;
-
-    if (interval === 'MAX') return sortedDaily;
-
-    if (interval === 'YTD') {
-      startDate = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
-    } else {
-      const selected = intervalOptions.find((option) => option.key === interval);
-      if (selected?.days) {
-        startDate = new Date(latestDate);
-        startDate.setUTCDate(startDate.getUTCDate() - selected.days);
-      }
-    }
-
-    if (!startDate) return sortedDaily;
-    const sliced = sortedDaily.filter((bar) => parseIsoDate(bar.date) >= startDate);
-    return sliced.length > 0 ? sliced : sortedDaily;
-  }, [interval, isIntraday, sortedDaily, intradayData, sessionLivePrice, session]);
+    const startDate = periodStartDate(interval);
+    const window =
+      !startDate
+        ? sortedDaily
+        : sortedDaily.filter((bar) => parseIsoDate(bar.date) >= startDate);
+    const bars = window.length > 0 ? window : sortedDaily;
+    return withCurrentSession(bars, sessionBars, sessionLivePrice, Date.now(), session);
+  }, [interval, isIntraday, sortedDaily, sessionBars, sessionLivePrice, session]);
 
   const baseline = useMemo(
     () =>
@@ -397,8 +483,11 @@ export function TickerChart({
         filteredBars,
         isIntraday ? intradayData : sortedDaily,
         previousClose,
+        isIntraday,
+        interval,
+        periodStartDate(interval),
       ),
-    [filteredBars, isIntraday, intradayData, sortedDaily, previousClose],
+    [filteredBars, isIntraday, interval, intradayData, sortedDaily, previousClose],
   );
 
   const chartData = useMemo<PortfolioChartPoint[]>(
@@ -458,10 +547,10 @@ export function TickerChart({
     return [session.start, session.end];
   }, [isIntraday, session.start, session.end]);
 
-  const liveAt = isIntraday && latestPoint ? latestPoint.t : undefined;
   const isLiveMarket =
     Date.now() <= session.end &&
     (market === 'crypto' || quote.isMarketOpen || quote.session != null);
+  const liveAt = isLiveMarket && latestPoint ? latestPoint.t : undefined;
   const symbol = currencySymbol(currency);
   const priceParts = displayPrice != null && Number.isFinite(displayPrice) ? splitAmount(displayPrice) : null;
   const chartHeight = { xs: 200, sm: 240 };
@@ -519,7 +608,7 @@ export function TickerChart({
               }}
             >
               {isLiveMarket ? (
-                <LiveDot positive={displayPositive} pulse={isIntraday && !scrubbedPoint} />
+                <LiveDot positive={displayPositive} pulse={Boolean(liveAt) && !scrubbedPoint} />
               ) : null}
               <Box
                 sx={{

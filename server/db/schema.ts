@@ -12,6 +12,27 @@ export const users = sqliteTable('users', {
     .default(sql`(unixepoch() * 1000)`),
 })
 
+export const refreshTokens = sqliteTable(
+  'refresh_tokens',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index('idx_refresh_tokens_user_id').on(table.userId),
+    index('idx_refresh_tokens_expires_at').on(table.expiresAt),
+  ],
+)
+
 export const portfolios = sqliteTable(
   'portfolios',
   {

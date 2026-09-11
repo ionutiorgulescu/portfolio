@@ -8,6 +8,7 @@
     "start": "tsx index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:pull": "bash scripts/pull-cloud-db.sh",
     "import:supabase": "tsx import-supabase.ts"
   },
   "dependencies": {

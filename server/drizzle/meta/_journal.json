@@ -15,6 +15,13 @@
       "when": 1788355378671,
       "tag": "0003_sparkling_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789116476514,
+      "tag": "0004_loose_hitman",
+      "breakpoints": true
     }
   ]
 }
