@@ -24,34 +24,19 @@ const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back
 
 type ValuesPinModalProps = {
   open: boolean;
-  mode: 'set' | 'unlock';
   onClose: () => void;
-  onSubmit: (pin: string) => boolean | void | Promise<boolean | void>;
+  onSubmit: (pin: string) => boolean | string | void;
 };
 
-export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModalProps) {
+export function ValuesPinModal({ open, onClose, onSubmit }: ValuesPinModalProps) {
   const submittingRef = useRef(false);
-  const pendingPinRef = useRef<string | null>(null);
   const pinRef = useRef('');
   const [pin, setPin] = useState('');
-  const [pendingPin, setPendingPin] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const isConfirming = mode === 'set' && pendingPin != null;
-  const title = mode === 'set'
-    ? (isConfirming ? 'Confirm PIN' : 'Set PIN')
-    : 'Enter PIN';
-  const description = mode === 'set'
-    ? (isConfirming
-      ? 'Enter the same 4-digit PIN again to confirm.'
-      : 'Choose a 4-digit PIN to hide your values.')
-    : 'Enter your 4-digit PIN to show values.';
 
   const resetEntry = useCallback(() => {
     pinRef.current = '';
     setPin('');
-    setPendingPin(null);
-    pendingPinRef.current = null;
     setError(null);
     submittingRef.current = false;
   }, []);
@@ -59,46 +44,25 @@ export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModal
   useEffect(() => {
     if (!open) return;
     resetEntry();
-  }, [open, mode, resetEntry]);
+  }, [open, resetEntry]);
 
   const submitPin = useCallback((value: string) => {
     if (submittingRef.current) return;
     submittingRef.current = true;
     try {
-      if (mode === 'set') {
-        if (pendingPinRef.current == null) {
-          pendingPinRef.current = value;
-          setPendingPin(value);
-          pinRef.current = '';
-          setPin('');
-          return;
-        }
-        if (value !== pendingPinRef.current) {
-          setError('PINs don’t match. Try again.');
-          pendingPinRef.current = null;
-          setPendingPin(null);
-          pinRef.current = '';
-          setPin('');
-          return;
-        }
-        onSubmit(value);
-        return;
-      }
-
       const matched = onSubmit(value);
-      if (matched === false) {
-        setError('Incorrect PIN');
-        pinRef.current = '';
-        setPin('');
-      }
+      if (matched === true) return;
+      setError(typeof matched === 'string' ? matched : 'Incorrect PIN');
+      pinRef.current = '';
+      setPin('');
     } catch {
-      setError('Could not save PIN. Try again.');
+      setError('Could not check PIN. Try again.');
       pinRef.current = '';
       setPin('');
     } finally {
       submittingRef.current = false;
     }
-  }, [mode, onSubmit]);
+  }, [onSubmit]);
 
   const appendDigit = useCallback((digit: string) => {
     if (submittingRef.current) return;
@@ -180,7 +144,7 @@ export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModal
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LockOutlinedIcon sx={{ fontSize: 22, color: MUTED }} />
             <Typography variant="h6" fontWeight={700} sx={{ color: TEXT }}>
-              {title}
+              Enter PIN
             </Typography>
           </Box>
           <IconButton size="small" onClick={onClose} aria-label="Close">
@@ -191,7 +155,7 @@ export function ValuesPinModal({ open, mode, onClose, onSubmit }: ValuesPinModal
 
       <DialogContent>
         <Typography sx={{ fontSize: 14, color: MUTED, mb: 2.5 }}>
-          {description}
+          Enter your 4-digit PIN to show values.
         </Typography>
 
         <Box

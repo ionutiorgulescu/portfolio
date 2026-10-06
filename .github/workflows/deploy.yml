@@ -38,7 +38,8 @@ jobs:
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_APP_URL: ${{ vars.VITE_APP_URL }} 
         VITE_BACKEND: ${{ vars.VITE_BACKEND }} 
-        VITE_API_URL: ${{ vars.VITE_API_URL }} 
+        VITE_API_URL: ${{ vars.VITE_API_URL }}
+        VITE_VALUES_PIN: ${{ secrets.VITE_VALUES_PIN }} 
 
     - name: 📂 Sync files via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4

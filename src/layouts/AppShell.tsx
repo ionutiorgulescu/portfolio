@@ -128,8 +128,8 @@ const AppShell = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
   const { selectedPortfolioId, setSelectedPortfolioId, portfolios, isLoading: portfoliosLoading } = usePortfolioContext();
-  const { valuesHidden, hasPin, lockWithPin, unlockWithPin } = useValuesVisibility();
-  const [pinModalMode, setPinModalMode] = useState<'set' | 'unlock' | null>(null);
+  const { valuesHidden, hideValues, unlockWithPin } = useValuesVisibility();
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   // Growth page owns its own nested scroll (chart fixed, metrics scroll).
   // Lock the shell scroller so that page gets a definite height again.
@@ -299,14 +299,10 @@ const AppShell = () => {
               size="small"
               onClick={() => {
                 if (valuesHidden) {
-                  if (hasPin) {
-                    setPinModalMode('unlock');
-                    return;
-                  }
-                  unlockWithPin('');
+                  setPinModalOpen(true);
                   return;
                 }
-                setPinModalMode('set');
+                hideValues();
               }}
               title={valuesHidden ? 'Show total value' : 'Hide total value'}
               aria-label={valuesHidden ? 'Show total value' : 'Hide total value'}
@@ -498,17 +494,12 @@ const AppShell = () => {
 
       <PortfolioManagerModal open={manageOpen} onClose={() => setManageOpen(false)} />
       <ValuesPinModal
-        open={pinModalMode != null}
-        mode={pinModalMode ?? 'set'}
-        onClose={() => setPinModalMode(null)}
+        open={pinModalOpen}
+        onClose={() => setPinModalOpen(false)}
         onSubmit={(pin) => {
-          if (pinModalMode === 'unlock') {
-            const matched = unlockWithPin(pin);
-            if (matched) setPinModalMode(null);
-            return matched;
-          }
-          lockWithPin(pin);
-          setPinModalMode(null);
+          const matched = unlockWithPin(pin);
+          if (matched === true) setPinModalOpen(false);
+          return matched;
         }}
       />
     </Box>
