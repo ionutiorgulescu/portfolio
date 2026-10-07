@@ -1,6 +1,23 @@
 const STORAGE_KEY = 'portfolio:stale-chunk-reload';
 const RELOAD_COOLDOWN_MS = 10_000;
 
+let deployReloadHolds = 0;
+
+/**
+ * Defers "new deploy" reloads while a screen holds unsaved progress (e.g. the
+ * sign-up code step). Returns a release function. The deploy is picked up on
+ * the next foreground check after release.
+ */
+export function holdDeployReload(): () => void {
+  deployReloadHolds += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    deployReloadHolds -= 1;
+  };
+}
+
 function reloadOnce(): boolean {
   const lastReload = Number(sessionStorage.getItem(STORAGE_KEY) ?? '0');
   const now = Date.now();
@@ -63,7 +80,10 @@ export function setupResumeDeployCheck(
   getRegistration: () => ServiceWorkerRegistration | undefined,
 ) {
   const checkForNewDeploy = async () => {
+    // The dev server has no build-id.txt; each restart/HMR is not a deploy.
+    if (import.meta.env.DEV) return;
     if (document.visibilityState !== 'visible') return;
+    if (deployReloadHolds > 0) return;
 
     const registration = getRegistration();
     if (registration) {
@@ -78,7 +98,8 @@ export function setupResumeDeployCheck(
       const response = await fetch(`/build-id.txt?t=${Date.now()}`, {
         cache: 'no-store',
       });
-      if (!response.ok) return;
+      // An SPA fallback (index.html) means the file is missing, not a new build.
+      if (!response.ok || response.headers.get('content-type')?.includes('text/html')) return;
 
       const remoteBuildId = (await response.text()).trim();
       if (remoteBuildId && remoteBuildId !== __APP_BUILD_ID__) {
@@ -105,6 +126,7 @@ export function setupResumeDeployCheck(
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (deployReloadHolds > 0) return;
       reloadOnce();
     });
   }

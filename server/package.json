@@ -9,7 +9,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:pull": "bash scripts/pull-cloud-db.sh",
-    "import:supabase": "tsx import-supabase.ts"
+    "import:supabase": "tsx import-supabase.ts",
+    "user:create": "tsx scripts/users.ts create",
+    "user:password": "tsx scripts/users.ts password"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
@@ -18,11 +20,13 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.6.14",
+    "nodemailer": "^10.0.15",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.2",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

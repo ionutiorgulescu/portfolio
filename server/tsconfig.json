@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["index.ts", "auth.ts", "env.ts", "portfolios.ts", "positions.ts", "import-supabase.ts", "db/**/*.ts", "drizzle.config.ts"]
+  "include": ["index.ts", "auth.ts", "env.ts", "portfolios.ts", "positions.ts", "import-supabase.ts", "mailer.ts", "rate-limit.ts", "verification.ts", "db/**/*.ts", "scripts/**/*.ts", "drizzle.config.ts"]
 }

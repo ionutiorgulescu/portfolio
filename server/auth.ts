@@ -5,7 +5,7 @@ import type { Context } from 'hono'
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie'
 import { createMiddleware } from 'hono/factory'
 import { db } from './db'
-import { refreshTokens, users } from './db/schema'
+import { portfolios, refreshTokens, users } from './db/schema'
 import { env } from './env'
 
 const LEGACY_SESSION_COOKIE = 'session'
@@ -90,23 +90,105 @@ function toMillis(value: Date | number): number {
   return value instanceof Date ? value.getTime() : value
 }
 
-export async function seedUser(): Promise<void> {
-  const email = env.SEED_EMAIL.trim().toLowerCase()
-  const passwordHash = await bcrypt.hash(env.SEED_PASSWORD, BCRYPT_ROUNDS)
+const DEFAULT_PORTFOLIO_NAME = 'My Portfolio'
+export const PASSWORD_MIN_LENGTH = 8
+// bcrypt ignores everything past 72 bytes, so longer passwords are rejected instead of silently truncated.
+const PASSWORD_MAX_BYTES = 72
+const EMAIL_MAX_LENGTH = 254
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-  await db
-    .insert(users)
-    .values({ email, passwordHash })
-    .onConflictDoUpdate({
-      target: users.email,
-      set: { passwordHash },
+export class EmailTakenError extends Error {
+  constructor(email: string) {
+    super(`User ${email} already exists`)
+  }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  const code = (value: unknown) => (value as { code?: unknown } | null)?.code
+  return (
+    code(error) === 'SQLITE_CONSTRAINT_UNIQUE' ||
+    code((error as { cause?: unknown } | null)?.cause) === 'SQLITE_CONSTRAINT_UNIQUE'
+  )
+}
+
+export function validateEmail(email: string): string | null {
+  const normalizedEmail = normalizeEmail(email)
+  if (normalizedEmail.length > EMAIL_MAX_LENGTH || !EMAIL_PATTERN.test(normalizedEmail)) {
+    return 'Enter a valid email address'
+  }
+  return null
+}
+
+export function validatePassword(password: string): string | null {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`
+  }
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
+    return `Password must be at most ${PASSWORD_MAX_BYTES} bytes`
+  }
+  return null
+}
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+export function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_ROUNDS)
+}
+
+/** Creates an account whose email is already confirmed (verified sign-up or admin CLI). */
+export async function createUser(email: string, password: string): Promise<PublicUser> {
+  const normalizedEmail = normalizeEmail(email)
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1)
+
+  if (existing) {
+    throw new EmailTakenError(normalizedEmail)
+  }
+
+  const passwordHash = await hashPassword(password)
+  try {
+    // Every page expects a selected portfolio, so a new account starts with one.
+    return db.transaction((tx) => {
+      const user = tx
+        .insert(users)
+        .values({ email: normalizedEmail, passwordHash, emailVerifiedAt: new Date() })
+        .returning({ id: users.id, email: users.email })
+        .get()
+      tx.insert(portfolios).values({ userId: user.id, name: DEFAULT_PORTFOLIO_NAME }).run()
+      return user
     })
+  } catch (error) {
+    // Another request registered the same email between the check and the insert.
+    if (isUniqueViolation(error)) {
+      throw new EmailTakenError(normalizedEmail)
+    }
+    throw error
+  }
+}
 
-  console.log(`Seeded user ${email}`)
+export async function setUserPassword(email: string, password: string): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email)
+  const updated = await db
+    .update(users)
+    .set({ passwordHash: await hashPassword(password) })
+    .where(eq(users.email, normalizedEmail))
+    .returning({ id: users.id })
+
+  if (updated.length === 0) {
+    return false
+  }
+
+  await db.delete(refreshTokens).where(eq(refreshTokens.userId, updated[0].id))
+  return true
 }
 
 export async function authenticate(email: string, password: string): Promise<PublicUser | null> {
-  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedEmail = normalizeEmail(email)
   const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1)
 
   if (!user) {

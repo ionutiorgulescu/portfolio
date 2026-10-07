@@ -30,13 +30,36 @@ function resolveCorsOrigins(): string[] {
   return ['http://localhost:3000', 'http://127.0.0.1:3000']
 }
 
+function resolveSmtp() {
+  const host = process.env.SMTP_HOST?.trim()
+  if (!host) {
+    return null
+  }
+  const port = Number(process.env.SMTP_PORT) || 587
+  return {
+    host,
+    port,
+    // 465 is implicit TLS; other ports upgrade with STARTTLS.
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: required('MAIL_FROM'),
+  }
+}
+
 export const env = {
   SQLITE_PATH: resolveSqlitePath(),
   SESSION_SECRET: required('SESSION_SECRET'),
-  SEED_EMAIL: required('SEED_EMAIL'),
-  SEED_PASSWORD: required('SEED_PASSWORD'),
   SUPABASE_DB_URL: process.env.SUPABASE_DB_URL,
   PORT: Number(process.env.PORT) || 3000,
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   CORS_ORIGINS: resolveCorsOrigins(),
+  ALLOW_REGISTRATION: process.env.ALLOW_REGISTRATION === 'true',
+  // Set when a reverse proxy sits in front of the API so rate limits use the client IP from X-Forwarded-For.
+  TRUST_PROXY: process.env.TRUST_PROXY === 'true',
+  SMTP: resolveSmtp(),
+}
+
+if (env.ALLOW_REGISTRATION && env.NODE_ENV === 'production' && !env.SMTP) {
+  throw new Error('SMTP_HOST is required when ALLOW_REGISTRATION=true in production')
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Box, CircularProgress, Container, Paper } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 import { useAuthSession } from './hooks/useAuthSession';
 import AppShell from './layouts/AppShell';
 import Dashboard from './pages/Dashboard';
@@ -41,7 +42,11 @@ function App() {
       <Container maxWidth="sm">
         <Box sx={{ my: 6 }}>
           <Paper elevation={3} sx={{ p: 4 }}>
-            <LoginForm />
+            {/* Any other URL shows sign-in, so deep links still open after signing in. */}
+            <Routes>
+              <Route path="register" element={<RegisterForm />} />
+              <Route path="*" element={<LoginForm />} />
+            </Routes>
           </Paper>
         </Box>
       </Container>

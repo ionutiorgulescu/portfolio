@@ -94,6 +94,29 @@ jobs:
         set -euo pipefail
         cd ~/portfolio-server
         yarn install --frozen-lockfile || yarn install
+
+        # Snapshot the live DB before migrating (SQLite backup API, safe while the API runs).
+        # Kept in data/backups, which rsync never touches; the 10 newest are retained.
+        DB_PATH=$(grep -E '^SQLITE_PATH=' .env | tail -1 | cut -d= -f2- | tr -d "\"'" || true)
+        DB_PATH=${DB_PATH:-data/portfolio.db}
+        case "$DB_PATH" in /*) ;; *) DB_PATH="$HOME/portfolio-server/$DB_PATH" ;; esac
+        if [ -f "$DB_PATH" ]; then
+          mkdir -p data/backups
+          BACKUP="data/backups/portfolio-$(date -u +%Y%m%dT%H%M%SZ).db"
+          python3 -c 'import sqlite3, sys
+        src = sqlite3.connect(sys.argv[1])
+        dst = sqlite3.connect(sys.argv[2])
+        src.backup(dst)
+        check = list(dst.execute("PRAGMA integrity_check"))
+        dst.close()
+        src.close()
+        if check != [("ok",)]:
+            raise SystemExit("integrity_check failed: %s" % (check[:8],))
+        ' "$DB_PATH" "$BACKUP"
+          echo "Backed up DB to ~/portfolio-server/$BACKUP"
+          ls -1t data/backups/*.db | tail -n +11 | xargs -r rm --
+        fi
+
         yarn db:migrate
         if [ ! -f /etc/systemd/system/portfolio-api.service ]; then
           sudo cp ~/portfolio-server/portfolio-api.service /etc/systemd/system/portfolio-api.service
@@ -102,4 +125,22 @@ jobs:
         else
           sudo systemctl restart portfolio-api
         fi
+
+        # Fail the deploy (and skip the web deploy) if the API does not come back up.
+        PORT=$(grep -E '^PORT=' .env | tail -1 | cut -d= -f2- | tr -d "\"'" || true)
+        PORT=${PORT:-3000}
+        healthy=false
+        for _ in $(seq 1 20); do
+          if curl -fsS "http://127.0.0.1:${PORT}/health" > /dev/null; then
+            healthy=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$healthy" != true ]; then
+          echo "portfolio-api failed its health check on port ${PORT}"
+          sudo journalctl -u portfolio-api -n 50 --no-pager || true
+          exit 1
+        fi
+        echo "portfolio-api is healthy"
         REMOTE

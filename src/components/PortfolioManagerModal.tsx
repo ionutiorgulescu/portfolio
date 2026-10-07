@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -22,6 +23,9 @@ import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { useQueryClient } from '@tanstack/react-query';
+import { backend } from '../api/backend';
 import { color } from '../theme/cssVars';
 import { useCreatePortfolio } from '../hooks/useCreatePortfolio';
 import { useDeletePortfolio } from '../hooks/useDeletePortfolio';
@@ -43,6 +47,9 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -76,6 +83,19 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
     }
     await deleteMutation.mutateAsync(deletingId);
     setDeletingId(null);
+  };
+
+  const handleLogout = async () => {
+    setLogoutError(null);
+    setIsLoggingOut(true);
+    try {
+      await backend.logout();
+      // Drop cached portfolios/positions so the next account never sees them.
+      queryClient.clear();
+    } catch {
+      setLogoutError('Could not log out. Check your connection and try again.');
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -203,7 +223,25 @@ export function PortfolioManagerModal({ open, onClose }: PortfolioManagerModalPr
               </Button>
             </Box>
           </Box>
+
+          {logoutError && (
+            <Alert severity="error" sx={{ mt: 3 }}>
+              {logoutError}
+            </Alert>
+          )}
         </DialogContent>
+
+        <DialogActions sx={{ justifyContent: 'flex-start', px: 3, py: 2 }}>
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={isLoggingOut ? <CircularProgress size={16} color="inherit" /> : <LogoutIcon />}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Logging out…' : 'Log out'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Delete confirmation dialog */}

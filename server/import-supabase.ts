@@ -1,11 +1,11 @@
-import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import postgres from 'postgres'
+import { hashPassword, normalizeEmail } from './auth'
 import { db } from './db'
 import { portfolios, positions, users } from './db/schema'
 import { env } from './env'
+import { promptNewPassword } from './scripts/prompt-password'
 
-const BCRYPT_ROUNDS = 12
 const INSERT_CHUNK_SIZE = 100
 
 type AuthUserRow = {
@@ -86,7 +86,11 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 async function main(): Promise<void> {
   const supabaseDbUrl = requireSupabaseDbUrl()
-  const email = env.SEED_EMAIL.trim().toLowerCase()
+  const rawEmail = process.argv[2]
+  if (!rawEmail?.trim()) {
+    throw new Error('Usage: yarn import:supabase <email>')
+  }
+  const email = normalizeEmail(rawEmail)
   const sql = postgres(supabaseDbUrl, {
     max: 1,
     prepare: false,
@@ -138,7 +142,13 @@ async function main(): Promise<void> {
       order by buy_date desc, created_at desc
     `
 
-    const passwordHash = await bcrypt.hash(env.SEED_PASSWORD, BCRYPT_ROUNDS)
+    // Keep the current SQLite password when the user already exists; only prompt for new users.
+    const [existingUser] = await db
+      .select({ passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1)
+    const passwordHash = existingUser?.passwordHash ?? (await hashPassword(await promptNewPassword()))
     const userId = authUser.id
     const createdAt = toDate(authUser.created_at, 'auth.users.created_at')
 
@@ -174,10 +184,10 @@ async function main(): Promise<void> {
       }
 
       tx.insert(users)
-        .values({ id: userId, email, passwordHash, createdAt })
+        .values({ id: userId, email, passwordHash, createdAt, emailVerifiedAt: createdAt })
         .onConflictDoUpdate({
           target: users.id,
-          set: { email, passwordHash, createdAt },
+          set: { email, passwordHash, createdAt, emailVerifiedAt: createdAt },
         })
         .run()
 

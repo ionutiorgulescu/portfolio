@@ -32,6 +32,11 @@ export type AuthBackend = {
   logout: () => Promise<void>;
   getUser: () => Promise<AuthUser | null>;
   onAuthChange: (callback: (user: AuthUser | null) => void) => () => void;
+  isRegistrationEnabled: () => Promise<boolean>;
+  /** Emails a 6-digit code. Calling it again resends the code. */
+  startRegistration: (email: string) => Promise<void>;
+  /** Confirms the code, creates the account with this password and signs in. */
+  completeRegistration: (email: string, code: string, password: string) => Promise<AuthUser>;
 };
 
 export type PortfolioBackend = {
@@ -121,6 +126,16 @@ export const supabaseBackend: Backend = {
     return () => {
       subscription.unsubscribe();
     };
+  },
+
+  isRegistrationEnabled: async () => false,
+
+  startRegistration: async () => {
+    throw new Error('Registration is not available.');
+  },
+
+  completeRegistration: async () => {
+    throw new Error('Registration is not available.');
   },
 
   listPortfolios: async () => {
@@ -305,6 +320,24 @@ export const honoBackend: Backend = {
       honoListeners.delete(callback);
       window.clearInterval(intervalId);
     };
+  },
+
+  isRegistrationEnabled: async () => {
+    const { enabled } = await http<{ enabled: boolean }>('/auth/registration');
+    return enabled;
+  },
+
+  startRegistration: async (email) => {
+    await http('/auth/register', { method: 'POST', body: { email } });
+  },
+
+  completeRegistration: async (email, code, password) => {
+    const { user } = await http<{ user: AuthUser }>('/auth/register/verify', {
+      method: 'POST',
+      body: { email, code, password },
+    });
+    notifyHonoListeners(user);
+    return user;
   },
 
   listPortfolios: async () => {

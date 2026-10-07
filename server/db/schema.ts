@@ -7,6 +7,7 @@ export const users = sqliteTable('users', {
     .$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  emailVerifiedAt: integer('email_verified_at', { mode: 'timestamp_ms' }),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -31,6 +32,21 @@ export const refreshTokens = sqliteTable(
     index('idx_refresh_tokens_user_id').on(table.userId),
     index('idx_refresh_tokens_expires_at').on(table.expiresAt),
   ],
+)
+
+// Pending sign-ups. The account is only created once the emailed code is confirmed.
+export const emailVerificationCodes = sqliteTable(
+  'email_verification_codes',
+  {
+    email: text('email').primaryKey(),
+    codeHash: text('code_hash').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [index('idx_email_verification_codes_expires_at').on(table.expiresAt)],
 )
 
 export const portfolios = sqliteTable(

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { backend } from '../api/backend';
+import { useRegistrationEnabled } from '../hooks/useRegistrationEnabled';
 
 const getSignInErrorMessage = (error: unknown) => {
   const normalizedMessage = error instanceof Error ? error.message.toLowerCase() : '';
@@ -26,6 +28,7 @@ const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const registrationEnabled = useRegistrationEnabled();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,6 +76,12 @@ const LoginForm = () => {
         <Button type="submit" variant="contained" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </Button>
+
+        {registrationEnabled && (
+          <Button component={RouterLink} to="/register" variant="outlined">
+            Create account
+          </Button>
+        )}
       </Stack>
     </Box>
   );
