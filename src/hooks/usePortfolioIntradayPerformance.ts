@@ -49,12 +49,14 @@ function sessionMarketForFilter(
   filter: CompositionFilter,
   transactions: Transaction[],
 ): SessionMarket {
-  if (filter === 'stock') return 'us';
+  if (filter === 'stock' || filter === 'etf') return 'us';
   if (filter === 'bvb') return 'bvb';
   if (filter === 'crypto') return 'crypto';
 
   const hasUsdStock = transactions.some(
-    (tx) => tx.transaction_type === TransactionType.Stock && tx.currency !== Currency.RON,
+    (tx) =>
+      (tx.transaction_type === TransactionType.Stock || tx.transaction_type === TransactionType.Etf) &&
+      tx.currency !== Currency.RON,
   );
   if (hasUsdStock) return 'us';
   if (transactions.some((tx) => tx.currency === Currency.RON)) return 'bvb';
@@ -87,6 +89,13 @@ export function usePortfolioIntradayPerformance(
       return rawTransactions.filter(
         (tx) =>
           tx.transaction_type === TransactionType.Stock &&
+          tx.currency !== Currency.RON,
+      );
+    }
+    if (filter === 'etf') {
+      return rawTransactions.filter(
+        (tx) =>
+          tx.transaction_type === TransactionType.Etf &&
           tx.currency !== Currency.RON,
       );
     }

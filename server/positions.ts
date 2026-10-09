@@ -9,7 +9,7 @@ const BUY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 const CURRENCIES = new Set(['USD', 'RON', 'EUR'])
 const STATUSES = new Set(['buy', 'sell'])
-const TRANSACTION_TYPES = new Set(['stock', 'crypto'])
+const TRANSACTION_TYPES = new Set(['stock', 'crypto', 'etf'])
 
 type PositionRow = typeof positions.$inferSelect
 
@@ -144,7 +144,7 @@ function parsePositionFields(
   if (!partial || 'transaction_type' in body) {
     const transactionType = readTrimmedString(body.transaction_type)?.toLowerCase()
     if (!transactionType || !TRANSACTION_TYPES.has(transactionType)) {
-      return { ok: false, error: 'Transaction type must be stock or crypto' }
+      return { ok: false, error: 'Transaction type must be stock, crypto or etf' }
     }
     value.transactionType = transactionType
   }

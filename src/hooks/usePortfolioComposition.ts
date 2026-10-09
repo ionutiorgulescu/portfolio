@@ -54,6 +54,7 @@ function buildFifoHoldings(
     ? positions
     : positions.filter(p => {
         if (filter === 'stock') return p.transaction_type === TransactionType.Stock && p.currency !== Currency.RON;
+        if (filter === 'etf') return p.transaction_type === TransactionType.Etf && p.currency !== Currency.RON;
         if (filter === 'crypto') return p.transaction_type === TransactionType.Crypto;
         if (filter === 'bvb') return p.currency === Currency.RON;
         return true;

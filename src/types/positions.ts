@@ -6,6 +6,7 @@ export const PositionStatus = {
 export const TransactionType = {
   Stock: 'stock',
   Crypto: 'crypto',
+  Etf: 'etf',
 } as const;
 
 export const Currency = {

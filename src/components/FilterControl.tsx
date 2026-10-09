@@ -6,11 +6,12 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AppsIcon from '@mui/icons-material/Apps';
+import StackedLineChartIcon from '@mui/icons-material/StackedLineChart';
 import { color, shadow } from '../theme/cssVars';
 
-export type CompositionFilter = 'all' | 'stock' | 'crypto' | 'bvb';
+export type CompositionFilter = 'all' | 'stock' | 'etf' | 'crypto' | 'bvb';
 
-const COMPOSITION_FILTERS: readonly CompositionFilter[] = ['all', 'stock', 'crypto', 'bvb'];
+const COMPOSITION_FILTERS: readonly CompositionFilter[] = ['all', 'stock', 'etf', 'crypto', 'bvb'];
 
 let rememberedCompositionFilter: CompositionFilter = 'stock';
 
@@ -40,6 +41,7 @@ const FILTER_OPTIONS: {
   icon: ReactNode;
 }[] = [
   { label: 'Stocks', value: 'stock', icon: <ShowChartIcon fontSize="small" /> },
+  { label: 'ETF', value: 'etf', icon: <StackedLineChartIcon fontSize="small" /> },
   { label: 'Crypto', value: 'crypto', icon: <CurrencyBitcoinIcon fontSize="small" /> },
   { label: 'BVB', value: 'bvb', icon: <AccountBalanceIcon fontSize="small" /> },
   { label: 'All', value: 'all', icon: <AppsIcon fontSize="small" /> },

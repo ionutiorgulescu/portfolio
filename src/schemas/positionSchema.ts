@@ -65,7 +65,7 @@ export const positionSchema = z.object({
     message: 'Currency must be USD, RON or EUR',
   }),
   status: z.enum([PositionStatus.Buy, PositionStatus.Sell]),
-  transaction_type: z.enum([TransactionType.Stock, TransactionType.Crypto]),
+  transaction_type: z.enum([TransactionType.Stock, TransactionType.Crypto, TransactionType.Etf]),
   portfolio_id: z.string().uuid('Invalid portfolio ID'),
 });
 

@@ -67,8 +67,11 @@ function inferCurrency(symbol: string): Currency {
   return Currency.USD;
 }
 
-function inferTransactionType(quoteType: string): TransactionType {
-  return quoteType === 'CRYPTOCURRENCY' ? TransactionType.Crypto : TransactionType.Stock;
+function inferTransactionType(quoteType: string, currency: Currency): TransactionType {
+  if (quoteType === 'CRYPTOCURRENCY') return TransactionType.Crypto;
+  // RON-listed ETFs stay Stock so they live under BVB.
+  if (quoteType === 'ETF' && currency !== Currency.RON) return TransactionType.Etf;
+  return TransactionType.Stock;
 }
 
 function getAvailableSellQuantity(
@@ -179,8 +182,9 @@ const PositionFormModal = ({
   const applySearchResult = (result: TickerSearchResult) => {
     setValue('ticker_symbol', result.symbol, { shouldValidate: true, shouldDirty: true });
     setValue('asset_name', result.name, { shouldValidate: true, shouldDirty: true });
-    setValue('currency', inferCurrency(result.symbol), { shouldDirty: true });
-    setValue('transaction_type', inferTransactionType(result.quoteType), { shouldDirty: true });
+    const currency = inferCurrency(result.symbol);
+    setValue('currency', currency, { shouldDirty: true });
+    setValue('transaction_type', inferTransactionType(result.quoteType, currency), { shouldDirty: true });
   };
 
   const clearSearchResult = () => {
@@ -278,7 +282,7 @@ const PositionFormModal = ({
                       <Select {...field} labelId="type-label" label="Type">
                         {Object.values(TransactionType).map((t) => (
                           <MenuItem key={t} value={t}>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                            {t === TransactionType.Etf ? 'ETF' : t.charAt(0).toUpperCase() + t.slice(1)}
                           </MenuItem>
                         ))}
                       </Select>

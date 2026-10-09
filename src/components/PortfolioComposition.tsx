@@ -4,9 +4,9 @@ import Skeleton from '@mui/material/Skeleton';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import StackedLineChartIcon from '@mui/icons-material/StackedLineChart';
 import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -70,6 +70,7 @@ type CompositionGroup = {
 
 const GROUP_META: { key: CompositionGroupKey; label: string; icon: ReactNode }[] = [
   { key: 'stock', label: 'Stocks', icon: <ShowChartIcon fontSize="small" /> },
+  { key: 'etf', label: 'ETF', icon: <StackedLineChartIcon fontSize="small" /> },
   { key: 'crypto', label: 'Crypto', icon: <CurrencyBitcoinIcon fontSize="small" /> },
   { key: 'bvb', label: 'BVB', icon: <AccountBalanceIcon fontSize="small" /> },
 ];
@@ -77,10 +78,11 @@ const GROUP_META: { key: CompositionGroupKey; label: string; icon: ReactNode }[]
 function groupKeyFor(row: TickerComposition): CompositionGroupKey {
   if (row.transactionType === TransactionType.Crypto) return 'crypto';
   if (row.currency === Currency.RON) return 'bvb';
+  if (row.transactionType === TransactionType.Etf) return 'etf';
   return 'stock';
 }
 
-/** Rolls the 'all' composition (values already in USD) up into Stocks / Crypto / BVB. */
+/** Rolls the 'all' composition (values already in USD) up into Stocks / ETF / Crypto / BVB. */
 function buildGroups(rows: TickerComposition[]): CompositionGroup[] {
   const groups = GROUP_META.map((meta) => {
     const members = rows.filter((row) => groupKeyFor(row) === meta.key);
@@ -172,9 +174,6 @@ function CompositionGroupRow({
             {group.count} {group.count === 1 ? 'position' : 'positions'}
           </Typography>
         </Box>
-        {onSelect ? (
-          <ChevronRightIcon sx={{ fontSize: 18, color: color.textSubtle, ml: 'auto' }} />
-        ) : null}
       </ButtonBase>
 
       <Box

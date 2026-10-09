@@ -68,6 +68,13 @@ export function usePortfolioPerformance(
           tx.currency !== Currency.RON,
       );
     }
+    if (filter === 'etf') {
+      return scoped.filter(
+        (tx) =>
+          tx.transaction_type === TransactionType.Etf &&
+          tx.currency !== Currency.RON,
+      );
+    }
     if (filter === 'crypto') {
       return scoped.filter((tx) => tx.transaction_type === TransactionType.Crypto);
     }

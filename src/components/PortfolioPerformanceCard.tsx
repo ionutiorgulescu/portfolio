@@ -34,6 +34,7 @@ const PortfolioChart = lazy(() => import('./PortfolioChart'));
 const FILTER_LABELS: Record<CompositionFilter, string> = {
   all: 'all assets',
   stock: 'stocks',
+  etf: 'ETFs',
   crypto: 'crypto',
   bvb: 'BVB',
 };
