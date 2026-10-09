@@ -62,7 +62,7 @@ export const positionSchema = z.object({
       message: 'Buy date cannot be in the future',
     }),
   currency: z.enum(Currency, {
-    message: 'Currency must be USD or RON',
+    message: 'Currency must be USD, RON or EUR',
   }),
   status: z.enum([PositionStatus.Buy, PositionStatus.Sell]),
   transaction_type: z.enum([TransactionType.Stock, TransactionType.Crypto]),

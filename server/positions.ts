@@ -7,7 +7,7 @@ import { portfolios, positions } from './db/schema'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const BUY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-const CURRENCIES = new Set(['USD', 'RON'])
+const CURRENCIES = new Set(['USD', 'RON', 'EUR'])
 const STATUSES = new Set(['buy', 'sell'])
 const TRANSACTION_TYPES = new Set(['stock', 'crypto'])
 
@@ -128,7 +128,7 @@ function parsePositionFields(
   if (!partial || 'currency' in body) {
     const currency = readTrimmedString(body.currency)?.toUpperCase()
     if (!currency || !CURRENCIES.has(currency)) {
-      return { ok: false, error: 'Currency must be USD or RON' }
+      return { ok: false, error: 'Currency must be USD, RON or EUR' }
     }
     value.currency = currency
   }

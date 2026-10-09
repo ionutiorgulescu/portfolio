@@ -1,5 +1,6 @@
-import { Currency } from '../types/positions';
+import type { Currency } from '../types/positions';
 import type { StockBarWithDate } from '../hooks/useStockData';
+import { fxRateFor, type ForeignCurrency, type FxRates } from './fx';
 
 export type IntradayPortfolioPoint = {
   t: number;
@@ -10,8 +11,10 @@ export type IntradayPortfolioPoint = {
 
 export type IntradayPortfolioOptions = {
   tickerCurrency?: Map<string, Currency>;
-  ronToUsd?: number;
-  convertRon?: boolean;
+  /** currency → USD spot rate. */
+  fxRates?: FxRates;
+  /** Currencies whose values are converted to USD. */
+  convertCurrencies?: readonly ForeignCurrency[];
   /** Session open (inclusive). */
   windowStart: number;
   /** Last plotted timestamp: min(now, session close). */
@@ -61,8 +64,8 @@ export function computeIntradayPortfolioValue(
 ): IntradayPortfolioPoint[] {
   const {
     tickerCurrency,
-    ronToUsd = 0,
-    convertRon = false,
+    fxRates = new Map(),
+    convertCurrencies = [],
     windowStart,
     windowEnd,
     seedPrices,
@@ -145,8 +148,8 @@ export function computeIntradayPortfolioValue(
       if (price === undefined || price <= 0) continue;
 
       const currency = tickerCurrency?.get(ticker);
-      const fx = convertRon && currency === Currency.RON ? ronToUsd : 1;
-      if (convertRon && currency === Currency.RON && !(ronToUsd > 0)) continue;
+      const fx = fxRateFor(currency, fxRates, convertCurrencies);
+      if (!(fx > 0)) continue;
 
       totalValue += shares * price * fx;
       pricedAny = true;

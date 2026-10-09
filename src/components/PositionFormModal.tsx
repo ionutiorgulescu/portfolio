@@ -54,8 +54,17 @@ function formatHoldingQuantity(value: number): string {
   return String(rounded);
 }
 
+/** Yahoo suffixes of euro-denominated exchanges (Xetra/Frankfurt, Paris, Amsterdam, Milan, …). */
+const EUR_EXCHANGE_SUFFIXES = [
+  'DE', 'F', 'BE', 'DU', 'HM', 'MU', 'SG', 'PA', 'AS', 'MI', 'MC', 'BR', 'LS', 'VI', 'HE', 'IR', 'AT',
+];
+
 function inferCurrency(symbol: string): Currency {
-  return symbol.toUpperCase().endsWith('.RO') ? Currency.RON : Currency.USD;
+  const suffix = symbol.toUpperCase().split('.').pop();
+  if (!symbol.includes('.')) return Currency.USD;
+  if (suffix === 'RO') return Currency.RON;
+  if (suffix && EUR_EXCHANGE_SUFFIXES.includes(suffix)) return Currency.EUR;
+  return Currency.USD;
 }
 
 function inferTransactionType(quoteType: string): TransactionType {
@@ -161,6 +170,7 @@ const PositionFormModal = ({
 
   const status = useWatch({ control, name: 'status' });
   const tickerSymbol = useWatch({ control, name: 'ticker_symbol' });
+  const currency = useWatch({ control, name: 'currency' });
   const { results, isFetching, isError: isSearchError } = useTickerSearch(
     open ? (tickerSymbol ?? '') : '',
   );
@@ -451,12 +461,21 @@ const PositionFormModal = ({
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Price"
+                    label={currency ? `Price (${currency})` : 'Price'}
                     type="number"
                     fullWidth
                     error={!!errors.price}
                     helperText={errors.price?.message}
                     margin="dense"
+                    slotProps={{
+                      input: currency
+                        ? {
+                            endAdornment: (
+                              <InputAdornment position="end">{currency}</InputAdornment>
+                            ),
+                          }
+                        : undefined,
+                    }}
                   />
                 )}
               />

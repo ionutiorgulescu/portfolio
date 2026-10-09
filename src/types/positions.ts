@@ -11,6 +11,7 @@ export const TransactionType = {
 export const Currency = {
   USD: 'USD',
   RON: 'RON',
+  EUR: 'EUR',
 } as const;
 
 export type PositionStatus = (typeof PositionStatus)[keyof typeof PositionStatus];

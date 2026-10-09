@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { backend } from '../api/backend';
 import { Currency, TransactionType, PositionStatus, type Position } from '../types/positions';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
+import { convertPositionsToUsd } from '../services/positionsToUsd';
 
 export type RangeOption = string;
 
@@ -88,12 +89,13 @@ const fetchMonthlyPositions = async (
     );
 
     const dates = getRangeDates(range);
-    return positions.filter((pos) => {
+    // USD and EUR stocks count towards the goal; EUR trades are restated in USD.
+    return convertPositionsToUsd(positions.filter((pos) => {
         if (pos.transaction_type !== TransactionType.Stock) return false;
-        if (pos.currency !== Currency.USD) return false;
+        if (pos.currency !== Currency.USD && pos.currency !== Currency.EUR) return false;
         if (dates && (pos.buy_date < dates.from || pos.buy_date > dates.to)) return false;
         return true;
-    });
+    }));
 };
 
 export function aggregateMonthlyData(

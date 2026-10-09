@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { CompositionFilter } from "./FilterControl";
 import type { PriceSession, TickerComposition } from "../hooks/usePortfolioComposition";
 import { useValuesVisibility } from "../contexts/ValuesVisibilityContext";
+import type { Currency } from "../types/positions";
 import { bvbFaviconUrls, isBvbListing } from "../utils/bvbFavicon";
 import chartPieIcon from "../assets/chart-pie.svg";
 import sunriseIcon from "../assets/sunrise.svg";
@@ -18,8 +19,14 @@ const mutedTextSx = textSx.muted;
 /** Light/white logos that disappear on the white avatar — invert to make them visible. */
 const INVERT_LOGO_TICKERS = new Set(['V', 'UBER', 'AMZN', 'UNH', 'ABBV', 'ABR']);
 
-function formatCurrency(value: number, currency: 'USD' | 'RON' = 'USD'): string {
-    return new Intl.NumberFormat(currency === 'RON' ? 'ro-RO' : 'en-US', {
+const CURRENCY_LOCALES: Record<Currency, string> = {
+    USD: 'en-US',
+    RON: 'ro-RO',
+    EUR: 'de-DE',
+};
+
+function formatCurrency(value: number, currency: Currency = 'USD'): string {
+    return new Intl.NumberFormat(CURRENCY_LOCALES[currency], {
         style: 'currency',
         currency,
     }).format(value);
@@ -315,7 +322,7 @@ export function PortfolioCompositionRow({
     compositionFilter,
 }: {
     row: TickerComposition;
-    currency: 'USD' | 'RON';
+    currency: Currency;
     showPercent: boolean;
     onTogglePercent: () => void;
     onLogoClick?: (row: TickerComposition) => void;
@@ -428,7 +435,7 @@ export function PortfolioCompositionRow({
                                 whiteSpace: 'nowrap',
                             }}
                         >
-                            {formatCurrency(row.currentPrice, currency)}
+                            {formatCurrency(row.currentPrice, row.currency)}
                         </Typography>
                         {showLiveDot ? (
                             <LivePulseDot
@@ -454,7 +461,7 @@ export function PortfolioCompositionRow({
                             textOverflow: 'ellipsis',
                         }}
                     >
-                        {formatQuantity(row.quantity)} @ {formatCurrency(row.avgCost, currency)}
+                        {formatQuantity(row.quantity)} @ {formatCurrency(row.avgCost, row.currency)}
                     </Typography>
                 </Box>
 

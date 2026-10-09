@@ -3,6 +3,7 @@ import { supabase } from '../api/supabase';
 import { usePositions } from './usePositions';
 import { PositionStatus, TransactionType, Currency } from '../types/positions';
 import type { CompositionFilter } from '../components/FilterControl';
+import { FX_USD_TICKERS, currenciesToConvert, fxRateFor, type FxRates } from '../services/fx';
 import {
   resolveQuotePrice,
   type PriceSession,
@@ -16,9 +17,13 @@ export interface TickerComposition {
   transactionType: TransactionType;
   assetName: string;
   quantity: number;
+  /** Cost basis in the view's display currency (USD unless BVB). */
   costBasis: number;
+  /** Average cost in the listing currency (`currency`). */
   avgCost: number;
+  /** Market value in the view's display currency (USD unless BVB). */
   currentValue: number;
+  /** Quote in the listing currency (`currency`). */
   currentPrice: number;
   priceSession: PriceSession | null;
   /** % change of PRE/POST price vs regularMarketPrice; null when not in session pricing. */
@@ -31,8 +36,6 @@ export interface TickerComposition {
   weight: number;
   currency: Currency;
 }
-
-const RON_USD_TICKER = 'RONUSD=X';
 
 function buildFifoHoldings(
   positions: ReturnType<typeof usePositions>['data'],
@@ -50,7 +53,7 @@ function buildFifoHoldings(
   const filtered = filter === 'all'
     ? positions
     : positions.filter(p => {
-        if (filter === 'stock') return p.transaction_type === TransactionType.Stock && p.currency === Currency.USD;
+        if (filter === 'stock') return p.transaction_type === TransactionType.Stock && p.currency !== Currency.RON;
         if (filter === 'crypto') return p.transaction_type === TransactionType.Crypto;
         if (filter === 'bvb') return p.currency === Currency.RON;
         return true;
@@ -135,16 +138,21 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
   const holdings = buildFifoHoldings(positions, filter);
   const activeTickers = [...holdings.keys()];
 
-  const hasRonPositions = [...holdings.values()].some(h => h.currency === Currency.RON);
-  const needsRonConversion = hasRonPositions && filter !== 'bvb';
-  const tickersToFetch = needsRonConversion ? [...activeTickers, RON_USD_TICKER] : activeTickers;
+  const convertCurrencies = currenciesToConvert(
+    [...holdings.values()].map(h => h.currency),
+    filter === 'bvb',
+  );
+  const tickersToFetch = [
+    ...activeTickers,
+    ...convertCurrencies.map(currency => FX_USD_TICKERS[currency]),
+  ];
 
   const {
     data: quotes,
     isLoading: quotesLoading,
     error: quotesError,
   } = useQuery<QuoteResult[]>({
-    queryKey: ['compositionQuotes', filter, activeTickers],
+    queryKey: ['compositionQuotes', filter, tickersToFetch],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-quotas', {
         body: { tickers: tickersToFetch },
@@ -160,14 +168,17 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
     if (!quotes) return [];
 
     const quoteMap = new Map(quotes.map(q => [q.symbol, q]));
-    const ronToUsd = resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
+    const fxRates: FxRates = new Map(
+      convertCurrencies.map(currency => [
+        currency,
+        resolveQuotePrice(quoteMap.get(FX_USD_TICKERS[currency])).price,
+      ]),
+    );
 
     const totalPortfolioValue = [...holdings.entries()].reduce((sum, [ticker, holding]) => {
       const currentPrice = resolveQuotePrice(quoteMap.get(ticker)).price;
-      if (holding.currency === Currency.RON && filter !== 'bvb') {
-        return sum + holding.quantity * currentPrice * ronToUsd;
-      }
-      return sum + holding.quantity * currentPrice;
+      const fx = fxRateFor(holding.currency, fxRates, convertCurrencies);
+      return sum + holding.quantity * currentPrice * fx;
     }, 0);
 
     return [...holdings.entries()]
@@ -179,21 +190,10 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           isMarketOpen,
           dayChangePercent,
         } = resolveQuotePrice(quoteMap.get(ticker));
-        let currentValue: number;
-        let costBasisUsd: number;
-        let displayCurrentPrice: number;
-
-        if (holding.currency === Currency.RON && filter !== 'bvb') {
-          currentValue = holding.quantity * currentPrice * ronToUsd;
-          costBasisUsd = holding.costBasis * ronToUsd;
-          displayCurrentPrice = currentPrice * ronToUsd;
-        } else {
-          currentValue = holding.quantity * currentPrice;
-          costBasisUsd = holding.costBasis;
-          displayCurrentPrice = currentPrice;
-        }
-
-        const gainLoss = currentValue - costBasisUsd;
+        const fx = fxRateFor(holding.currency, fxRates, convertCurrencies);
+        const currentValue = holding.quantity * currentPrice * fx;
+        const costBasis = holding.costBasis * fx;
+        const gainLoss = currentValue - costBasis;
         const weight = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0;
 
         return {
@@ -201,10 +201,10 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           transactionType: holding.transactionType,
           assetName: holding.assetName,
           quantity: holding.quantity,
-          costBasis: costBasisUsd,
+          costBasis,
           avgCost: holding.avgCost,
           currentValue,
-          currentPrice: displayCurrentPrice,
+          currentPrice,
           priceSession,
           sessionChangePercent,
           isMarketOpen,

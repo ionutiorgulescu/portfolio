@@ -58,13 +58,15 @@ const TYPE_OPTIONS: FilterOption<TypeFilter>[] = [
 
 const formatPrice = (price: number, currency: Currency) => {
   const amount = price.toFixed(2);
-  return currency === Currency.RON ? `${amount} RON` : `$${amount}`;
+  if (currency === Currency.RON) return `${amount} RON`;
+  if (currency === Currency.EUR) return `€${amount}`;
+  return `$${amount}`;
 };
 
 const matchesTypeFilter = (position: Position, typeFilter: TypeFilter) => {
   if (typeFilter === 'all') return true;
   if (typeFilter === 'stock') {
-    return position.transaction_type === TransactionType.Stock && position.currency === Currency.USD;
+    return position.transaction_type === TransactionType.Stock && position.currency !== Currency.RON;
   }
   if (typeFilter === 'crypto') return position.transaction_type === TransactionType.Crypto;
   return position.currency === Currency.RON;

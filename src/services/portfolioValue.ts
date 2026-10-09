@@ -1,4 +1,4 @@
-import { Currency } from '../types/positions';
+import type { Currency } from '../types/positions';
 import type {
   DailyCostBasis,
   DailyHoldings,
@@ -6,20 +6,27 @@ import type {
   PortfolioDataPoint,
   PriceMatrix,
 } from '../types/performance';
-import { ronUsdOnDate } from './ronUsd';
+import {
+  fxRateFor,
+  fxRatesOnDate,
+  sumCostBasis,
+  type ForeignCurrency,
+  type FxRates,
+  type FxSeriesByCurrency,
+} from './fx';
 
 export type PortfolioValueOptions = {
   /** ticker → listing currency */
   tickerCurrency?: Map<string, Currency>;
   /**
-   * Daily RON→USD FX (e.g. from RONUSD=X history).
-   * Preferred over the scalar `ronToUsd` when converting BVB holdings.
+   * Daily currency→USD FX (e.g. from RONUSD=X / EURUSD=X history).
+   * Preferred over the scalar `fxRates` when converting non-USD holdings.
    */
-  ronToUsdByDate?: Map<string, number>;
-  /** Fallback RON→USD FX when a date is missing from `ronToUsdByDate`. */
-  ronToUsd?: number;
-  /** When true, RON market value and cost basis are converted to USD. */
-  convertRon?: boolean;
+  fxByDate?: FxSeriesByCurrency;
+  /** Fallback currency→USD FX when a date is missing from `fxByDate`. */
+  fxRates?: FxRates;
+  /** Currencies whose market value and cost basis are converted to USD. */
+  convertCurrencies?: readonly ForeignCurrency[];
   /**
    * Per-day per-ticker remaining cost (native currency).
    * Used to value holdings at cost when a market quote is missing.
@@ -46,9 +53,9 @@ export function computePortfolioValue(
 ): PortfolioDataPoint[] {
   const {
     tickerCurrency,
-    ronToUsdByDate,
-    ronToUsd = 0,
-    convertRon = false,
+    fxByDate,
+    fxRates = new Map(),
+    convertCurrencies = [],
     dailyTickerCost,
   } = options;
   const result: PortfolioDataPoint[] = [];
@@ -56,13 +63,11 @@ export function computePortfolioValue(
   for (const [date, holdings] of dailyHoldings) {
     let totalValue = 0;
     const costs = dailyTickerCost?.get(date);
-    const dayFx = convertRon
-      ? ronUsdOnDate(ronToUsdByDate, date, ronToUsd)
-      : 1;
+    const dayFx = fxRatesOnDate(fxByDate, date, fxRates, convertCurrencies);
 
     for (const [ticker, shares] of holdings) {
       const currency = tickerCurrency?.get(ticker);
-      const fx = convertRon && currency === Currency.RON ? dayFx : 1;
+      const fx = fxRateFor(currency, dayFx, convertCurrencies);
       const marketPrice = priceMatrix.get(ticker)?.get(date);
 
       if (marketPrice !== undefined && marketPrice > 0) {
@@ -77,10 +82,7 @@ export function computePortfolioValue(
       }
     }
 
-    const parts = dailyCostBasis.get(date) ?? { usd: 0, ron: 0 };
-    const costBasis = convertRon
-      ? parts.usd + parts.ron * dayFx
-      : parts.usd + parts.ron;
+    const costBasis = sumCostBasis(dailyCostBasis.get(date), dayFx, convertCurrencies);
 
     result.push({ date, value: totalValue, costBasis });
   }

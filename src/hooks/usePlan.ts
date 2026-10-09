@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { backend } from '../api/backend';
 import { Currency, TransactionType, PositionStatus, type Position } from '../types/positions';
 import { ALL_PORTFOLIOS_ID } from '../contexts/PortfolioContext';
+import { convertPositionsToUsd } from '../services/positionsToUsd';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -81,11 +82,14 @@ async function fetchPositionsFromStart(
     portfolioId === ALL_PORTFOLIOS_ID ? undefined : portfolioId,
   );
 
-  return positions.filter(
-    (pos) =>
-      pos.transaction_type === TransactionType.Stock &&
-      pos.currency === Currency.USD &&
-      pos.buy_date >= startDate,
+  // USD and EUR stocks count towards the plan; EUR trades are restated in USD.
+  return convertPositionsToUsd(
+    positions.filter(
+      (pos) =>
+        pos.transaction_type === TransactionType.Stock &&
+        (pos.currency === Currency.USD || pos.currency === Currency.EUR) &&
+        pos.buy_date >= startDate,
+    ),
   );
 }
 

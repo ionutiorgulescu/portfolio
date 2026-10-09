@@ -114,8 +114,8 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
     }
 
   const currency = raw.Currency !== undefined && raw.Currency !== null ? String(raw.Currency).trim().toUpperCase() : '';
-  if (currency !== Currency.USD && currency !== Currency.RON) {
-    return { row: rowNum, message: `Currency must be "USD" or "RON", got "${raw.Currency}"` };
+  if (!(Object.values(Currency) as string[]).includes(currency)) {
+    return { row: rowNum, message: `Currency must be "USD", "RON" or "EUR", got "${raw.Currency}"` };
   }
 
   return {
@@ -125,7 +125,7 @@ const validateRow = (raw: RawRow, rowIndex: number): ImportRow | RowError => {
     transaction_type: 'stock',
     quantity,
     price,
-    currency,
+    currency: currency as Currency,
     status: statusRaw as PositionStatus,
   };
 };

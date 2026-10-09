@@ -16,9 +16,14 @@ import {
   resolveTradingSession,
   type SessionMarket,
 } from '../services/tradingSession';
+import {
+  FX_USD_TICKERS,
+  currenciesToConvert,
+  fxRateFor,
+  sumCostBasis,
+  type FxRates,
+} from '../services/fx';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
-
-const RON_USD_TICKER = 'RONUSD=X';
 const INTRADAY_STALE_TIME_MS = 60 * 1000;
 
 const fetchPerformanceTransactions = async (portfolioId: string): Promise<Transaction[]> => {
@@ -49,7 +54,7 @@ function sessionMarketForFilter(
   if (filter === 'crypto') return 'crypto';
 
   const hasUsdStock = transactions.some(
-    (tx) => tx.transaction_type === TransactionType.Stock && tx.currency === Currency.USD,
+    (tx) => tx.transaction_type === TransactionType.Stock && tx.currency !== Currency.RON,
   );
   if (hasUsdStock) return 'us';
   if (transactions.some((tx) => tx.currency === Currency.RON)) return 'bvb';
@@ -82,7 +87,7 @@ export function usePortfolioIntradayPerformance(
       return rawTransactions.filter(
         (tx) =>
           tx.transaction_type === TransactionType.Stock &&
-          tx.currency === Currency.USD,
+          tx.currency !== Currency.RON,
       );
     }
     if (filter === 'crypto') {
@@ -102,9 +107,15 @@ export function usePortfolioIntradayPerformance(
     return map;
   }, [transactions]);
 
-  const needsRonConversion = useMemo(
-    () => filter !== 'bvb' && [...tickerCurrency.values()].some((c) => c === Currency.RON),
+  /** Non-USD currencies held in this view that must be converted to USD. */
+  const convertCurrencies = useMemo(
+    () => currenciesToConvert(tickerCurrency.values(), filter === 'bvb'),
     [filter, tickerCurrency],
+  );
+  const needsFxConversion = convertCurrencies.length > 0;
+  const fxTickers = useMemo(
+    () => convertCurrencies.map((currency) => FX_USD_TICKERS[currency]),
+    [convertCurrencies],
   );
 
   const { dailyHoldings, dailyCostBasis, dailyTickerCost } = useMemo(
@@ -124,10 +135,10 @@ export function usePortfolioIntradayPerformance(
     [latestHoldings],
   );
 
-  const historyTickers = useMemo(() => {
-    const tickers = needsRonConversion ? [...heldTickers, RON_USD_TICKER] : heldTickers;
-    return [...new Set(tickers)].sort();
-  }, [heldTickers, needsRonConversion]);
+  const historyTickers = useMemo(
+    () => [...new Set([...heldTickers, ...fxTickers])].sort(),
+    [heldTickers, fxTickers],
+  );
 
   const {
     data: historyByTicker,
@@ -143,11 +154,11 @@ export function usePortfolioIntradayPerformance(
   });
 
   const quoteTickers = useMemo(
-    () => (needsRonConversion ? [...heldTickers, RON_USD_TICKER] : heldTickers),
-    [heldTickers, needsRonConversion],
+    () => [...heldTickers, ...fxTickers],
+    [heldTickers, fxTickers],
   );
 
-  const needsQuotes = heldTickers.length > 0 || needsRonConversion;
+  const needsQuotes = heldTickers.length > 0 || needsFxConversion;
 
   const { data: quotes, isLoading: isLoadingQuotes } = useQuery<QuoteResult[]>({
     queryKey: ['performanceQuotes', filter, quoteTickers],
@@ -167,19 +178,20 @@ export function usePortfolioIntradayPerformance(
     [quotes],
   );
 
-  const liveRonToUsd = useMemo(() => {
-    if (!needsRonConversion) return 0;
-    return resolveQuotePrice(quoteMap.get(RON_USD_TICKER)).price;
-  }, [needsRonConversion, quoteMap]);
+  /** Live currency→USD spot rates. */
+  const liveFxRates: FxRates = useMemo(() => {
+    const rates: FxRates = new Map();
+    for (const currency of convertCurrencies) {
+      rates.set(currency, resolveQuotePrice(quoteMap.get(FX_USD_TICKERS[currency])).price);
+    }
+    return rates;
+  }, [convertCurrencies, quoteMap]);
 
   const isFirstDayBook = dailyHoldings.size === 1;
 
-  const waitingForRonFx =
-    needsRonConversion &&
-    (isLoadingPrices || isLoadingQuotes) &&
-    !(liveRonToUsd > 0);
+  const hasFx = convertCurrencies.every((currency) => (liveFxRates.get(currency) ?? 0) > 0);
 
-  const hasRonFx = !needsRonConversion || liveRonToUsd > 0;
+  const waitingForFx = needsFxConversion && (isLoadingPrices || isLoadingQuotes) && !hasFx;
   const waitingForQuotes = needsQuotes && !quotes && isLoadingQuotes;
   const waitingForHistory = historyTickers.length > 0 && isLoadingPrices && !isFirstDayBook;
 
@@ -196,8 +208,8 @@ export function usePortfolioIntradayPerformance(
       isLoadingTransactions ||
       waitingForHistory ||
       waitingForQuotes ||
-      waitingForRonFx ||
-      !hasRonFx
+      waitingForFx ||
+      !hasFx
     ) {
       return empty;
     }
@@ -216,17 +228,19 @@ export function usePortfolioIntradayPerformance(
     const session = resolveTradingSession(sessionMarket, now, latestBarT);
     const windowEnd = Math.min(now, session.end);
 
-    let ronToUsd = liveRonToUsd;
-    if (needsRonConversion && !(ronToUsd > 0)) {
-      const fxBars = historyByTicker?.get(RON_USD_TICKER) ?? [];
+    const fxRates: FxRates = new Map(liveFxRates);
+    for (const currency of convertCurrencies) {
+      if ((fxRates.get(currency) ?? 0) > 0) continue;
+      const fxBars = historyByTicker?.get(FX_USD_TICKERS[currency]) ?? [];
       const lastFx = fxBars[fxBars.length - 1];
-      if (lastFx && lastFx.c > 0) ronToUsd = lastFx.c;
+      if (lastFx && lastFx.c > 0) fxRates.set(currency, lastFx.c);
     }
 
-    const parts = dailyCostBasis.get(latestHoldings.date) ?? { usd: 0, ron: 0 };
-    const costBasis = needsRonConversion
-      ? parts.usd + parts.ron * (ronToUsd > 0 ? ronToUsd : 0)
-      : parts.usd + parts.ron;
+    const costBasis = sumCostBasis(
+      dailyCostBasis.get(latestHoldings.date),
+      fxRates,
+      convertCurrencies,
+    );
 
     const seedPrices = new Map<string, number>();
     for (const ticker of heldTickers) {
@@ -240,8 +254,8 @@ export function usePortfolioIntradayPerformance(
       pricesByTicker,
       {
         tickerCurrency,
-        ronToUsd,
-        convertRon: needsRonConversion,
+        fxRates,
+        convertCurrencies,
         windowStart: session.start,
         windowEnd,
         seedPrices,
@@ -259,12 +273,11 @@ export function usePortfolioIntradayPerformance(
 
     let liveValue = 0;
     let usedLivePrice = false;
-    const fx = ronToUsd > 0 ? ronToUsd : 1;
-
     for (const [ticker, shares] of latestHoldings.holdings) {
       const livePrice = resolveQuotePrice(quoteMap.get(ticker)).price;
       const currency = tickerCurrency.get(ticker);
-      const tickerFx = needsRonConversion && currency === Currency.RON ? fx : 1;
+      const rate = fxRateFor(currency, fxRates, convertCurrencies);
+      const tickerFx = rate > 0 ? rate : 1;
 
       if (livePrice > 0) {
         liveValue += shares * livePrice * tickerFx;
@@ -296,14 +309,14 @@ export function usePortfolioIntradayPerformance(
     isLoadingTransactions,
     waitingForHistory,
     waitingForQuotes,
-    waitingForRonFx,
-    hasRonFx,
+    waitingForFx,
+    hasFx,
     heldTickers,
     historyByTicker,
     dailyCostBasis,
     dailyTickerCost,
-    needsRonConversion,
-    liveRonToUsd,
+    convertCurrencies,
+    liveFxRates,
     tickerCurrency,
     quotes,
     quoteMap,
@@ -319,7 +332,7 @@ export function usePortfolioIntradayPerformance(
       (isLoadingTransactions ||
         waitingForHistory ||
         waitingForQuotes ||
-        waitingForRonFx),
+        waitingForFx),
     isError: isErrorTransactions || isErrorPrices,
     error: (transactionsError as Error | null) ?? (pricesQueryError as Error | null),
   };

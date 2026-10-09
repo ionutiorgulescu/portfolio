@@ -30,8 +30,8 @@ export type LotQueues = Map<string, Lot[]>;
  */
 export type DailyHoldings = Map<string, Map<string, number>>;
 
-/** Cost basis split by currency so RON can be converted to USD later. */
-export type CostBasisParts = { usd: number; ron: number };
+/** Cost basis split by currency so non-USD lots can be converted to USD later. */
+export type CostBasisParts = Partial<Record<Currency, number>>;
 
 /**
  * Daily cost basis series produced by the FIFO engine.

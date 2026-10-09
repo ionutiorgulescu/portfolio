@@ -73,7 +73,11 @@ const Dashboard = () => {
         portfolioId={selectedPortfolioId}
         showFooter={false}
       />
-      <PortfolioComposition filter={filter} portfolioId={selectedPortfolioId} />
+      <PortfolioComposition
+        filter={filter}
+        portfolioId={selectedPortfolioId}
+        onFilterChange={handleFilterChange}
+      />
     </Box>
   );
 };

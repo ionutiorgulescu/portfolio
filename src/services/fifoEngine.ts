@@ -1,4 +1,5 @@
 import type {
+  CostBasisParts,
   DailyCostBasis,
   DailyHoldings,
   DailyTickerCost,
@@ -186,8 +187,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
     // End-of-day snapshot: record remaining shares and cost basis for every active ticker
     const snapshot = new Map<string, number>();
     const tickerCost = new Map<string, number>();
-    let usdCostBasis = 0;
-    let ronCostBasis = 0;
+    const costBasisParts: CostBasisParts = {};
     for (const [ticker, lots] of lotQueues) {
       const total = lots.reduce((sum, lot) => sum + lot.remainingQty, 0);
       let remainingCost = 0;
@@ -195,11 +195,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
         if (lot.remainingQty > 1e-10) {
           const lotCost = lot.remainingQty * lot.buyPrice;
           remainingCost += lotCost;
-          if (lot.currency === Currency.RON) {
-            ronCostBasis += lotCost;
-          } else {
-            usdCostBasis += lotCost;
-          }
+          costBasisParts[lot.currency] = (costBasisParts[lot.currency] ?? 0) + lotCost;
         }
       }
       if (total > 0) {
@@ -208,7 +204,7 @@ export function runFifoEngine(transactions: Transaction[]): FifoEngineResult {
       }
     }
     dailyHoldings.set(date, snapshot);
-    dailyCostBasis.set(date, { usd: usdCostBasis, ron: ronCostBasis });
+    dailyCostBasis.set(date, costBasisParts);
     dailyTickerCost.set(date, tickerCost);
   }
 
