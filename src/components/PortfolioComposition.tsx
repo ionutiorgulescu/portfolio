@@ -322,7 +322,7 @@ export function PortfolioComposition({ filter, portfolioId, onFilterChange }: Po
           <PortfolioCompositionRow
             key={row.ticker}
             row={row}
-            currency={currency}
+            currency={filter === 'etf' ? row.currency : currency}
             showPercent={showPercent}
             onTogglePercent={() => setShowPercent(prev => !prev)}
             onLogoClick={handleLogoClick}

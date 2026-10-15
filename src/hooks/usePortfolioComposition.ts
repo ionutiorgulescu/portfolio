@@ -192,10 +192,13 @@ export function usePortfolioComposition(filter: CompositionFilter = 'all', portf
           dayChangePercent,
         } = resolveQuotePrice(quoteMap.get(ticker));
         const fx = fxRateFor(holding.currency, fxRates, convertCurrencies);
-        const currentValue = holding.quantity * currentPrice * fx;
-        const costBasis = holding.costBasis * fx;
+        const valueUsd = holding.quantity * currentPrice * fx;
+        const weight = totalPortfolioValue > 0 ? (valueUsd / totalPortfolioValue) * 100 : 0;
+        // ETF rows stay in their own currency (EUR or USD); weight still uses USD.
+        const rowFx = filter === 'etf' ? 1 : fx;
+        const currentValue = holding.quantity * currentPrice * rowFx;
+        const costBasis = holding.costBasis * rowFx;
         const gainLoss = currentValue - costBasis;
-        const weight = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0;
 
         return {
           ticker,
