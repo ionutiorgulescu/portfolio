@@ -18,9 +18,10 @@ import {
 } from '../services/tradingSession';
 import {
   FX_USD_TICKERS,
-  currenciesToConvert,
+  currenciesToConvertForDisplay,
   fxRateFor,
   sumCostBasis,
+  usdToEurRate,
   type FxRates,
 } from '../services/fx';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
@@ -116,10 +117,13 @@ export function usePortfolioIntradayPerformance(
     return map;
   }, [transactions]);
 
+  /** ETF totals are shown in EUR: values are built in USD, then converted at spot. */
+  const displayInEur = filter === 'etf';
+
   /** Non-USD currencies held in this view that must be converted to USD. */
   const convertCurrencies = useMemo(
-    () => currenciesToConvert(tickerCurrency.values(), filter === 'bvb'),
-    [filter, tickerCurrency],
+    () => currenciesToConvertForDisplay(tickerCurrency.values(), filter === 'bvb', displayInEur),
+    [filter, tickerCurrency, displayInEur],
   );
   const needsFxConversion = convertCurrencies.length > 0;
   const fxTickers = useMemo(
@@ -332,8 +336,18 @@ export function usePortfolioIntradayPerformance(
     sessionMarket,
   ]);
 
+  const displayData = useMemo(() => {
+    if (!displayInEur) return data;
+    const rate = usdToEurRate(liveFxRates);
+    return data.map((point) => ({
+      ...point,
+      value: point.value * rate,
+      costBasis: point.costBasis * rate,
+    }));
+  }, [displayInEur, data, liveFxRates]);
+
   return {
-    data,
+    data: displayData,
     sessionStart,
     sessionEnd,
     isLoading:

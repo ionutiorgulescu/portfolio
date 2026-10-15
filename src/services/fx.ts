@@ -35,6 +35,26 @@ export function currenciesToConvert(
   return [...result].sort();
 }
 
+/**
+ * Like `currenciesToConvert`, but always includes EUR when the view is shown in EUR,
+ * so the EUR→USD rate is fetched for converting USD totals back to EUR.
+ */
+export function currenciesToConvertForDisplay(
+  currencies: Iterable<Currency | undefined>,
+  nativeView: boolean,
+  displayInEur: boolean,
+): ForeignCurrency[] {
+  const result = currenciesToConvert(currencies, nativeView);
+  if (!displayInEur || result.includes(Currency.EUR)) return result;
+  return [...result, Currency.EUR].sort();
+}
+
+/** USD → EUR multiplier from currency→USD rates; 0 when the EUR rate is missing. */
+export function usdToEurRate(rates: FxRates): number {
+  const eurUsd = rates.get(Currency.EUR) ?? 0;
+  return eurUsd > 0 ? 1 / eurUsd : 0;
+}
+
 /** FX multiplier to USD for `currency`; 1 when it is not being converted. */
 export function fxRateFor(
   currency: Currency | undefined,

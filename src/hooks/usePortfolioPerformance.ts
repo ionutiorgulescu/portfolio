@@ -20,12 +20,13 @@ import { computePortfolioValue } from '../services/portfolioValue';
 import {
   FX_USD_TICKERS,
   buildFxSeries,
-  currenciesToConvert,
+  currenciesToConvertForDisplay,
   fxRateFor,
   fxRatesOnDate,
   sumCostBasis,
   type FxRates,
   type FxSeriesByCurrency,
+  usdToEurRate,
 } from '../services/fx';
 import { resolveQuotePrice, type QuoteResult } from '../utils/resolveQuotePrice';
 
@@ -113,10 +114,13 @@ export function usePortfolioPerformance(
     return map;
   }, [transactions]);
 
+  /** ETF totals are shown in EUR: values are built in USD, then converted per day. */
+  const displayInEur = filter === 'etf';
+
   /** Non-USD currencies held in this view that must be converted to USD. */
   const convertCurrencies = useMemo(
-    () => currenciesToConvert(tickerCurrency.values(), filter === 'bvb'),
-    [filter, tickerCurrency],
+    () => currenciesToConvertForDisplay(tickerCurrency.values(), filter === 'bvb', displayInEur),
+    [filter, tickerCurrency, displayInEur],
   );
   const needsFxConversion = convertCurrencies.length > 0;
   const fxTickers = useMemo(
@@ -407,10 +411,28 @@ export function usePortfolioPerformance(
     quoteMap,
   ]);
 
+  /** Converts the USD outputs to EUR per date when the view is shown in EUR. */
+  const display = useMemo(() => {
+    if (!displayInEur) return { data, realizedGains, cashFlows };
+    const rateOn = (date: string) =>
+      usdToEurRate(fxRatesOnDate(fxByDate, date, liveFxRates, [Currency.EUR]));
+    return {
+      data: data.map((point) => {
+        const rate = rateOn(point.date);
+        return { ...point, value: point.value * rate, costBasis: point.costBasis * rate };
+      }),
+      realizedGains: realizedGains.map((event) => {
+        const rate = rateOn(event.date);
+        return { ...event, gain: event.gain * rate, cost: event.cost * rate };
+      }),
+      cashFlows: cashFlows.map((flow) => ({ ...flow, amount: flow.amount * rateOn(flow.date) })),
+    };
+  }, [displayInEur, data, realizedGains, cashFlows, fxByDate, liveFxRates]);
+
   return {
-    data,
-    realizedGains,
-    cashFlows,
+    data: display.data,
+    realizedGains: display.realizedGains,
+    cashFlows: display.cashFlows,
     years,
     isLoading:
       isLoadingTransactions ||

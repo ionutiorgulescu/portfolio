@@ -184,7 +184,7 @@ export function PortfolioPerformanceCard({
     });
   }, []);
 
-  const currencyPrefix = filter === 'bvb' ? 'RON' : '$';
+  const currencyPrefix = filter === 'bvb' ? 'RON' : filter === 'etf' ? '€' : '$';
 
   const latestPoint = chartData.length > 0 ? chartData[chartData.length - 1] : null;
   const startPoint = chartData.length > 0 ? chartData[0] : null;
