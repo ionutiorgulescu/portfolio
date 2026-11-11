@@ -223,7 +223,7 @@ enabled = true
 host = "smtp.sendgrid.net"
 port = 587
 user = "apikey" # This is literally the string "apikey" for SendGrid
-pass = "REDACTED"
+pass = "env(SENDGRID_API_KEY)"
 admin_email = "contact@ionutiorgulescu.ro"
 sender_name = "Portfolio App"
 
